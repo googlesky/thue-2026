@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
 import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
@@ -30,15 +30,20 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const [oldResult, setOldResult] = useState<GrossNetResult | null>(null);
   const [newResult, setNewResult] = useState<GrossNetResult | null>(null);
 
-  // Sync with sharedState when it changes
+  // Track if we're the source of the change to prevent sync loops
+  const isLocalChange = useRef(false);
+
+  // Sync with sharedState when it changes (only in GROSS mode and not from local changes)
   useEffect(() => {
-    if (sharedState) {
+    if (sharedState && type === 'gross' && !isLocalChange.current) {
       setAmount(sharedState.grossIncome.toString());
       setDependents(sharedState.dependents);
       setHasInsurance(sharedState.hasInsurance);
       setRegion(sharedState.region);
     }
-  }, [sharedState]);
+    // Reset flag after processing
+    isLocalChange.current = false;
+  }, [sharedState, type]);
 
   // Calculate results
   useEffect(() => {
@@ -68,8 +73,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const handleAmountChange = (value: string) => {
     const numericValue = value.replace(/[^\d]/g, '');
     setAmount(numericValue);
+    isLocalChange.current = true;
 
-    // Sync gross income to shared state
+    // Sync gross income to shared state only in GROSS mode
     if (onStateChange && type === 'gross') {
       onStateChange({ grossIncome: parseInt(numericValue, 10) || 0 });
     }
@@ -77,6 +83,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   const handleDependentsChange = (newDependents: number) => {
     setDependents(newDependents);
+    isLocalChange.current = true;
     if (onStateChange) {
       onStateChange({ dependents: newDependents });
     }
@@ -84,6 +91,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   const handleInsuranceChange = (newHasInsurance: boolean) => {
     setHasInsurance(newHasInsurance);
+    isLocalChange.current = true;
     if (onStateChange) {
       onStateChange({
         hasInsurance: newHasInsurance,
@@ -94,17 +102,32 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   const handleRegionChange = (newRegion: RegionType) => {
     setRegion(newRegion);
+    isLocalChange.current = true;
     if (onStateChange) {
       onStateChange({ region: newRegion });
     }
   };
 
-  // When result changes with NET input, sync the calculated gross
+  // When result changes with NET input, sync the calculated gross to shared state
+  // Use a ref to track the last synced value to prevent loops
+  const lastSyncedGross = useRef<number | null>(null);
   useEffect(() => {
     if (type === 'net' && newResult && onStateChange) {
-      onStateChange({ grossIncome: newResult.gross });
+      // Only sync if the calculated gross is different from last synced value
+      if (lastSyncedGross.current !== newResult.gross) {
+        lastSyncedGross.current = newResult.gross;
+        isLocalChange.current = true;
+        onStateChange({ grossIncome: newResult.gross });
+      }
     }
   }, [type, newResult, onStateChange]);
+
+  // Reset lastSyncedGross when switching to GROSS mode
+  useEffect(() => {
+    if (type === 'gross') {
+      lastSyncedGross.current = null;
+    }
+  }, [type]);
 
   const savings = oldResult && newResult ? oldResult.tax - newResult.tax : 0;
 
