@@ -1,17 +1,22 @@
 'use client';
 
-import { TaxResult as TaxResultType, formatCurrency } from '@/lib/taxCalculator';
+import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult } from '@/lib/taxCalculator';
 
 interface TaxResultProps {
   oldResult: TaxResultType;
   newResult: TaxResultType;
+  otherIncomeTax?: OtherIncomeTaxResult | null;
 }
 
-export default function TaxResult({ oldResult, newResult }: TaxResultProps) {
+export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxResultProps) {
   const savings = oldResult.taxAmount - newResult.taxAmount;
   const savingsPercent = oldResult.taxAmount > 0
     ? ((savings / oldResult.taxAmount) * 100).toFixed(1)
     : '0';
+
+  // Calculate totals including other income
+  const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
+  const totalNewTax = newResult.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
 
   return (
     <div className="space-y-6">
@@ -29,6 +34,64 @@ export default function TaxResult({ oldResult, newResult }: TaxResultProps) {
           </div>
           <div className="text-green-100">
             Tương đương {formatCurrency(savings * 12)}/năm (giảm {savingsPercent}%)
+          </div>
+        </div>
+      )}
+
+      {/* Other income summary */}
+      {hasOtherIncome && (
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <h3 className="text-xl font-bold">Thu nhập khác</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-blue-100 text-sm">Tổng thu nhập</div>
+              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalIncome)}</div>
+            </div>
+            <div>
+              <div className="text-blue-100 text-sm">Thuế phải nộp</div>
+              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalTax)}</div>
+            </div>
+            <div>
+              <div className="text-blue-100 text-sm">Thực nhận</div>
+              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalNet)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Total summary when having other income */}
+      {hasOtherIncome && (
+        <div className="bg-gray-800 rounded-xl p-6 text-white">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Tổng kết tất cả nguồn thu nhập (Luật mới)
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-gray-400 text-sm">Lương GROSS</div>
+              <div className="text-xl font-bold">{formatCurrency(newResult.grossIncome)}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm">Thu nhập khác</div>
+              <div className="text-xl font-bold">{formatCurrency(otherIncomeTax.totalIncome)}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm">Tổng thuế</div>
+              <div className="text-xl font-bold text-red-400">{formatCurrency(totalNewTax)}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm">Tổng thực nhận</div>
+              <div className="text-xl font-bold text-green-400">
+                {formatCurrency(newResult.netIncome + otherIncomeTax.totalNet)}
+              </div>
+            </div>
           </div>
         </div>
       )}

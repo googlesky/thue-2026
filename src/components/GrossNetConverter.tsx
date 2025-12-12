@@ -2,18 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
-import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
-
-interface SharedTaxState {
-  grossIncome: number;
-  declaredSalary?: number;
-  dependents: number;
-  otherDeductions: number;
-  hasInsurance: boolean;
-  insuranceOptions: InsuranceOptions;
-  region: RegionType;
-  pensionContribution: number;
-}
+import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, SharedTaxState, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
 interface GrossNetConverterProps {
   sharedState?: SharedTaxState;

@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import TaxInput from '@/components/TaxInput';
 import TaxResult from '@/components/TaxResult';
 import TaxChart from '@/components/TaxChart';
 import TaxBracketTable from '@/components/TaxBracketTable';
 import GrossNetConverter from '@/components/GrossNetConverter';
 import InsuranceBreakdown from '@/components/InsuranceBreakdown';
+import ShareButton from '@/components/ShareButton';
+import SaveButton from '@/components/SaveButton';
+import CalculationHistory from '@/components/CalculationHistory';
+import OtherIncomeInput from '@/components/OtherIncomeInput';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -15,21 +19,14 @@ import {
   RegionType,
   InsuranceOptions,
   DEFAULT_INSURANCE_OPTIONS,
+  SharedTaxState,
+  OtherIncomeState,
+  DEFAULT_OTHER_INCOME,
+  calculateOtherIncomeTax,
 } from '@/lib/taxCalculator';
+import { decodeStateFromURL } from '@/lib/urlState';
 
-type TabType = 'calculator' | 'gross-net' | 'insurance' | 'table';
-
-// Shared state interface for all tabs
-export interface SharedTaxState {
-  grossIncome: number;
-  declaredSalary?: number;
-  dependents: number;
-  otherDeductions: number;
-  hasInsurance: boolean;
-  insuranceOptions: InsuranceOptions;
-  region: RegionType;
-  pensionContribution: number;
-}
+type TabType = 'calculator' | 'gross-net' | 'insurance' | 'other-income' | 'table';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -39,10 +36,12 @@ const defaultSharedState: SharedTaxState = {
   insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
   region: 1,
   pensionContribution: 0,
+  otherIncome: DEFAULT_OTHER_INCOME,
 };
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Shared state across all tabs
   const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
@@ -54,6 +53,34 @@ export default function Home() {
   const [newResult, setNewResult] = useState<TaxResultType>(() =>
     calculateNewTax(sharedState)
   );
+
+  // Load state from URL on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isInitialized) {
+      const urlState = decodeStateFromURL(window.location.search);
+      if (urlState) {
+        const newState = { ...defaultSharedState, ...urlState };
+        setSharedState(newState);
+
+        // Recalculate
+        const taxInput: TaxInputType = {
+          grossIncome: newState.grossIncome,
+          declaredSalary: newState.declaredSalary,
+          dependents: newState.dependents,
+          otherDeductions: newState.otherDeductions + newState.pensionContribution,
+          hasInsurance: newState.hasInsurance,
+          insuranceOptions: newState.insuranceOptions,
+          region: newState.region,
+        };
+        setOldResult(calculateOldTax(taxInput));
+        setNewResult(calculateNewTax(taxInput));
+
+        // Clear URL params after loading (cleaner URL)
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
 
   // Update shared state and recalculate tax
   const updateSharedState = useCallback((updates: Partial<SharedTaxState>) => {
@@ -96,10 +123,40 @@ export default function Home() {
     [updateSharedState]
   );
 
+  // Handler for loading history
+  const handleLoadHistory = useCallback((state: SharedTaxState) => {
+    setSharedState(state);
+
+    const taxInput: TaxInputType = {
+      grossIncome: state.grossIncome,
+      declaredSalary: state.declaredSalary,
+      dependents: state.dependents,
+      otherDeductions: state.otherDeductions + state.pensionContribution,
+      hasInsurance: state.hasInsurance,
+      insuranceOptions: state.insuranceOptions,
+      region: state.region,
+    };
+
+    setOldResult(calculateOldTax(taxInput));
+    setNewResult(calculateNewTax(taxInput));
+    setActiveTab('calculator');
+  }, []);
+
+  // Handler for other income changes
+  const handleOtherIncomeChange = useCallback((otherIncome: OtherIncomeState) => {
+    updateSharedState({ otherIncome });
+  }, [updateSharedState]);
+
+  // Calculate other income tax
+  const otherIncomeTax = sharedState.otherIncome
+    ? calculateOtherIncomeTax(sharedState.otherIncome)
+    : null;
+
   const tabs = [
     { id: 'calculator' as TabType, label: 'Tính thuế', icon: '🧮' },
     { id: 'gross-net' as TabType, label: 'GROSS ⇄ NET', icon: '💰' },
     { id: 'insurance' as TabType, label: 'Bảo hiểm', icon: '🛡️' },
+    { id: 'other-income' as TabType, label: 'Thu nhập khác', icon: '💼' },
     { id: 'table' as TabType, label: 'Biểu thuế', icon: '📊' },
   ];
 
@@ -124,6 +181,18 @@ export default function Home() {
               <span className="w-2.5 h-2.5 rounded-full bg-primary-500"></span>
               Luật mới (5 bậc)
             </span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <ShareButton state={sharedState} />
+            <SaveButton
+              state={sharedState}
+              oldTax={oldResult.taxAmount}
+              newTax={newResult.taxAmount}
+              netIncome={newResult.netIncome}
+            />
+            <CalculationHistory onLoadHistory={handleLoadHistory} />
           </div>
         </header>
 
@@ -153,13 +222,28 @@ export default function Home() {
             {/* Main content */}
             <div className="grid lg:grid-cols-3 gap-6 mb-8">
               <div className="lg:col-span-1">
-                <TaxInput
-                  onCalculate={handleCalculate}
-                  initialValues={sharedState}
-                />
+                {isInitialized ? (
+                  <TaxInput
+                    onCalculate={handleCalculate}
+                    initialValues={sharedState}
+                  />
+                ) : (
+                  <div className="card animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-6"></div>
+                    <div className="space-y-4">
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="lg:col-span-2">
-                <TaxResult oldResult={oldResult} newResult={newResult} />
+                <TaxResult
+                  oldResult={oldResult}
+                  newResult={newResult}
+                  otherIncomeTax={otherIncomeTax}
+                />
               </div>
             </div>
 
@@ -185,6 +269,15 @@ export default function Home() {
               grossIncome={sharedState.declaredSalary ?? sharedState.grossIncome}
               region={sharedState.region}
               insuranceOptions={sharedState.insuranceOptions}
+            />
+          </div>
+        )}
+
+        {activeTab === 'other-income' && (
+          <div className="mb-8">
+            <OtherIncomeInput
+              otherIncome={sharedState.otherIncome ?? DEFAULT_OTHER_INCOME}
+              onChange={handleOtherIncomeChange}
             />
           </div>
         )}
@@ -296,7 +389,7 @@ export default function Home() {
             </a>
             <span>|</span>
             <a
-              href="https://github.com"
+              href="https://github.com/googlesky/thue-2026"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-600 hover:underline"
