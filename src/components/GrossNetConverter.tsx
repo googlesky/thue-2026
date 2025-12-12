@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
 import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
@@ -21,7 +21,9 @@ interface GrossNetConverterProps {
 }
 
 export default function GrossNetConverter({ sharedState, onStateChange }: GrossNetConverterProps) {
-  const [amount, setAmount] = useState<string>(sharedState?.grossIncome?.toString() ?? '30000000');
+  // Store both GROSS and NET values to avoid recalculation drift
+  const [grossValue, setGrossValue] = useState<number>(sharedState?.grossIncome ?? 30000000);
+  const [netValue, setNetValue] = useState<number>(0);
   const [type, setType] = useState<'gross' | 'net'>('gross');
   const [dependents, setDependents] = useState<number>(sharedState?.dependents ?? 0);
   const [hasInsurance, setHasInsurance] = useState<boolean>(sharedState?.hasInsurance ?? true);
@@ -32,55 +34,124 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   // Track if we're the source of the change to prevent sync loops
   const isLocalChange = useRef(false);
-  // Track the last synced gross to prevent loops when in NET mode
-  const lastSyncedGross = useRef<number | null>(null);
+  const isInitialized = useRef(false);
 
-  // Sync with sharedState when it changes (only in GROSS mode and not from local changes)
+  // Calculate results from GROSS (always calculate from gross to ensure consistency)
+  const calculateFromGross = useCallback((gross: number) => {
+    if (gross <= 0) return;
+
+    const oldRes = convertGrossNet({
+      amount: gross,
+      type: 'gross',
+      dependents,
+      hasInsurance,
+      useNewLaw: false,
+      region,
+    });
+    const newRes = convertGrossNet({
+      amount: gross,
+      type: 'gross',
+      dependents,
+      hasInsurance,
+      useNewLaw: true,
+      region,
+    });
+
+    setOldResult(oldRes);
+    setNewResult(newRes);
+    setNetValue(newRes.net);
+
+    return newRes;
+  }, [dependents, hasInsurance, region]);
+
+  // Calculate GROSS from NET (only when user inputs NET)
+  const calculateFromNet = useCallback((net: number) => {
+    if (net <= 0) return;
+
+    const newRes = convertGrossNet({
+      amount: net,
+      type: 'net',
+      dependents,
+      hasInsurance,
+      useNewLaw: true,
+      region,
+    });
+    const oldRes = convertGrossNet({
+      amount: net,
+      type: 'net',
+      dependents,
+      hasInsurance,
+      useNewLaw: false,
+      region,
+    });
+
+    setOldResult(oldRes);
+    setNewResult(newRes);
+    setGrossValue(newRes.gross);
+
+    // Sync gross to shared state
+    if (onStateChange) {
+      isLocalChange.current = true;
+      onStateChange({ grossIncome: newRes.gross });
+    }
+
+    return newRes;
+  }, [dependents, hasInsurance, region, onStateChange]);
+
+  // Initial calculation
   useEffect(() => {
-    if (sharedState && type === 'gross' && !isLocalChange.current) {
-      setAmount(sharedState.grossIncome.toString());
+    if (!isInitialized.current) {
+      calculateFromGross(grossValue);
+      isInitialized.current = true;
+    }
+  }, [grossValue, calculateFromGross]);
+
+  // Recalculate when parameters change (but not type)
+  useEffect(() => {
+    if (isInitialized.current) {
+      // Always recalculate from gross to maintain consistency
+      calculateFromGross(grossValue);
+    }
+  }, [dependents, hasInsurance, region, calculateFromGross, grossValue]);
+
+  // Sync with sharedState when it changes from other tabs
+  useEffect(() => {
+    if (sharedState && !isLocalChange.current) {
+      if (sharedState.grossIncome !== grossValue) {
+        setGrossValue(sharedState.grossIncome);
+        calculateFromGross(sharedState.grossIncome);
+      }
       setDependents(sharedState.dependents);
       setHasInsurance(sharedState.hasInsurance);
       setRegion(sharedState.region);
     }
-    // Reset flag after processing
     isLocalChange.current = false;
-  }, [sharedState, type]);
+  }, [sharedState, grossValue, calculateFromGross]);
 
-  // Calculate results
-  useEffect(() => {
-    const numAmount = parseInt(amount.replace(/[^\d]/g, ''), 10) || 0;
-    if (numAmount > 0) {
-      const oldRes = convertGrossNet({
-        amount: numAmount,
-        type,
-        dependents,
-        hasInsurance,
-        useNewLaw: false,
-        region,
-      });
-      const newRes = convertGrossNet({
-        amount: numAmount,
-        type,
-        dependents,
-        hasInsurance,
-        useNewLaw: true,
-        region,
-      });
-      setOldResult(oldRes);
-      setNewResult(newRes);
-    }
-  }, [amount, type, dependents, hasInsurance, region]);
-
+  // Handle amount change based on current type
   const handleAmountChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setAmount(numericValue);
-    isLocalChange.current = true;
+    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
 
-    // Sync gross income to shared state only in GROSS mode
-    if (onStateChange && type === 'gross') {
-      onStateChange({ grossIncome: parseInt(numericValue, 10) || 0 });
+    if (type === 'gross') {
+      setGrossValue(numericValue);
+      calculateFromGross(numericValue);
+      // Sync to shared state
+      if (onStateChange) {
+        isLocalChange.current = true;
+        onStateChange({ grossIncome: numericValue });
+      }
+    } else {
+      setNetValue(numericValue);
+      calculateFromNet(numericValue);
     }
+  };
+
+  // Handle switching between GROSS and NET modes
+  // Just swap display, NO recalculation
+  const handleTypeChange = (newType: 'gross' | 'net') => {
+    if (newType === type) return;
+    setType(newType);
+    // Don't recalculate - just change which value is shown in input
   };
 
   const handleDependentsChange = (newDependents: number) => {
@@ -110,49 +181,8 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
   };
 
-  // Handle switching between GROSS and NET modes
-  // When switching, convert the amount to the corresponding value
-  const handleTypeChange = (newType: 'gross' | 'net') => {
-    if (newType === type || !newResult) return;
-
-    isLocalChange.current = true;
-
-    if (newType === 'net') {
-      // Switching from GROSS to NET: use the calculated NET value
-      setAmount(newResult.net.toString());
-      lastSyncedGross.current = newResult.gross; // Track the gross we came from
-    } else {
-      // Switching from NET to GROSS: use the calculated GROSS value
-      setAmount(newResult.gross.toString());
-      lastSyncedGross.current = null;
-      // Sync to shared state
-      if (onStateChange) {
-        onStateChange({ grossIncome: newResult.gross });
-      }
-    }
-
-    setType(newType);
-  };
-
-  // When result changes with NET input, sync the calculated gross to shared state
-  useEffect(() => {
-    if (type === 'net' && newResult && onStateChange) {
-      // Only sync if the calculated gross is different from last synced value
-      if (lastSyncedGross.current !== newResult.gross) {
-        lastSyncedGross.current = newResult.gross;
-        isLocalChange.current = true;
-        onStateChange({ grossIncome: newResult.gross });
-      }
-    }
-  }, [type, newResult, onStateChange]);
-
-  // Reset lastSyncedGross when switching to GROSS mode
-  useEffect(() => {
-    if (type === 'gross') {
-      lastSyncedGross.current = null;
-    }
-  }, [type]);
-
+  // Current display value based on type
+  const displayValue = type === 'gross' ? grossValue : netValue;
   const savings = oldResult && newResult ? oldResult.tax - newResult.tax : 0;
 
   return (
@@ -209,11 +239,11 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
           {/* Số tiền */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số tiền (VNĐ/tháng)
+              {type === 'gross' ? 'Lương GROSS' : 'Lương NET'} (VNĐ/tháng)
             </label>
             <input
               type="text"
-              value={formatNumber(parseInt(amount, 10) || 0)}
+              value={formatNumber(displayValue)}
               onChange={(e) => handleAmountChange(e.target.value)}
               className="input-field text-lg font-semibold"
             />
