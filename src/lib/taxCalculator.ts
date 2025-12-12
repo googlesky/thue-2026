@@ -78,6 +78,53 @@ export interface InsuranceOptions {
   bhtn: boolean; // BHTN 1%
 }
 
+// Shared state interface for all tabs
+export interface SharedTaxState {
+  grossIncome: number;
+  declaredSalary?: number;
+  dependents: number;
+  otherDeductions: number;
+  hasInsurance: boolean;
+  insuranceOptions: InsuranceOptions;
+  region: RegionType;
+  pensionContribution: number;
+  // Multiple income sources
+  otherIncome?: OtherIncomeState;
+}
+
+// Other income sources
+export interface OtherIncomeState {
+  freelance: number;         // Thu nhập tự do / dịch vụ
+  rental: number;            // Cho thuê tài sản
+  investment: number;        // Đầu tư (cổ tức, lãi tiền gửi)
+  transfer: number;          // Chuyển nhượng vốn
+  lottery: number;           // Trúng thưởng
+}
+
+export const DEFAULT_OTHER_INCOME: OtherIncomeState = {
+  freelance: 0,
+  rental: 0,
+  investment: 0,
+  transfer: 0,
+  lottery: 0,
+};
+
+// Tax rates for other income types
+export const OTHER_INCOME_TAX_RATES = {
+  freelance: 0.10,      // 10% trên doanh thu (cá nhân không đăng ký kinh doanh)
+  rental: 0.05,         // 5% thuế TNCN + 5% VAT = 10% tổng
+  rentalVAT: 0.05,      // VAT cho thuê tài sản
+  investment: 0.05,     // 5% cổ tức, lãi
+  transfer: 0.001,      // 0.1% giá chuyển nhượng (chứng khoán)
+  lottery: 0.10,        // 10% phần vượt 10 triệu
+};
+
+// Ngưỡng miễn thuế
+export const OTHER_INCOME_THRESHOLDS = {
+  lottery: 10_000_000,  // Trúng thưởng miễn thuế dưới 10 triệu
+  rental: 100_000_000,  // Cho thuê tài sản dưới 100 triệu/năm có thể miễn VAT
+};
+
 export interface TaxInput {
   grossIncome: number; // Thu nhập gộp (lương thực tế)
   declaredSalary?: number; // Lương khai báo với nhà nước (nếu khác lương thực)
@@ -350,4 +397,113 @@ export function calculateTaxRange(
     });
   }
   return results;
+}
+
+// ===== THUẾ THU NHẬP TỪ NGUỒN KHÁC =====
+
+export interface OtherIncomeTaxResult {
+  freelance: {
+    income: number;
+    tax: number;
+    rate: number;
+    note: string;
+  };
+  rental: {
+    income: number;
+    taxPIT: number;     // Thuế TNCN
+    taxVAT: number;     // VAT
+    totalTax: number;
+    rate: number;
+    note: string;
+  };
+  investment: {
+    income: number;
+    tax: number;
+    rate: number;
+    note: string;
+  };
+  transfer: {
+    income: number;
+    tax: number;
+    rate: number;
+    note: string;
+  };
+  lottery: {
+    income: number;
+    taxableAmount: number;
+    tax: number;
+    rate: number;
+    note: string;
+  };
+  totalIncome: number;
+  totalTax: number;
+  totalNet: number;
+}
+
+// Tính thuế cho các nguồn thu nhập khác
+export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherIncomeTaxResult {
+  // 1. Thu nhập từ dịch vụ / Freelance
+  // Cá nhân không đăng ký kinh doanh: 10% trên doanh thu
+  const freelanceTax = otherIncome.freelance * OTHER_INCOME_TAX_RATES.freelance;
+
+  // 2. Thu nhập từ cho thuê tài sản
+  // Thuế TNCN: 5%, VAT: 5% (nếu > 100 triệu/năm)
+  const rentalPIT = otherIncome.rental * OTHER_INCOME_TAX_RATES.rental;
+  const rentalVAT = otherIncome.rental * OTHER_INCOME_TAX_RATES.rentalVAT;
+
+  // 3. Thu nhập từ đầu tư (cổ tức, lãi tiền gửi)
+  // Thuế suất: 5%
+  const investmentTax = otherIncome.investment * OTHER_INCOME_TAX_RATES.investment;
+
+  // 4. Thu nhập từ chuyển nhượng chứng khoán
+  // Thuế suất: 0.1% trên giá chuyển nhượng
+  const transferTax = otherIncome.transfer * OTHER_INCOME_TAX_RATES.transfer;
+
+  // 5. Thu nhập từ trúng thưởng
+  // Thuế suất: 10% phần vượt 10 triệu
+  const lotteryTaxable = Math.max(0, otherIncome.lottery - OTHER_INCOME_THRESHOLDS.lottery);
+  const lotteryTax = lotteryTaxable * OTHER_INCOME_TAX_RATES.lottery;
+
+  const totalIncome = otherIncome.freelance + otherIncome.rental +
+    otherIncome.investment + otherIncome.transfer + otherIncome.lottery;
+  const totalTax = freelanceTax + rentalPIT + rentalVAT + investmentTax + transferTax + lotteryTax;
+
+  return {
+    freelance: {
+      income: otherIncome.freelance,
+      tax: freelanceTax,
+      rate: OTHER_INCOME_TAX_RATES.freelance * 100,
+      note: '10% trên doanh thu (không ĐKKD)',
+    },
+    rental: {
+      income: otherIncome.rental,
+      taxPIT: rentalPIT,
+      taxVAT: rentalVAT,
+      totalTax: rentalPIT + rentalVAT,
+      rate: (OTHER_INCOME_TAX_RATES.rental + OTHER_INCOME_TAX_RATES.rentalVAT) * 100,
+      note: '5% TNCN + 5% VAT',
+    },
+    investment: {
+      income: otherIncome.investment,
+      tax: investmentTax,
+      rate: OTHER_INCOME_TAX_RATES.investment * 100,
+      note: '5% cổ tức/lãi tiền gửi',
+    },
+    transfer: {
+      income: otherIncome.transfer,
+      tax: transferTax,
+      rate: OTHER_INCOME_TAX_RATES.transfer * 100,
+      note: '0.1% giá chuyển nhượng',
+    },
+    lottery: {
+      income: otherIncome.lottery,
+      taxableAmount: lotteryTaxable,
+      tax: lotteryTax,
+      rate: OTHER_INCOME_TAX_RATES.lottery * 100,
+      note: `10% phần vượt ${formatNumber(OTHER_INCOME_THRESHOLDS.lottery)}`,
+    },
+    totalIncome,
+    totalTax,
+    totalNet: totalIncome - totalTax,
+  };
 }
