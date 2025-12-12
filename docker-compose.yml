@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./out:/output
+    command: sh -c "cp -r /output/* /app-output/ 2>/dev/null || true"
+
+  # Alternative: just build and keep the container for copying
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    volumes:
+      - ./out:/app/out
