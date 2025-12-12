@@ -32,6 +32,8 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   // Track if we're the source of the change to prevent sync loops
   const isLocalChange = useRef(false);
+  // Track the last synced gross to prevent loops when in NET mode
+  const lastSyncedGross = useRef<number | null>(null);
 
   // Sync with sharedState when it changes (only in GROSS mode and not from local changes)
   useEffect(() => {
@@ -108,9 +110,31 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
   };
 
+  // Handle switching between GROSS and NET modes
+  // When switching, convert the amount to the corresponding value
+  const handleTypeChange = (newType: 'gross' | 'net') => {
+    if (newType === type || !newResult) return;
+
+    isLocalChange.current = true;
+
+    if (newType === 'net') {
+      // Switching from GROSS to NET: use the calculated NET value
+      setAmount(newResult.net.toString());
+      lastSyncedGross.current = newResult.gross; // Track the gross we came from
+    } else {
+      // Switching from NET to GROSS: use the calculated GROSS value
+      setAmount(newResult.gross.toString());
+      lastSyncedGross.current = null;
+      // Sync to shared state
+      if (onStateChange) {
+        onStateChange({ grossIncome: newResult.gross });
+      }
+    }
+
+    setType(newType);
+  };
+
   // When result changes with NET input, sync the calculated gross to shared state
-  // Use a ref to track the last synced value to prevent loops
-  const lastSyncedGross = useRef<number | null>(null);
   useEffect(() => {
     if (type === 'net' && newResult && onStateChange) {
       // Only sync if the calculated gross is different from last synced value
@@ -160,7 +184,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
             </label>
             <div className="flex gap-2">
               <button
-                onClick={() => setType('gross')}
+                onClick={() => handleTypeChange('gross')}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                   type === 'gross'
                     ? 'bg-primary-600 text-white'
@@ -170,7 +194,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                 GROSS (Lương gộp)
               </button>
               <button
-                onClick={() => setType('net')}
+                onClick={() => handleTypeChange('net')}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                   type === 'net'
                     ? 'bg-primary-600 text-white'
