@@ -3,10 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
 import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, SharedTaxState, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface GrossNetConverterProps {
   sharedState?: SharedTaxState;
   onStateChange?: (updates: Partial<SharedTaxState>) => void;
+}
+
+// Info icon component for tooltips
+function InfoIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
 }
 
 export default function GrossNetConverter({ sharedState, onStateChange }: GrossNetConverterProps) {
@@ -269,8 +279,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
         <div className="space-y-4">
           {/* Loại lương */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               Loại lương đầu vào
+              <Tooltip content="Chuyển đổi giữa tính từ lương GROSS sang NET hoặc ngược lại">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <InfoIcon />
+                </span>
+              </Tooltip>
             </label>
             <div className="flex gap-2">
               <button
@@ -298,8 +313,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
           {/* Số tiền */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               {type === 'gross' ? 'Lương GROSS' : 'Lương NET'} (VNĐ/tháng)
+              <Tooltip content="Số tiền cần chuyển đổi">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <InfoIcon />
+                </span>
+              </Tooltip>
             </label>
             <input
               type="text"
@@ -319,8 +339,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                   onChange={(e) => handleUseDeclaredSalaryChange(e.target.checked)}
                   className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   Lương khai báo khác lương thực
+                  <Tooltip content="Mức lương đăng ký đóng bảo hiểm (nếu khác lương thực nhận)">
+                    <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <InfoIcon />
+                    </span>
+                  </Tooltip>
                 </span>
               </label>
               {useDeclaredSalary && (
@@ -345,8 +370,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
           {/* Người phụ thuộc */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               Số người phụ thuộc
+              <Tooltip content="Con cái, cha mẹ được giảm trừ theo quy định">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <InfoIcon />
+                </span>
+              </Tooltip>
             </label>
             <div className="flex items-center gap-4">
               <button
@@ -373,8 +403,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               onChange={(e) => handleInsuranceChange(e.target.checked)}
               className="w-5 h-5 text-primary-600 rounded"
             />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
               Có đóng BHXH, BHYT, BHTN
+              <Tooltip content="Các loại bảo hiểm bắt buộc: BHXH 8%, BHYT 1.5%, BHTN 1%">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <InfoIcon />
+                </span>
+              </Tooltip>
             </span>
           </label>
 
@@ -431,7 +466,14 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               <div className="grid grid-cols-2 gap-4">
                 {/* Luật cũ */}
                 <div className="bg-red-50 rounded-lg p-4">
-                  <div className="text-xs text-red-600 font-medium mb-2">LUẬT CŨ (7 bậc)</div>
+                  <div className="text-xs text-red-600 font-medium mb-2 flex items-center gap-1">
+                    LUẬT CŨ (7 bậc)
+                    <Tooltip content="Luật thuế hiện hành với 7 bậc thuế lũy tiến">
+                      <span className="text-red-400 hover:text-red-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">GROSS:</span>
@@ -454,7 +496,14 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
                 {/* Luật mới */}
                 <div className="bg-primary-50 rounded-lg p-4">
-                  <div className="text-xs text-primary-600 font-medium mb-2">LUẬT MỚI (5 bậc)</div>
+                  <div className="text-xs text-primary-600 font-medium mb-2 flex items-center gap-1">
+                    LUẬT MỚI (5 bậc)
+                    <Tooltip content="Luật thuế mới 2026 với 5 bậc thuế lũy tiến, giảm thuế cho hầu hết người lao động">
+                      <span className="text-primary-400 hover:text-primary-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">GROSS:</span>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface TaxInputProps {
   onCalculate: (input: {
@@ -137,6 +138,12 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
     { key: 'bhtn' as const, label: 'BHTN', rate: '1%' },
   ];
 
+  const InfoIcon = () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+
   return (
     <div className="card">
       <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -149,8 +156,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
       <div className="space-y-6">
         {/* Thu nhập thực tế */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Thu nhập thực tế hàng tháng (VNĐ)
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+            <span>Thu nhập thực tế hàng tháng (VNĐ)</span>
+            <Tooltip content="Lương tổng trước khi trừ bảo hiểm và thuế">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <InfoIcon />
+              </span>
+            </Tooltip>
           </label>
           <input
             type="text"
@@ -191,8 +203,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           </label>
           {useDeclaredSalary && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lương khai báo với nhà nước (VNĐ)
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+                <span>Lương khai báo với nhà nước (VNĐ)</span>
+                <Tooltip content="Mức lương đăng ký đóng bảo hiểm (nếu khác lương thực nhận)">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <InfoIcon />
+                  </span>
+                </Tooltip>
               </label>
               <input
                 type="text"
@@ -210,8 +227,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
         {/* Số người phụ thuộc */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Số người phụ thuộc
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+            <span>Số người phụ thuộc</span>
+            <Tooltip content="Con cái dưới 18 tuổi, cha mẹ trên 60 tuổi không có thu nhập, v.v.">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <InfoIcon />
+              </span>
+            </Tooltip>
           </label>
           <div className="flex items-center gap-4">
             <button
@@ -237,8 +259,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
         {/* Vùng lương */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Vùng lương tối thiểu
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+            <span>Vùng lương tối thiểu</span>
+            <Tooltip content="Vùng lương tối thiểu ảnh hưởng đến mức đóng BHTN">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <InfoIcon />
+              </span>
+            </Tooltip>
           </label>
           <div className="grid grid-cols-2 gap-2">
             {([1, 2, 3, 4] as RegionType[]).map((r) => {
@@ -269,8 +296,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
         {/* Bảo hiểm - Individual toggles */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            Các khoản bảo hiểm bắt buộc
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-3">
+            <span>Các khoản bảo hiểm bắt buộc</span>
+            <Tooltip content="Bảo hiểm xã hội, y tế, thất nghiệp theo quy định">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <InfoIcon />
+              </span>
+            </Tooltip>
           </label>
           <div className="space-y-2">
             {insuranceItems.map(item => (
@@ -312,8 +344,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           <div className="space-y-4 pl-4 border-l-2 border-primary-100">
             {/* Quỹ hưu trí tự nguyện */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quỹ hưu trí tự nguyện (VNĐ/tháng)
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+                <span>Quỹ hưu trí tự nguyện (VNĐ/tháng)</span>
+                <Tooltip content="Tối đa 1 triệu/tháng được giảm trừ">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <InfoIcon />
+                  </span>
+                </Tooltip>
               </label>
               <input
                 type="text"
@@ -329,8 +366,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
             {/* Đóng góp từ thiện */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Đóng góp từ thiện, nhân đạo (VNĐ)
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+                <span>Đóng góp từ thiện, nhân đạo (VNĐ)</span>
+                <Tooltip content="Các khoản giảm trừ bổ sung như từ thiện, nhân đạo">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <InfoIcon />
+                  </span>
+                </Tooltip>
               </label>
               <input
                 type="text"

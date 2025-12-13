@@ -16,6 +16,7 @@ import OvertimeCalculator from '@/components/OvertimeCalculator';
 import { AnnualSettlement } from '@/components/AnnualSettlement';
 import TabNavigation, { type TabType } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
+import LawInfoModal from '@/components/ui/LawInfoModal';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -57,6 +58,7 @@ const defaultSharedState: SharedTaxState = {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLawInfoOpen, setIsLawInfoOpen] = useState(false);
 
   // Shared state across all tabs
   const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
@@ -239,7 +241,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 mr-2">
                 <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
                   <span className="w-2 h-2 rounded-full bg-red-500"></span>
@@ -250,6 +252,15 @@ export default function Home() {
                   5 bậc
                 </span>
               </div>
+              <button
+                onClick={() => setIsLawInfoOpen(true)}
+                className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Thông tin luật thuế 2026"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
               <SaveShareButton
                 snapshot={currentSnapshot}
                 onLoadSnapshot={handleLoadSnapshot}
@@ -399,106 +410,17 @@ export default function Home() {
           </div>
         )}
 
-        {/* Info section - always visible */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="card">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Những thay đổi chính
-            </h3>
-            <ul className="space-y-3 text-sm text-gray-600">
-              <li className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Giảm từ 7 bậc xuống 5 bậc thuế</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Nới rộng khoảng cách giữa các bậc thuế</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Tăng giảm trừ bản thân: 11 triệu → 15,5 triệu/tháng</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Tăng giảm trừ người phụ thuộc: 4,4 triệu → 6,2 triệu/tháng</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Bậc thuế 35% áp dụng từ 100 triệu (thay vì 80 triệu)</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="card">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Thời điểm áp dụng
-            </h3>
-            <div className="space-y-4 text-sm text-gray-600">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-700 font-bold text-xs">1</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">Từ 1/1/2026</p>
-                  <p>Doanh nghiệp tạm tính và khấu trừ thuế theo mức mới</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-700 font-bold text-xs">2</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">Từ 1/7/2026</p>
-                  <p>Luật chính thức có hiệu lực</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-700 font-bold text-xs">3</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-800">1/1 - 31/3/2027</p>
-                  <p>Quyết toán thuế năm 2026</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Footer */}
-        <footer className="text-center text-sm text-gray-500 py-6 border-t">
-          <p className="mb-2">
-            Công cụ tính thuế TNCN dựa trên Luật Thuế thu nhập cá nhân sửa đổi, thông qua ngày 10/12/2025.
-          </p>
+        <footer className="text-center text-xs text-gray-400 py-4 border-t border-gray-100">
           <p>
-            Lưu ý: Đây chỉ là công cụ tham khảo. Vui lòng tham khảo ý kiến chuyên gia thuế cho trường hợp cụ thể.
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-4 text-xs">
-            <a
-              href="https://nld.com.vn/thay-doi-lon-ve-bieu-thue-thu-nhap-ca-nhan-ap-dung-tu-1-7-2026-196251209194428594.htm"
-              target="_blank"
-              rel="noopener noreferrer"
+            Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025 ·{' '}
+            <button
+              onClick={() => setIsLawInfoOpen(true)}
               className="text-primary-600 hover:underline"
             >
-              Nguồn tham khảo
-            </a>
-            <span>|</span>
+              Xem chi tiết
+            </button>
+            {' · '}
             <a
               href="https://github.com/googlesky/thue-2026"
               target="_blank"
@@ -507,9 +429,12 @@ export default function Home() {
             >
               GitHub
             </a>
-          </div>
+          </p>
         </footer>
       </div>
+
+      {/* Law Info Modal */}
+      <LawInfoModal isOpen={isLawInfoOpen} onClose={() => setIsLawInfoOpen(false)} />
     </main>
   );
 }

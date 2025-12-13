@@ -26,6 +26,7 @@ import {
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
 } from '@/lib/snapshotTypes';
 import { getInsuranceDetailed } from '@/lib/taxCalculator';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface AnnualSettlementProps {
   sharedState?: SharedTaxState;
@@ -44,6 +45,17 @@ const FULL_MONTH_NAMES = [
   'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8',
   'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
 ];
+
+// Info icon component for tooltips
+function InfoIcon() {
+  return (
+    <span className="text-gray-400 hover:text-gray-600 cursor-help">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </span>
+  );
+}
 
 export default function AnnualSettlement({
   sharedState,
@@ -244,27 +256,32 @@ export default function AnnualSettlement({
             </p>
           </div>
           {/* Year selector */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleYearChange(2025)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                year === 2025
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Năm 2025
-            </button>
-            <button
-              onClick={() => handleYearChange(2026)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                year === 2026
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Năm 2026
-            </button>
+          <div className="flex items-center gap-2">
+            <Tooltip content="Năm 2025 áp dụng luật cũ, năm 2026 là năm chuyển tiếp (T1-T6 luật cũ, T7-T12 luật mới)">
+              <InfoIcon />
+            </Tooltip>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleYearChange(2025)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  year === 2025
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Năm 2025
+              </button>
+              <button
+                onClick={() => handleYearChange(2026)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  year === 2026
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Năm 2026
+              </button>
+            </div>
           </div>
         </div>
 
@@ -303,6 +320,9 @@ export default function AnnualSettlement({
                   className="w-4 h-4 text-primary-600"
                 />
                 <span className="text-sm">Lương trung bình</span>
+                <Tooltip content="Nhập lương trung bình tháng thay vì từng tháng riêng biệt">
+                  <InfoIcon />
+                </Tooltip>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -315,6 +335,9 @@ export default function AnnualSettlement({
                   className="w-4 h-4 text-primary-600"
                 />
                 <span className="text-sm">Nhập từng tháng</span>
+                <Tooltip content="Nhập chi tiết lương, thưởng, thuế đã nộp mỗi tháng">
+                  <InfoIcon />
+                </Tooltip>
               </label>
             </div>
 
@@ -381,7 +404,12 @@ export default function AnnualSettlement({
           {/* Dependents */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Người phụ thuộc</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-800">Người phụ thuộc</h3>
+                <Tooltip content="NPT có thể được giảm trừ theo từng tháng đăng ký">
+                  <InfoIcon />
+                </Tooltip>
+              </div>
               <button
                 onClick={addDependent}
                 className="px-3 py-1.5 text-sm bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors"
@@ -444,8 +472,11 @@ export default function AnnualSettlement({
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Giảm trừ khác</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Từ thiện, nhân đạo (VND/năm)
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  <span>Từ thiện, nhân đạo (VND/năm)</span>
+                  <Tooltip content="Khoản đóng góp được giảm trừ không giới hạn">
+                    <InfoIcon />
+                  </Tooltip>
                 </label>
                 <input
                   type="text"
@@ -460,8 +491,11 @@ export default function AnnualSettlement({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quỹ hưu trí tự nguyện (VND/năm, tối đa 12 triệu)
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                  <span>Quỹ hưu trí tự nguyện (VND/năm, tối đa 12 triệu)</span>
+                  <Tooltip content="Tối đa 12 triệu/năm được giảm trừ">
+                    <InfoIcon />
+                  </Tooltip>
                 </label>
                 <input
                   type="text"
@@ -481,7 +515,12 @@ export default function AnnualSettlement({
           {/* Manual tax paid override */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Thuế đã tạm nộp</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-800">Thuế đã tạm nộp</h3>
+                <Tooltip content="Tổng thuế khấu trừ hàng tháng, so sánh với thuế thực tế cả năm">
+                  <InfoIcon />
+                </Tooltip>
+              </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -493,6 +532,9 @@ export default function AnnualSettlement({
                   className="w-4 h-4 text-primary-600 rounded"
                 />
                 <span className="text-sm text-gray-600">Nhập thủ công</span>
+                <Tooltip content="Nhập tổng thuế đã nộp thay vì tính từ bảng chi tiết">
+                  <InfoIcon />
+                </Tooltip>
               </label>
             </div>
 
