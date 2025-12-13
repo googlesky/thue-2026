@@ -46,6 +46,7 @@ const KEY_MAP: Record<string, string> = {
   freelancer: 'fl',
   salaryComparison: 'sc',
   yearlyComparison: 'yc',
+  overtime: 'ot',
 
   // EmployerCostTabState
   includeUnionFee: 'uf',
@@ -67,6 +68,17 @@ const KEY_MAP: Record<string, string> = {
   // YearlyComparisonTabState
   selectedPresetId: 'sp',
   bonusAmount: 'ba',
+
+  // OvertimeTabState
+  monthlySalary: 'ms',
+  workingDaysPerMonth: 'wd',
+  hoursPerDay: 'hd',
+  entries: 'en',
+  includeHolidayBasePay: 'hb',
+  // OvertimeEntry (type and shift use 'tp' and 'sh' to avoid conflict with 't')
+  type: 'tp',
+  shift: 'sh',
+  hours: 'hr',
 
   // Meta
   createdAt: 'c',
@@ -174,6 +186,21 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
 
   if (snapshot.tabs.yearlyComparison.selectedPresetId !== null || snapshot.tabs.yearlyComparison.bonusAmount !== 0) {
     tabs.yearlyComparison = snapshot.tabs.yearlyComparison;
+  }
+
+  // Overtime tab state
+  if (snapshot.tabs.overtime) {
+    const ot = snapshot.tabs.overtime;
+    if (
+      ot.monthlySalary !== 0 ||
+      ot.workingDaysPerMonth !== 26 ||
+      ot.hoursPerDay !== 8 ||
+      ot.entries.length > 0 ||
+      ot.includeHolidayBasePay !== true ||
+      ot.useNewLaw !== true
+    ) {
+      tabs.overtime = ot;
+    }
   }
 
   if (Object.keys(tabs).length > 0) {
