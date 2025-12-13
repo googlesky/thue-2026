@@ -55,11 +55,11 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-800">Luu tinh toan</h3>
+          <h3 className="text-xl font-bold text-gray-800">Lưu tính toán</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            title="Dong"
+            title="Đóng"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -72,7 +72,7 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
           {/* Label input */}
           <div>
             <label htmlFor="label" className="block text-sm font-medium text-gray-700 mb-2">
-              Ten ban luu <span className="text-red-500">*</span>
+              Tên bản lưu <span className="text-red-500">*</span>
             </label>
             <input
               ref={inputRef}
@@ -80,7 +80,7 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Vi du: Luong thang 12/2024"
+              placeholder="Ví dụ: Lương tháng 12/2024"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -89,13 +89,13 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
           {/* Description input */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Mo ta (tuy chon)
+              Mô tả (tùy chọn)
             </label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chu them..."
+              placeholder="Ghi chú thêm..."
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
@@ -107,14 +107,14 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
               type="submit"
               className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
-              Luu
+              Lưu
             </button>
             <button
               type="button"
               onClick={onClose}
               className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
             >
-              Huy
+              Hủy
             </button>
           </div>
         </form>

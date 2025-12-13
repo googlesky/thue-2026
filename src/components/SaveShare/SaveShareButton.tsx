@@ -32,7 +32,7 @@ export default function SaveShareButton({ snapshot, onLoadSnapshot }: SaveShareB
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
-        title="Luu va Chia se"
+        title="Lưu và Chia sẻ"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -42,7 +42,7 @@ export default function SaveShareButton({ snapshot, onLoadSnapshot }: SaveShareB
             d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
           />
         </svg>
-        <span className="hidden sm:inline">Luu & Chia se</span>
+        <span className="hidden sm:inline">Lưu & Chia sẻ</span>
       </button>
 
       {isOpen && (
