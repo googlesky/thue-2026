@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin', 'vietnamese'] })
+const inter = Inter({
+  subsets: ['latin', 'vietnamese'],
+  display: 'optional', // Prevent FOUT - use fallback if font not cached
+})
 
 export const metadata: Metadata = {
   title: 'Tính Thuế TNCN 2026 - So sánh Luật Cũ và Mới',
