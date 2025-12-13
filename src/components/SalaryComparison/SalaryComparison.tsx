@@ -15,24 +15,31 @@ import {
   createDefaultCompanyOffer,
   compareCompanyOffers,
 } from '@/lib/salaryComparisonCalculator';
+import { SalaryComparisonTabState } from '@/lib/snapshotTypes';
 
 interface SalaryComparisonProps {
   sharedState?: SharedTaxState;
   onStateChange?: (updates: Partial<SharedTaxState>) => void;
+  tabState?: SalaryComparisonTabState;
+  onTabStateChange?: (state: SalaryComparisonTabState) => void;
 }
 
 export default function SalaryComparison({
   sharedState,
   onStateChange,
+  tabState,
+  onTabStateChange,
 }: SalaryComparisonProps) {
   const isLocalChange = useRef(false);
 
-  const [companies, setCompanies] = useState<CompanyOffer[]>([
-    createDefaultCompanyOffer('company-1', 'Công ty A'),
-    createDefaultCompanyOffer('company-2', 'Công ty B'),
-  ]);
+  const [companies, setCompanies] = useState<CompanyOffer[]>(
+    tabState?.companies ?? [
+      createDefaultCompanyOffer('company-1', 'Công ty A'),
+      createDefaultCompanyOffer('company-2', 'Công ty B'),
+    ]
+  );
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
-  const [useNewLaw, setUseNewLaw] = useState(true);
+  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
 
   // Sync từ shared state - chỉ lấy dependents
   useEffect(() => {
@@ -48,6 +55,14 @@ export default function SalaryComparison({
     isLocalChange.current = false;
   }, [sharedState]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync from tab state
+  useEffect(() => {
+    if (tabState) {
+      setCompanies(tabState.companies);
+      setUseNewLaw(tabState.useNewLaw);
+    }
+  }, [tabState]);
+
   // Tính toán kết quả
   const result: ComparisonResult | null = useMemo(() => {
     const validCompanies = companies.filter(c => c.grossSalary > 0);
@@ -61,16 +76,22 @@ export default function SalaryComparison({
     const newId = `company-${Date.now()}`;
     const names = ['A', 'B', 'C', 'D'];
     const newName = `Công ty ${names[companies.length] || (companies.length + 1)}`;
-    setCompanies([...companies, createDefaultCompanyOffer(newId, newName)]);
+    const newCompanies = [...companies, createDefaultCompanyOffer(newId, newName)];
+    setCompanies(newCompanies);
+    onTabStateChange?.({ companies: newCompanies, useNewLaw });
   };
 
   const removeCompany = (id: string) => {
     if (companies.length <= 2) return;
-    setCompanies(companies.filter(c => c.id !== id));
+    const newCompanies = companies.filter(c => c.id !== id);
+    setCompanies(newCompanies);
+    onTabStateChange?.({ companies: newCompanies, useNewLaw });
   };
 
   const updateCompany = (id: string, updates: Partial<CompanyOffer>) => {
-    setCompanies(companies.map(c => c.id === id ? { ...c, ...updates } : c));
+    const newCompanies = companies.map(c => c.id === id ? { ...c, ...updates } : c);
+    setCompanies(newCompanies);
+    onTabStateChange?.({ companies: newCompanies, useNewLaw });
   };
 
   const validCompanyCount = companies.filter(c => c.grossSalary > 0).length;
@@ -110,7 +131,10 @@ export default function SalaryComparison({
             <input
               type="radio"
               checked={!useNewLaw}
-              onChange={() => setUseNewLaw(false)}
+              onChange={() => {
+                setUseNewLaw(false);
+                onTabStateChange?.({ companies, useNewLaw: false });
+              }}
               className="w-4 h-4 text-primary-600"
             />
             <span className="text-sm">Hiện hành</span>
@@ -119,7 +143,10 @@ export default function SalaryComparison({
             <input
               type="radio"
               checked={useNewLaw}
-              onChange={() => setUseNewLaw(true)}
+              onChange={() => {
+                setUseNewLaw(true);
+                onTabStateChange?.({ companies, useNewLaw: true });
+              }}
               className="w-4 h-4 text-primary-600"
             />
             <span className="text-sm">Mới 2026</span>

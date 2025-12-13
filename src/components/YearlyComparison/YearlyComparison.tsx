@@ -15,21 +15,33 @@ import { RegionType, SharedTaxState, formatNumber, parseCurrency } from '@/lib/t
 import ScenarioPresets, { PresetDescription } from './ScenarioPresets';
 import ScenarioColumn from './ScenarioColumn';
 import StrategyComparison from './StrategyComparison';
+import { YearlyComparisonTabState } from '@/lib/snapshotTypes';
 
 interface YearlyComparisonProps {
   sharedState?: SharedTaxState;
   onStateChange?: (state: Partial<SharedTaxState>) => void;
+  tabState?: YearlyComparisonTabState;
+  onTabStateChange?: (state: YearlyComparisonTabState) => void;
 }
 
 const DEFAULT_SALARY = 30_000_000;
 
-export default function YearlyComparison({ sharedState, onStateChange }: YearlyComparisonProps) {
+export default function YearlyComparison({
+  sharedState,
+  onStateChange,
+  tabState,
+  onTabStateChange,
+}: YearlyComparisonProps) {
   // Preset hoặc custom
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>('normal');
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
+    tabState?.selectedPresetId ?? 'normal'
+  );
 
   // Common params
   const [monthlySalary, setMonthlySalary] = useState(sharedState?.grossIncome || DEFAULT_SALARY);
-  const [bonusAmount, setBonusAmount] = useState(sharedState?.grossIncome || DEFAULT_SALARY);
+  const [bonusAmount, setBonusAmount] = useState(
+    tabState?.bonusAmount ?? sharedState?.grossIncome ?? DEFAULT_SALARY
+  );
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region || 1);
@@ -54,6 +66,14 @@ export default function YearlyComparison({ sharedState, onStateChange }: YearlyC
       setRegion(sharedState.region);
     }
   }, [sharedState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync from tab state
+  useEffect(() => {
+    if (tabState) {
+      setSelectedPresetId(tabState.selectedPresetId);
+      setBonusAmount(tabState.bonusAmount);
+    }
+  }, [tabState]);
 
   // Initialize custom scenarios when switching to custom mode
   useEffect(() => {
@@ -121,7 +141,9 @@ export default function YearlyComparison({ sharedState, onStateChange }: YearlyC
 
   // Handle preset selection
   const handlePresetSelect = (preset: PresetConfig | null) => {
-    setSelectedPresetId(preset?.id ?? null);
+    const newPresetId = preset?.id ?? null;
+    setSelectedPresetId(newPresetId);
+    onTabStateChange?.({ selectedPresetId: newPresetId, bonusAmount });
   };
 
   // Get current strategy index
@@ -179,7 +201,11 @@ export default function YearlyComparison({ sharedState, onStateChange }: YearlyC
             <input
               type="text"
               value={bonusAmount > 0 ? formatNumber(bonusAmount) : ''}
-              onChange={(e) => setBonusAmount(parseCurrency(e.target.value))}
+              onChange={(e) => {
+                const value = parseCurrency(e.target.value);
+                setBonusAmount(value);
+                onTabStateChange?.({ selectedPresetId, bonusAmount: value });
+              }}
               placeholder="= Lương tháng"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />

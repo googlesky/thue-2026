@@ -18,24 +18,29 @@ import {
   EMPLOYEE_PROS,
   EMPLOYEE_CONS,
 } from '@/lib/freelancerCalculator';
+import { FreelancerTabState } from '@/lib/snapshotTypes';
 
 interface FreelancerComparisonProps {
   sharedState?: SharedTaxState;
   onStateChange?: (updates: Partial<SharedTaxState>) => void;
+  tabState?: FreelancerTabState;
+  onTabStateChange?: (state: FreelancerTabState) => void;
 }
 
 export default function FreelancerComparison({
   sharedState,
   onStateChange,
+  tabState,
+  onTabStateChange,
 }: FreelancerComparisonProps) {
   const isLocalChange = useRef(false);
 
   const [grossIncome, setGrossIncome] = useState(sharedState?.grossIncome || 30_000_000);
-  const [frequency, setFrequency] = useState<IncomeFrequency>('monthly');
+  const [frequency, setFrequency] = useState<IncomeFrequency>(tabState?.frequency ?? 'monthly');
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region || 1);
-  const [useNewLaw, setUseNewLaw] = useState(true);
+  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
   const [showDetails, setShowDetails] = useState(false);
 
   // Sync từ shared state
@@ -50,6 +55,14 @@ export default function FreelancerComparison({
     }
     isLocalChange.current = false;
   }, [sharedState]);
+
+  // Sync from tab state
+  useEffect(() => {
+    if (tabState) {
+      setFrequency(tabState.frequency);
+      setUseNewLaw(tabState.useNewLaw);
+    }
+  }, [tabState]);
 
   // Tính toán kết quả
   const result = useMemo(() => {
@@ -109,7 +122,11 @@ export default function FreelancerComparison({
           <label className="block text-sm font-medium text-gray-700 mb-1">Loại thu nhập</label>
           <select
             value={frequency}
-            onChange={(e) => setFrequency(e.target.value as IncomeFrequency)}
+            onChange={(e) => {
+              const value = e.target.value as IncomeFrequency;
+              setFrequency(value);
+              onTabStateChange?.({ frequency: value, useNewLaw });
+            }}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="monthly">Hàng tháng</option>
@@ -176,7 +193,10 @@ export default function FreelancerComparison({
             <input
               type="radio"
               checked={!useNewLaw}
-              onChange={() => setUseNewLaw(false)}
+              onChange={() => {
+                setUseNewLaw(false);
+                onTabStateChange?.({ frequency, useNewLaw: false });
+              }}
               className="w-4 h-4 text-primary-600"
             />
             <span className="text-sm">Hiện hành</span>
@@ -185,7 +205,10 @@ export default function FreelancerComparison({
             <input
               type="radio"
               checked={useNewLaw}
-              onChange={() => setUseNewLaw(true)}
+              onChange={() => {
+                setUseNewLaw(true);
+                onTabStateChange?.({ frequency, useNewLaw: true });
+              }}
               className="w-4 h-4 text-primary-600"
             />
             <span className="text-sm">Mới 2026</span>
