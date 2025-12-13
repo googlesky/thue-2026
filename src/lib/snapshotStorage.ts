@@ -182,6 +182,7 @@ export function saveNamedSave(
         },
         annualSettlement: {
           ...snapshot.tabs.annualSettlement,
+          insuranceOptions: { ...snapshot.tabs.annualSettlement.insuranceOptions },
           monthlyIncome: snapshot.tabs.annualSettlement.monthlyIncome.map(m => ({ ...m })),
           dependents: snapshot.tabs.annualSettlement.dependents.map(d => ({ ...d })),
         },
