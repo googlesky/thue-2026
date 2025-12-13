@@ -120,7 +120,8 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
   }, [grossValue, calculateFromGross]);
 
-  // Recalculate when parameters change (but not type)
+  // Recalculate when parameters change (dependents, insurance, region, etc.)
+  // Must recalculate from the value the user is currently working with
   useEffect(() => {
     if (isInitialized.current) {
       // Skip if this was triggered by a NET calculation (grossValue changed from NET input)
@@ -128,17 +129,25 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
         isCalculatingFromNet.current = false;
         return;
       }
-      // Always recalculate from gross to maintain consistency
-      calculateFromGross(grossValue);
+      // Recalculate based on which mode the user is in
+      if (type === 'net' && netValue > 0) {
+        // User is in NET mode - recalculate from NET to find new GROSS
+        calculateFromNet(netValue);
+      } else {
+        // User is in GROSS mode - recalculate from GROSS to find new NET
+        calculateFromGross(grossValue);
+      }
     }
-  }, [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, calculateFromGross, grossValue]);
+  }, [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, type, netValue, calculateFromGross, calculateFromNet, grossValue]);
 
   // Sync with sharedState when it changes from other tabs
+  // NOTE: Don't call calculateFromGross here - let the main recalc effect handle it
+  // after re-render when all values are updated. Otherwise, callbacks use stale closure values.
   useEffect(() => {
     if (sharedState && !isLocalChange.current) {
+      // Update all values from sharedState
       if (sharedState.grossIncome !== grossValue) {
         setGrossValue(sharedState.grossIncome);
-        calculateFromGross(sharedState.grossIncome);
       }
       setDependents(sharedState.dependents);
       setHasInsurance(sharedState.hasInsurance);
@@ -150,9 +159,15 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       if (sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
       }
+
+      // When syncing from external source, switch to GROSS mode
+      // This ensures the synced GROSS value is the source of truth
+      if (sharedState.grossIncome !== grossValue) {
+        setType('gross');
+      }
     }
     isLocalChange.current = false;
-  }, [sharedState, grossValue, calculateFromGross]);
+  }, [sharedState, grossValue]);
 
   // Handle amount change based on current type
   const handleAmountChange = (value: string) => {
