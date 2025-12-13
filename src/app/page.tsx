@@ -13,6 +13,7 @@ import EmployerCostCalculator from '@/components/EmployerCostCalculator';
 import { FreelancerComparison } from '@/components/FreelancerComparison';
 import { SalaryComparison } from '@/components/SalaryComparison';
 import OvertimeCalculator from '@/components/OvertimeCalculator';
+import TabNavigation, { type TabType } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
 import {
   calculateOldTax,
@@ -38,8 +39,6 @@ import {
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
-
-type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'overtime' | 'insurance' | 'other-income' | 'table';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -211,19 +210,6 @@ export default function Home() {
     ? calculateOtherIncomeTax(sharedState.otherIncome)
     : null;
 
-  const tabs = [
-    { id: 'calculator' as TabType, label: 'Tính thuế', icon: '🧮' },
-    { id: 'gross-net' as TabType, label: 'GROSS ⇄ NET', icon: '💰' },
-    { id: 'employer-cost' as TabType, label: 'Chi phí NTD', icon: '🏢' },
-    { id: 'freelancer' as TabType, label: 'Freelancer', icon: '👤' },
-    { id: 'salary-compare' as TabType, label: 'So sánh lương', icon: '📊' },
-    { id: 'yearly' as TabType, label: 'So sánh năm', icon: '📅' },
-    { id: 'overtime' as TabType, label: 'Tăng ca', icon: '⏰' },
-    { id: 'insurance' as TabType, label: 'Bảo hiểm', icon: '🛡️' },
-    { id: 'other-income' as TabType, label: 'Thu nhập khác', icon: '💼' },
-    { id: 'table' as TabType, label: 'Biểu thuế', icon: '📈' },
-  ];
-
   return (
     <main className="min-h-screen py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -256,25 +242,8 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="flex flex-wrap justify-center gap-2 bg-gray-100 p-2 rounded-xl">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Tab Navigation */}
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Tab Content */}
         {activeTab === 'calculator' && (
