@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CalculatorSnapshot } from '@/lib/snapshotTypes';
-import { generateShareURL } from '@/lib/snapshotCodec';
-import { copyToClipboard } from '@/lib/urlState';
+import { generateShareURL, copyToClipboard } from '@/lib/snapshotCodec';
 import QRCodeModal from './QRCodeModal';
 
 interface ShareSectionProps {

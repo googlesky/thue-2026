@@ -2,11 +2,27 @@
  * localStorage management for named calculator saves
  * Provides CRUD operations and import/export functionality
  */
-import { NamedSave, CalculatorSnapshot, SaveExportData } from './snapshotTypes';
+import { NamedSave, CalculatorSnapshot, SaveExportData, DEFAULT_TAB_STATES } from './snapshotTypes';
+import { SharedTaxState, DEFAULT_INSURANCE_OPTIONS, DEFAULT_OTHER_INCOME } from './taxCalculator';
 
 const STORAGE_KEY = 'tax-calculator-saves';
+const OLD_HISTORY_KEY = 'tax-calculator-history';
+const MIGRATION_FLAG_KEY = 'tax-calculator-migrated-v2';
 const STORAGE_VERSION = 1;
 const MAX_SAVES = 50;
+
+/**
+ * Old history item format (for migration)
+ */
+interface OldHistoryItem {
+  id: string;
+  timestamp: number;
+  state: SharedTaxState;
+  label?: string;
+  oldTax: number;
+  newTax: number;
+  netIncome: number;
+}
 
 /**
  * Generate unique ID for saves
@@ -17,11 +33,92 @@ function generateId(): string {
 }
 
 /**
+ * Migrate old history format to new named saves format
+ * This runs once and sets a flag to prevent re-migration
+ */
+function migrateOldHistory(): void {
+  if (typeof window === 'undefined') return;
+
+  // Check if already migrated
+  if (localStorage.getItem(MIGRATION_FLAG_KEY)) return;
+
+  try {
+    const oldData = localStorage.getItem(OLD_HISTORY_KEY);
+    if (!oldData) {
+      localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+      return;
+    }
+
+    const oldHistory = JSON.parse(oldData) as OldHistoryItem[];
+    if (!oldHistory || oldHistory.length === 0) {
+      localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+      return;
+    }
+
+    // Convert old items to new format
+    const migratedSaves: NamedSave[] = oldHistory.map((item) => {
+      const snapshot: CalculatorSnapshot = {
+        version: 1,
+        sharedState: {
+          ...item.state,
+          insuranceOptions: item.state.insuranceOptions || { ...DEFAULT_INSURANCE_OPTIONS },
+          otherIncome: item.state.otherIncome || { ...DEFAULT_OTHER_INCOME },
+        },
+        activeTab: 'calculator',
+        tabs: { ...DEFAULT_TAB_STATES },
+        meta: {
+          createdAt: item.timestamp,
+        },
+      };
+
+      return {
+        id: item.id,
+        label: item.label || `Luu ${new Date(item.timestamp).toLocaleDateString('vi-VN')}`,
+        description: undefined,
+        snapshot,
+        createdAt: item.timestamp,
+        updatedAt: item.timestamp,
+      };
+    });
+
+    // Merge with existing saves (if any)
+    const existingSaves = (() => {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) as NamedSave[] : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const existingIds = new Set(existingSaves.map(s => s.id));
+    const newSaves = migratedSaves.filter(s => !existingIds.has(s.id));
+    const mergedSaves = [...existingSaves, ...newSaves].slice(0, MAX_SAVES);
+
+    // Save merged data
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSaves));
+
+    // Clear old history and set migration flag
+    localStorage.removeItem(OLD_HISTORY_KEY);
+    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+
+    console.log(`Migrated ${newSaves.length} items from old history format`);
+  } catch (error) {
+    console.error('Failed to migrate old history:', error);
+    // Set flag anyway to prevent retry loops
+    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+  }
+}
+
+/**
  * Get all named saves from localStorage
  * Returns empty array if storage unavailable or corrupted
  */
 export function getNamedSaves(): NamedSave[] {
   if (typeof window === 'undefined') return [];
+
+  // Run migration on first access
+  migrateOldHistory();
 
   try {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -325,4 +422,32 @@ export function searchSaves(query: string): NamedSave[] {
     save.label.toLowerCase().includes(lowerQuery) ||
     save.description?.toLowerCase().includes(lowerQuery)
   );
+}
+
+/**
+ * Format timestamp for display
+ */
+export function formatTimestamp(timestamp: number): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  if (isToday) {
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isYesterday) {
+    return 'Hôm qua ' + date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
