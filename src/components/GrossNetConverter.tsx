@@ -18,6 +18,14 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const [hasInsurance, setHasInsurance] = useState<boolean>(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
 
+  // Lương khai báo khác lương thực
+  const [useDeclaredSalary, setUseDeclaredSalary] = useState<boolean>(
+    sharedState?.declaredSalary !== undefined && sharedState.declaredSalary !== sharedState.grossIncome
+  );
+  const [declaredSalary, setDeclaredSalary] = useState<number>(
+    sharedState?.declaredSalary ?? sharedState?.grossIncome ?? 30000000
+  );
+
   const [oldResult, setOldResult] = useState<GrossNetResult | null>(null);
   const [newResult, setNewResult] = useState<GrossNetResult | null>(null);
 
@@ -25,9 +33,16 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const isLocalChange = useRef(false);
   const isInitialized = useRef(false);
 
+  // Get effective declared salary for calculations
+  const getEffectiveDeclaredSalary = useCallback(() => {
+    return useDeclaredSalary ? declaredSalary : undefined;
+  }, [useDeclaredSalary, declaredSalary]);
+
   // Calculate results from GROSS (always calculate from gross to ensure consistency)
   const calculateFromGross = useCallback((gross: number) => {
     if (gross <= 0) return;
+
+    const effectiveDeclared = getEffectiveDeclaredSalary();
 
     const oldRes = convertGrossNet({
       amount: gross,
@@ -36,6 +51,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       hasInsurance,
       useNewLaw: false,
       region,
+      declaredSalary: effectiveDeclared,
     });
     const newRes = convertGrossNet({
       amount: gross,
@@ -44,6 +60,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       hasInsurance,
       useNewLaw: true,
       region,
+      declaredSalary: effectiveDeclared,
     });
 
     setOldResult(oldRes);
@@ -51,11 +68,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     setNetValue(newRes.net);
 
     return newRes;
-  }, [dependents, hasInsurance, region]);
+  }, [dependents, hasInsurance, region, getEffectiveDeclaredSalary]);
 
   // Calculate GROSS from NET (only when user inputs NET)
   const calculateFromNet = useCallback((net: number) => {
     if (net <= 0) return;
+
+    const effectiveDeclared = getEffectiveDeclaredSalary();
 
     const newRes = convertGrossNet({
       amount: net,
@@ -64,6 +83,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       hasInsurance,
       useNewLaw: true,
       region,
+      declaredSalary: effectiveDeclared,
     });
     const oldRes = convertGrossNet({
       amount: net,
@@ -72,6 +92,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       hasInsurance,
       useNewLaw: false,
       region,
+      declaredSalary: effectiveDeclared,
     });
 
     setOldResult(oldRes);
@@ -85,7 +106,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
 
     return newRes;
-  }, [dependents, hasInsurance, region, onStateChange]);
+  }, [dependents, hasInsurance, region, onStateChange, getEffectiveDeclaredSalary]);
 
   // Initial calculation
   useEffect(() => {
@@ -101,7 +122,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       // Always recalculate from gross to maintain consistency
       calculateFromGross(grossValue);
     }
-  }, [dependents, hasInsurance, region, calculateFromGross, grossValue]);
+  }, [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, calculateFromGross, grossValue]);
 
   // Sync with sharedState when it changes from other tabs
   useEffect(() => {
@@ -113,6 +134,14 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       setDependents(sharedState.dependents);
       setHasInsurance(sharedState.hasInsurance);
       setRegion(sharedState.region);
+
+      // Sync declared salary
+      const hasDeclared = sharedState.declaredSalary !== undefined &&
+                          sharedState.declaredSalary !== sharedState.grossIncome;
+      setUseDeclaredSalary(hasDeclared);
+      if (sharedState.declaredSalary !== undefined) {
+        setDeclaredSalary(sharedState.declaredSalary);
+      }
     }
     isLocalChange.current = false;
   }, [sharedState, grossValue, calculateFromGross]);
@@ -167,6 +196,25 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     isLocalChange.current = true;
     if (onStateChange) {
       onStateChange({ region: newRegion });
+    }
+  };
+
+  const handleUseDeclaredSalaryChange = (use: boolean) => {
+    setUseDeclaredSalary(use);
+    isLocalChange.current = true;
+    if (onStateChange) {
+      onStateChange({
+        declaredSalary: use ? declaredSalary : undefined,
+      });
+    }
+  };
+
+  const handleDeclaredSalaryChange = (value: string) => {
+    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+    setDeclaredSalary(numericValue);
+    isLocalChange.current = true;
+    if (onStateChange) {
+      onStateChange({ declaredSalary: numericValue });
     }
   };
 
@@ -237,6 +285,40 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               className="input-field text-lg font-semibold"
             />
           </div>
+
+          {/* Lương khai báo */}
+          {hasInsurance && (
+            <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useDeclaredSalary}
+                  onChange={(e) => handleUseDeclaredSalaryChange(e.target.checked)}
+                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Lương khai báo khác lương thực
+                </span>
+              </label>
+              {useDeclaredSalary && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Lương khai báo (VNĐ)
+                  </label>
+                  <input
+                    type="text"
+                    value={formatNumber(declaredSalary)}
+                    onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="Lương khai báo với cơ quan"
+                  />
+                  <p className="text-xs text-orange-600 mt-1">
+                    Bảo hiểm sẽ tính trên mức lương này
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Người phụ thuộc */}
           <div>
@@ -374,6 +456,11 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               {/* Chi tiết giảm trừ */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-700 mb-2">Chi tiết các khoản giảm trừ (Luật mới)</div>
+                {useDeclaredSalary && (
+                  <div className="mb-2 px-2 py-1 bg-orange-100 rounded text-xs text-orange-700">
+                    Bảo hiểm tính trên lương khai báo: {formatCurrency(declaredSalary)}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Giảm trừ bản thân:</span>
