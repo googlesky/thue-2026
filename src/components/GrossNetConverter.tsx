@@ -20,7 +20,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   // Lương khai báo khác lương thực
   const [useDeclaredSalary, setUseDeclaredSalary] = useState<boolean>(
-    sharedState?.declaredSalary !== undefined && sharedState.declaredSalary !== sharedState.grossIncome
+    sharedState?.declaredSalary !== undefined
   );
   const [declaredSalary, setDeclaredSalary] = useState<number>(
     sharedState?.declaredSalary ?? sharedState?.grossIncome ?? 30000000
@@ -136,8 +136,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       setRegion(sharedState.region);
 
       // Sync declared salary
-      const hasDeclared = sharedState.declaredSalary !== undefined &&
-                          sharedState.declaredSalary !== sharedState.grossIncome;
+      const hasDeclared = sharedState.declaredSalary !== undefined;
       setUseDeclaredSalary(hasDeclared);
       if (sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
