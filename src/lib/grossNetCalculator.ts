@@ -17,6 +17,7 @@ export interface GrossNetInput {
   hasInsurance: boolean;
   useNewLaw: boolean;
   region?: RegionType;
+  declaredSalary?: number; // Lương khai báo (nếu khác lương thực)
 }
 
 export interface GrossNetResult {
@@ -66,11 +67,13 @@ function calculateTax(taxableIncome: number, brackets: typeof OLD_TAX_BRACKETS):
 }
 
 export function grossToNet(input: GrossNetInput): GrossNetResult {
-  const { amount: gross, dependents, hasInsurance, useNewLaw, region = 1 } = input;
+  const { amount: gross, dependents, hasInsurance, useNewLaw, region = 1, declaredSalary } = input;
   const deductionRates = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
   const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
 
-  const insurance = calculateInsurance(gross, hasInsurance, region);
+  // Nếu có lương khai báo, tính bảo hiểm trên lương khai báo
+  const insuranceBase = declaredSalary !== undefined ? declaredSalary : gross;
+  const insurance = calculateInsurance(insuranceBase, hasInsurance, region);
   const personalDeduction = deductionRates.personal;
   const dependentDeduction = dependents * deductionRates.dependent;
 
