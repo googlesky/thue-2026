@@ -11,6 +11,7 @@ import ShareButton from '@/components/ShareButton';
 import SaveButton from '@/components/SaveButton';
 import CalculationHistory from '@/components/CalculationHistory';
 import OtherIncomeInput from '@/components/OtherIncomeInput';
+import { YearlyComparison } from '@/components/YearlyComparison';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -26,7 +27,7 @@ import {
 } from '@/lib/taxCalculator';
 import { decodeStateFromURL } from '@/lib/urlState';
 
-type TabType = 'calculator' | 'gross-net' | 'insurance' | 'other-income' | 'table';
+type TabType = 'calculator' | 'gross-net' | 'yearly' | 'insurance' | 'other-income' | 'table';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -155,6 +156,7 @@ export default function Home() {
   const tabs = [
     { id: 'calculator' as TabType, label: 'Tính thuế', icon: '🧮' },
     { id: 'gross-net' as TabType, label: 'GROSS ⇄ NET', icon: '💰' },
+    { id: 'yearly' as TabType, label: 'So sánh năm', icon: '📅' },
     { id: 'insurance' as TabType, label: 'Bảo hiểm', icon: '🛡️' },
     { id: 'other-income' as TabType, label: 'Thu nhập khác', icon: '💼' },
     { id: 'table' as TabType, label: 'Biểu thuế', icon: '📊' },
@@ -257,6 +259,15 @@ export default function Home() {
         {activeTab === 'gross-net' && (
           <div className="mb-8">
             <GrossNetConverter
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'yearly' && (
+          <div className="mb-8">
+            <YearlyComparison
               sharedState={sharedState}
               onStateChange={updateSharedState}
             />
