@@ -13,6 +13,7 @@ import EmployerCostCalculator from '@/components/EmployerCostCalculator';
 import { FreelancerComparison } from '@/components/FreelancerComparison';
 import { SalaryComparison } from '@/components/SalaryComparison';
 import OvertimeCalculator from '@/components/OvertimeCalculator';
+import { AnnualSettlement } from '@/components/AnnualSettlement';
 import TabNavigation, { type TabType } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
 import {
@@ -35,7 +36,9 @@ import {
   SalaryComparisonTabState,
   YearlyComparisonTabState,
   OvertimeTabState,
+  AnnualSettlementTabState,
   DEFAULT_OVERTIME_STATE,
+  DEFAULT_ANNUAL_SETTLEMENT_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -79,6 +82,7 @@ export default function Home() {
     bonusAmount: 30_000_000,
   });
   const [overtimeState, setOvertimeState] = useState<OvertimeTabState>(DEFAULT_OVERTIME_STATE);
+  const [annualSettlementState, setAnnualSettlementState] = useState<AnnualSettlementTabState>(DEFAULT_ANNUAL_SETTLEMENT_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -98,6 +102,9 @@ export default function Home() {
     setYearlyState(snapshot.tabs.yearlyComparison);
     if (snapshot.tabs.overtime) {
       setOvertimeState(snapshot.tabs.overtime);
+    }
+    if (snapshot.tabs.annualSettlement) {
+      setAnnualSettlementState(snapshot.tabs.annualSettlement);
     }
   }, []);
 
@@ -199,11 +206,12 @@ export default function Home() {
       salaryComparison: salaryComparisonState,
       yearlyComparison: yearlyState,
       overtime: overtimeState,
+      annualSettlement: annualSettlementState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState]);
 
   // Calculate other income tax
   const otherIncomeTax = sharedState.otherIncome
@@ -211,34 +219,42 @@ export default function Home() {
     : null;
 
   return (
-    <main className="min-h-screen py-8 px-4">
+    <main className="min-h-screen py-6 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-            Tính Thuế TNCN 2026
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            So sánh thuế thu nhập cá nhân theo luật hiện hành và luật mới áp dụng từ 1/7/2026.
-            Xem bạn tiết kiệm được bao nhiêu với biểu thuế 5 bậc mới.
-          </p>
-          <div className="flex items-center justify-center gap-4 mt-4 text-sm">
-            <span className="flex items-center gap-1.5 text-gray-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              Luật cũ (7 bậc)
-            </span>
-            <span className="flex items-center gap-1.5 text-gray-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-500"></span>
-              Luật mới (5 bậc)
-            </span>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <SaveShareButton
-              snapshot={currentSnapshot}
-              onLoadSnapshot={handleLoadSnapshot}
-            />
+        {/* Header - Compact */}
+        <header className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Thuế TNCN 2026
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500">
+                  So sánh luật cũ & mới từ 1/7/2026
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 mr-2">
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  7 bậc
+                </span>
+                <span className="flex items-center gap-1.5 px-2 py-1 bg-primary-50 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-primary-500"></span>
+                  5 bậc
+                </span>
+              </div>
+              <SaveShareButton
+                snapshot={currentSnapshot}
+                onLoadSnapshot={handleLoadSnapshot}
+              />
+            </div>
           </div>
         </header>
 
@@ -343,6 +359,17 @@ export default function Home() {
               onStateChange={updateSharedState}
               tabState={overtimeState}
               onTabStateChange={setOvertimeState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'annual-settlement' && (
+          <div className="mb-8">
+            <AnnualSettlement
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+              tabState={annualSettlementState}
+              onTabStateChange={setAnnualSettlementState}
             />
           </div>
         )}
