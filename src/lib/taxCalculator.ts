@@ -512,3 +512,114 @@ export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherInc
     totalNet: totalIncome - totalTax,
   };
 }
+
+// ===== CHI PHÍ NHÀ TUYỂN DỤNG (EMPLOYER COST) =====
+
+export interface EmployerInsuranceDetail {
+  bhxh: number;        // BHXH 17.5%
+  bhyt: number;        // BHYT 3%
+  bhtn: number;        // BHTN 1%
+  unionFee: number;    // Công đoàn 2% (tùy chọn)
+  total: number;
+}
+
+export interface EmployerCostResult {
+  grossSalary: number;
+  employerInsurance: EmployerInsuranceDetail;
+  totalEmployerCost: number;
+  yearlyEmployerCost: number;
+  employeeInsurance: InsuranceDetail;
+  employeeTax: number;
+  employeeNetIncome: number;
+  // Tỷ lệ
+  insurancePercentOfGross: number;
+  totalCostPercentOfGross: number;
+}
+
+export function calculateEmployerInsurance(
+  grossIncome: number,
+  region: RegionType = 1,
+  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS,
+  includeUnionFee: boolean = false
+): EmployerInsuranceDetail {
+  // BHXH và BHYT giới hạn ở 20 lần lương cơ sở
+  const bhxhBhytBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
+  const bhxh = options.bhxh ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.socialInsurance : 0;
+  const bhyt = options.bhyt ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.healthInsurance : 0;
+
+  // BHTN giới hạn ở 20 lần lương tối thiểu vùng
+  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  const bhtnBase = Math.min(grossIncome, maxBhtn);
+  const bhtn = options.bhtn ? bhtnBase * EMPLOYER_INSURANCE_RATES.unemploymentInsurance : 0;
+
+  // Công đoàn 2% (tùy chọn) - không giới hạn
+  const unionFee = includeUnionFee ? grossIncome * EMPLOYER_INSURANCE_RATES.unionFee : 0;
+
+  return {
+    bhxh,
+    bhyt,
+    bhtn,
+    unionFee,
+    total: bhxh + bhyt + bhtn + unionFee,
+  };
+}
+
+export function getFullEmployerCostResult(input: {
+  grossIncome: number;
+  declaredSalary?: number;
+  dependents: number;
+  region: RegionType;
+  insuranceOptions: InsuranceOptions;
+  includeUnionFee?: boolean;
+  useNewLaw?: boolean;
+}): EmployerCostResult {
+  const {
+    grossIncome,
+    declaredSalary,
+    dependents,
+    region,
+    insuranceOptions,
+    includeUnionFee = false,
+    useNewLaw = true,
+  } = input;
+
+  // Sử dụng lương khai báo cho bảo hiểm nếu có
+  const insuranceBase = declaredSalary ?? grossIncome;
+
+  // Tính bảo hiểm phía công ty
+  const employerInsurance = calculateEmployerInsurance(insuranceBase, region, insuranceOptions, includeUnionFee);
+
+  // Tính bảo hiểm phía nhân viên
+  const employeeInsurance = getInsuranceDetailed(insuranceBase, region, insuranceOptions);
+
+  // Tính thuế
+  const taxResult = useNewLaw
+    ? calculateNewTax({
+        grossIncome,
+        declaredSalary,
+        dependents,
+        insuranceOptions,
+        region,
+      })
+    : calculateOldTax({
+        grossIncome,
+        declaredSalary,
+        dependents,
+        insuranceOptions,
+        region,
+      });
+
+  const totalEmployerCost = grossIncome + employerInsurance.total;
+
+  return {
+    grossSalary: grossIncome,
+    employerInsurance,
+    totalEmployerCost,
+    yearlyEmployerCost: totalEmployerCost * 12,
+    employeeInsurance,
+    employeeTax: taxResult.taxAmount,
+    employeeNetIncome: taxResult.netIncome,
+    insurancePercentOfGross: grossIncome > 0 ? (employerInsurance.total / grossIncome) * 100 : 0,
+    totalCostPercentOfGross: grossIncome > 0 ? (totalEmployerCost / grossIncome) * 100 : 0,
+  };
+}
