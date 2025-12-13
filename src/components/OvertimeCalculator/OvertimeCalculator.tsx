@@ -23,6 +23,7 @@ import {
   DEFAULT_HOURS_PER_DAY,
 } from '@/lib/overtimeCalculator';
 import { OvertimeTabState, DEFAULT_OVERTIME_STATE } from '@/lib/snapshotTypes';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface OvertimeCalculatorProps {
   sharedState?: SharedTaxState;
@@ -199,8 +200,15 @@ export default function OvertimeCalculator({
         <div className="space-y-4">
           {/* Monthly Salary */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lương tháng cơ bản
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+              Lương cơ bản/tháng
+              <Tooltip content="Lương tháng dùng để tính lương giờ cơ bản">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              </Tooltip>
             </label>
             <div className="relative">
               <input
@@ -224,8 +232,15 @@ export default function OvertimeCalculator({
           {/* Working days and hours */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ngày công/tháng
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Số ngày làm việc/tháng
+                <Tooltip content="Thường là 22-26 ngày tùy theo công ty">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </Tooltip>
               </label>
               <input
                 type="number"
@@ -241,8 +256,15 @@ export default function OvertimeCalculator({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Giờ/ngày
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                Số giờ làm việc/ngày
+                <Tooltip content="Thường là 8 giờ theo quy định">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </Tooltip>
               </label>
               <input
                 type="number"
@@ -265,24 +287,30 @@ export default function OvertimeCalculator({
               Thêm giờ tăng ca
             </label>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => addEntry('weekday', 'day')}
-                className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                + Ngày thường
-              </button>
-              <button
-                onClick={() => addEntry('weekend', 'day')}
-                className="px-3 py-1.5 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
-              >
-                + Cuối tuần
-              </button>
-              <button
-                onClick={() => addEntry('holiday', 'day')}
-                className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-              >
-                + Ngày lễ
-              </button>
+              <Tooltip content="Tăng ca ngoài giờ hành chính (150% lương giờ)">
+                <button
+                  onClick={() => addEntry('weekday', 'day')}
+                  className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  + Ngày thường
+                </button>
+              </Tooltip>
+              <Tooltip content="Làm việc thứ 7, Chủ nhật (200% lương giờ)">
+                <button
+                  onClick={() => addEntry('weekend', 'day')}
+                  className="px-3 py-1.5 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
+                >
+                  + Cuối tuần
+                </button>
+              </Tooltip>
+              <Tooltip content="Làm việc ngày lễ, tết (300% lương giờ + lương ngày nếu được chọn)">
+                <button
+                  onClick={() => addEntry('holiday', 'day')}
+                  className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  + Ngày lễ
+                </button>
+              </Tooltip>
             </div>
           </div>
 
@@ -336,8 +364,15 @@ export default function OvertimeCalculator({
                 }}
                 className="rounded text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-gray-700">
-                Tính thêm lương ngày lễ (nếu được nghỉ có lương)
+              <span className="text-gray-700 flex items-center gap-2">
+                Bao gồm lương ngày lễ
+                <Tooltip content="Ngày lễ được nghỉ có lương, nếu đi làm thêm được 300% + 100% = 400%">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </Tooltip>
               </span>
             </label>
           )}
