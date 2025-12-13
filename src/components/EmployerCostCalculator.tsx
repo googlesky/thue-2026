@@ -96,6 +96,15 @@ export default function EmployerCostCalculator({
 
   const hasInsurance = insuranceOptions.bhxh || insuranceOptions.bhyt || insuranceOptions.bhtn;
 
+  // Reset declared salary when insurance is toggled off
+  useEffect(() => {
+    if (!hasInsurance && useDeclaredSalary) {
+      setUseDeclaredSalary(false);
+      setDeclaredSalary(0);
+      onStateChange?.({ declaredSalary: undefined });
+    }
+  }, [hasInsurance, useDeclaredSalary, onStateChange]);
+
   return (
     <div className="card">
       <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">

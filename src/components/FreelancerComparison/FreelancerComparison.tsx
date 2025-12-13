@@ -179,6 +179,7 @@ export default function FreelancerComparison({
             type="checkbox"
             checked={hasInsurance}
             onChange={(e) => {
+              isLocalChange.current = true;
               setHasInsurance(e.target.checked);
               onStateChange?.({ hasInsurance: e.target.checked });
             }}
