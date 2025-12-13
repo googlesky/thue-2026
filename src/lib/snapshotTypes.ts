@@ -247,6 +247,14 @@ export function createSnapshot(
       annualSettlement: {
         ...DEFAULT_ANNUAL_SETTLEMENT_STATE,
         ...(tabStates?.annualSettlement || {}),
+        insuranceOptions: {
+          ...DEFAULT_ANNUAL_SETTLEMENT_STATE.insuranceOptions,
+          ...(tabStates?.annualSettlement?.insuranceOptions || {}),
+        },
+        monthlyIncome: tabStates?.annualSettlement?.monthlyIncome?.map(m => ({ ...m }))
+          || DEFAULT_ANNUAL_SETTLEMENT_STATE.monthlyIncome.map(m => ({ ...m })),
+        dependents: tabStates?.annualSettlement?.dependents?.map(d => ({ ...d }))
+          || [],
       },
     },
     meta: {
@@ -323,6 +331,14 @@ export function mergeSnapshotWithDefaults(
       annualSettlement: {
         ...DEFAULT_ANNUAL_SETTLEMENT_STATE,
         ...(partial.tabs?.annualSettlement || {}),
+        insuranceOptions: {
+          ...DEFAULT_ANNUAL_SETTLEMENT_STATE.insuranceOptions,
+          ...(partial.tabs?.annualSettlement?.insuranceOptions || {}),
+        },
+        monthlyIncome: partial.tabs?.annualSettlement?.monthlyIncome?.map(m => ({ ...m }))
+          || DEFAULT_ANNUAL_SETTLEMENT_STATE.monthlyIncome.map(m => ({ ...m })),
+        dependents: partial.tabs?.annualSettlement?.dependents?.map(d => ({ ...d }))
+          || [],
       },
     },
     meta: {

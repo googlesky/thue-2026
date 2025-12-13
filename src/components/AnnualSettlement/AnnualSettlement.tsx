@@ -93,9 +93,16 @@ export default function AnnualSettlement({
     isLocalChange.current = false;
   }, [sharedState, averageSalary]);
 
-  // Sync from tab state
+  // Sync from tab state (only when it's an external change, not from local edits)
+  const prevTabStateRef = useRef(tabState);
   useEffect(() => {
-    if (tabState) {
+    // Skip if this is a local change propagating back
+    if (isLocalChange.current) {
+      prevTabStateRef.current = tabState;
+      return;
+    }
+    // Only sync if tabState actually changed from external source
+    if (tabState && tabState !== prevTabStateRef.current) {
       setYear(tabState.year);
       setUseAverageSalary(tabState.useAverageSalary);
       setAverageSalary(tabState.averageSalary);
@@ -107,6 +114,7 @@ export default function AnnualSettlement({
       setRegion(tabState.region);
       setManualTaxPaidMode(tabState.manualTaxPaidMode);
       setManualTaxPaid(tabState.manualTaxPaid);
+      prevTabStateRef.current = tabState;
     }
   }, [tabState]);
 
@@ -133,20 +141,25 @@ export default function AnnualSettlement({
       manualTaxPaidMode, manualTaxPaid, onTabStateChange]
   );
 
+  // Helper function to count dependents for a specific month
+  const getDependentCountForMonth = useCallback((month: number): number => {
+    return dependents.filter(d => d.fromMonth <= month && d.toMonth >= month).length;
+  }, [dependents]);
+
   // When averageSalary changes, update monthly income
   useEffect(() => {
     if (useAverageSalary && averageSalary > 0) {
       const newMonthlyIncome = createDefaultMonthlyIncome(averageSalary, 0, 0);
       // Calculate estimated tax for each month
       const insurance = getInsuranceDetailed(averageSalary, region, insuranceOptions);
-      const dependentCount = dependents.filter(d => d.fromMonth === 1 && d.toMonth === 12).length;
       newMonthlyIncome.forEach(entry => {
         const law = getLawForMonth(year, entry.month);
-        entry.taxPaid = estimateMonthlyTax(averageSalary, dependentCount, insurance.total, law);
+        const dependentCountForMonth = getDependentCountForMonth(entry.month);
+        entry.taxPaid = estimateMonthlyTax(averageSalary, dependentCountForMonth, insurance.total, law);
       });
       setMonthlyIncome(newMonthlyIncome);
     }
-  }, [useAverageSalary, averageSalary, year, region, insuranceOptions, dependents]);
+  }, [useAverageSalary, averageSalary, year, region, insuranceOptions, dependents, getDependentCountForMonth]);
 
   // Calculate result
   const result = useMemo<AnnualSettlementResult | null>(() => {
