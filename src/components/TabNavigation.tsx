@@ -61,12 +61,6 @@ const TAB_GROUPS: TabGroup[] = [
   },
 ];
 
-// Get all tab IDs for a group
-function getGroupTabIds(groupId: string): TabType[] {
-  const group = TAB_GROUPS.find((g) => g.id === groupId);
-  return group ? group.tabs.map((t) => t.id) : [];
-}
-
 // Find which group a tab belongs to
 function findTabGroup(tabId: TabType): TabGroup | undefined {
   return TAB_GROUPS.find((group) => group.tabs.some((t) => t.id === tabId));
@@ -101,8 +95,18 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
       }
     }
 
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && openDropdown) {
+        setOpenDropdown(null);
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [openDropdown]);
 
   const handleTabClick = (tabId: TabType) => {
@@ -110,98 +114,124 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
     setOpenDropdown(null);
   };
 
-  const activeGroup = findTabGroup(activeTab);
+  const toggleDropdown = (groupId: string) => {
+    setOpenDropdown(openDropdown === groupId ? null : groupId);
+  };
+
   const activeTabInfo = getTabInfo(activeTab);
 
   return (
     <div className="mb-6">
-      <div className="flex flex-wrap justify-center gap-2 bg-gray-100 p-2 rounded-xl">
-        {TAB_GROUPS.map((group) => {
-          const isGroupActive = group.tabs.some((t) => t.id === activeTab);
-          const isOpen = openDropdown === group.id;
+      {/* Navigation bar */}
+      <div className="flex justify-center">
+        <div className="inline-flex flex-wrap justify-center gap-1 sm:gap-2 bg-gray-100 p-1.5 sm:p-2 rounded-xl">
+          {TAB_GROUPS.map((group, index) => {
+            const isGroupActive = group.tabs.some((t) => t.id === activeTab);
+            const isOpen = openDropdown === group.id;
+            const activeTabInGroup = group.tabs.find((t) => t.id === activeTab);
 
-          return (
-            <div
-              key={group.id}
-              className="relative"
-              ref={(el) => {
-                dropdownRefs.current[group.id] = el;
-              }}
-            >
-              {/* Group button */}
-              <button
-                onClick={() => setOpenDropdown(isOpen ? null : group.id)}
-                className={`px-4 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                  isGroupActive
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+            return (
+              <div
+                key={group.id}
+                className="relative"
+                ref={(el) => {
+                  dropdownRefs.current[group.id] = el;
+                }}
               >
-                <span>{group.icon}</span>
-                <span className="hidden sm:inline">{group.label}</span>
-                <svg
-                  className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                {/* Group button */}
+                <button
+                  onClick={() => toggleDropdown(group.id)}
+                  aria-expanded={isOpen}
+                  aria-haspopup="true"
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-all flex items-center gap-1.5 sm:gap-2 ${
+                    isGroupActive
+                      ? 'bg-white text-primary-600 shadow-sm'
+                      : 'text-gray-600 hover:bg-white/50'
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
+                  <span className="text-base sm:text-lg">{group.icon}</span>
+                  <span className="text-sm sm:text-base">
+                    {/* On mobile: show active tab label if in this group, otherwise group label */}
+                    <span className="sm:hidden">
+                      {activeTabInGroup ? activeTabInGroup.label.split(' ')[0] : group.label}
+                    </span>
+                    <span className="hidden sm:inline">{group.label}</span>
+                  </span>
+                  <svg
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
 
-              {/* Dropdown menu */}
-              {isOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[200px] z-50">
-                  {group.tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabClick(tab.id)}
-                      className={`w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors ${
-                        activeTab === tab.id
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span>{tab.icon}</span>
-                      <span>{tab.label}</span>
-                      {activeTab === tab.id && (
-                        <svg
-                          className="w-4 h-4 ml-auto text-primary-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                {/* Dropdown menu */}
+                {isOpen && (
+                  <div
+                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[220px] z-50 dropdown-animate
+                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : 'left-0 sm:left-1/2 sm:-translate-x-1/2'}
+                    `}
+                    role="menu"
+                  >
+                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      {group.label}
+                    </div>
+                    {group.tabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabClick(tab.id)}
+                        role="menuitem"
+                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-all duration-150 ${
+                          activeTab === tab.id
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="text-lg w-7 text-center">{tab.icon}</span>
+                        <span className="flex-1 font-medium">{tab.label}</span>
+                        {activeTab === tab.id && (
+                          <svg
+                            className="w-5 h-5 text-primary-500"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Current tab indicator */}
-      {activeTabInfo && (
-        <div className="text-center mt-3">
-          <span className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white px-3 py-1 rounded-full shadow-sm">
-            <span>{activeTabInfo.icon}</span>
-            <span>{activeTabInfo.label}</span>
-          </span>
-        </div>
-      )}
+      {/* Breadcrumb - shows group > tab on mobile */}
+      <div className="flex justify-center mt-2 sm:hidden">
+        {activeTabInfo && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span>{findTabGroup(activeTab)?.icon}</span>
+            <span>{findTabGroup(activeTab)?.label}</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-gray-700 font-medium">{activeTabInfo.label}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
