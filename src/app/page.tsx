@@ -12,6 +12,9 @@ import SaveButton from '@/components/SaveButton';
 import CalculationHistory from '@/components/CalculationHistory';
 import OtherIncomeInput from '@/components/OtherIncomeInput';
 import { YearlyComparison } from '@/components/YearlyComparison';
+import EmployerCostCalculator from '@/components/EmployerCostCalculator';
+import { FreelancerComparison } from '@/components/FreelancerComparison';
+import { SalaryComparison } from '@/components/SalaryComparison';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -27,7 +30,7 @@ import {
 } from '@/lib/taxCalculator';
 import { decodeStateFromURL } from '@/lib/urlState';
 
-type TabType = 'calculator' | 'gross-net' | 'yearly' | 'insurance' | 'other-income' | 'table';
+type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'insurance' | 'other-income' | 'table';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -156,10 +159,13 @@ export default function Home() {
   const tabs = [
     { id: 'calculator' as TabType, label: 'Tính thuế', icon: '🧮' },
     { id: 'gross-net' as TabType, label: 'GROSS ⇄ NET', icon: '💰' },
+    { id: 'employer-cost' as TabType, label: 'Chi phí NTD', icon: '🏢' },
+    { id: 'freelancer' as TabType, label: 'Freelancer', icon: '👤' },
+    { id: 'salary-compare' as TabType, label: 'So sánh lương', icon: '📊' },
     { id: 'yearly' as TabType, label: 'So sánh năm', icon: '📅' },
     { id: 'insurance' as TabType, label: 'Bảo hiểm', icon: '🛡️' },
     { id: 'other-income' as TabType, label: 'Thu nhập khác', icon: '💼' },
-    { id: 'table' as TabType, label: 'Biểu thuế', icon: '📊' },
+    { id: 'table' as TabType, label: 'Biểu thuế', icon: '📈' },
   ];
 
   return (
@@ -259,6 +265,33 @@ export default function Home() {
         {activeTab === 'gross-net' && (
           <div className="mb-8">
             <GrossNetConverter
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'employer-cost' && (
+          <div className="mb-8">
+            <EmployerCostCalculator
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'freelancer' && (
+          <div className="mb-8">
+            <FreelancerComparison
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'salary-compare' && (
+          <div className="mb-8">
+            <SalaryComparison
               sharedState={sharedState}
               onStateChange={updateSharedState}
             />
