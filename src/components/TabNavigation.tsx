@@ -10,6 +10,7 @@ export type TabType =
   | 'freelancer'
   | 'salary-compare'
   | 'yearly'
+  | 'annual-settlement'
   | 'insurance'
   | 'other-income'
   | 'table';
@@ -36,6 +37,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'calculator', label: 'Tính thuế TNCN', icon: '🧮' },
       { id: 'gross-net', label: 'GROSS ⇄ NET', icon: '💰' },
       { id: 'overtime', label: 'Lương tăng ca', icon: '⏰' },
+      { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋' },
     ],
   },
   {
@@ -176,8 +178,9 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
                 {isOpen && (
                   <div
                     className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[220px] z-50 dropdown-animate
-                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : 'left-0 sm:left-1/2 sm:-translate-x-1/2'}
+                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : 'left-0 sm:left-1/2'}
                     `}
+                    style={index !== TAB_GROUPS.length - 1 ? { marginLeft: 'calc(-110px)' } : undefined}
                     role="menu"
                   >
                     <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">

@@ -180,6 +180,11 @@ export function saveNamedSave(
           ...snapshot.tabs.overtime,
           entries: snapshot.tabs.overtime.entries.map(e => ({ ...e })),
         },
+        annualSettlement: {
+          ...snapshot.tabs.annualSettlement,
+          monthlyIncome: snapshot.tabs.annualSettlement.monthlyIncome.map(m => ({ ...m })),
+          dependents: snapshot.tabs.annualSettlement.dependents.map(d => ({ ...d })),
+        },
       },
       meta: {
         ...snapshot.meta,
