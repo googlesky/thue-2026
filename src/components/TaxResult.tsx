@@ -129,13 +129,34 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxR
 }
 
 function ResultDetails({ result, colorClass }: { result: TaxResultType; colorClass: string }) {
+  const { insuranceDetail } = result;
+  const hasInsurance = result.insuranceDeduction > 0;
+
   const items = [
     { label: 'Thu nhập gộp', value: result.grossIncome },
-    { label: 'Trừ BHXH, BHYT, BHTN', value: -result.insuranceDeduction },
+  ];
+
+  // Thêm chi tiết bảo hiểm nếu có
+  if (hasInsurance) {
+    if (insuranceDetail.bhxh > 0) {
+      items.push({ label: '  └ BHXH (8%)', value: -insuranceDetail.bhxh });
+    }
+    if (insuranceDetail.bhyt > 0) {
+      items.push({ label: '  └ BHYT (1.5%)', value: -insuranceDetail.bhyt });
+    }
+    if (insuranceDetail.bhtn > 0) {
+      items.push({ label: '  └ BHTN (1%)', value: -insuranceDetail.bhtn });
+    }
+  }
+
+  items.push(
     { label: 'Giảm trừ bản thân', value: -result.personalDeduction },
     { label: 'Giảm trừ người phụ thuộc', value: -result.dependentDeduction },
-    ...(result.otherDeductions > 0 ? [{ label: 'Giảm trừ khác', value: -result.otherDeductions }] : []),
-  ];
+  );
+
+  if (result.otherDeductions > 0) {
+    items.push({ label: 'Giảm trừ khác', value: -result.otherDeductions });
+  }
 
   return (
     <div className="space-y-3">

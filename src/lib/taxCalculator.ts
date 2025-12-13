@@ -139,6 +139,7 @@ export interface TaxInput {
 export interface TaxResult {
   grossIncome: number;
   insuranceDeduction: number;
+  insuranceDetail: InsuranceDetail; // Chi tiết BHXH, BHYT, BHTN
   personalDeduction: number;
   dependentDeduction: number;
   otherDeductions: number;
@@ -283,8 +284,9 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
-  // Tính bảo hiểm dựa trên lương khai báo
-  const insuranceDeduction = calculateInsurance(taxableSalary, region, insOptions);
+  // Tính bảo hiểm dựa trên lương khai báo (chi tiết từng loại)
+  const insuranceDetail = calculateInsuranceDetailed(taxableSalary, region, insOptions);
+  const insuranceDeduction = insuranceDetail.total;
   const personalDeduction = OLD_DEDUCTIONS.personal;
   const dependentDeduction = dependents * OLD_DEDUCTIONS.dependent;
 
@@ -300,6 +302,7 @@ export function calculateOldTax(input: TaxInput): TaxResult {
   return {
     grossIncome,
     insuranceDeduction,
+    insuranceDetail,
     personalDeduction,
     dependentDeduction,
     otherDeductions,
@@ -333,8 +336,9 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
-  // Tính bảo hiểm dựa trên lương khai báo
-  const insuranceDeduction = calculateInsurance(taxableSalary, region, insOptions);
+  // Tính bảo hiểm dựa trên lương khai báo (chi tiết từng loại)
+  const insuranceDetail = calculateInsuranceDetailed(taxableSalary, region, insOptions);
+  const insuranceDeduction = insuranceDetail.total;
   const personalDeduction = NEW_DEDUCTIONS.personal;
   const dependentDeduction = dependents * NEW_DEDUCTIONS.dependent;
 
@@ -350,6 +354,7 @@ export function calculateNewTax(input: TaxInput): TaxResult {
   return {
     grossIncome,
     insuranceDeduction,
+    insuranceDetail,
     personalDeduction,
     dependentDeduction,
     otherDeductions,

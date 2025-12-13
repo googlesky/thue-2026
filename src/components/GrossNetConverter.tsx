@@ -32,6 +32,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   // Track if we're the source of the change to prevent sync loops
   const isLocalChange = useRef(false);
   const isInitialized = useRef(false);
+  const isCalculatingFromNet = useRef(false);
 
   // Get effective declared salary for calculations
   const getEffectiveDeclaredSalary = useCallback(() => {
@@ -73,6 +74,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   // Calculate GROSS from NET (only when user inputs NET)
   const calculateFromNet = useCallback((net: number) => {
     if (net <= 0) return;
+
+    // Mark that we're calculating from NET to prevent the recalc effect from overwriting
+    isCalculatingFromNet.current = true;
 
     const effectiveDeclared = getEffectiveDeclaredSalary();
 
@@ -119,6 +123,11 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   // Recalculate when parameters change (but not type)
   useEffect(() => {
     if (isInitialized.current) {
+      // Skip if this was triggered by a NET calculation (grossValue changed from NET input)
+      if (isCalculatingFromNet.current) {
+        isCalculatingFromNet.current = false;
+        return;
+      }
       // Always recalculate from gross to maintain consistency
       calculateFromGross(grossValue);
     }
