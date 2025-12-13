@@ -7,9 +7,6 @@ import TaxChart from '@/components/TaxChart';
 import TaxBracketTable from '@/components/TaxBracketTable';
 import GrossNetConverter from '@/components/GrossNetConverter';
 import InsuranceBreakdown from '@/components/InsuranceBreakdown';
-import ShareButton from '@/components/ShareButton';
-import SaveButton from '@/components/SaveButton';
-import CalculationHistory from '@/components/CalculationHistory';
 import OtherIncomeInput from '@/components/OtherIncomeInput';
 import { YearlyComparison } from '@/components/YearlyComparison';
 import EmployerCostCalculator from '@/components/EmployerCostCalculator';
@@ -29,7 +26,6 @@ import {
   DEFAULT_OTHER_INCOME,
   calculateOtherIncomeTax,
 } from '@/lib/taxCalculator';
-import { decodeStateFromURL } from '@/lib/urlState';
 import {
   CalculatorSnapshot,
   EmployerCostTabState,
@@ -37,7 +33,7 @@ import {
   SalaryComparisonTabState,
   YearlyComparisonTabState,
 } from '@/lib/snapshotTypes';
-import { decodeSnapshot } from '@/lib/snapshotCodec';
+import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
 
 type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'insurance' | 'other-income' | 'table';
@@ -115,7 +111,7 @@ export default function Home() {
       }
 
       // Fall back to legacy URL params for backward compatibility
-      const urlState = decodeStateFromURL(window.location.search);
+      const urlState = decodeLegacyURLParams(window.location.search);
       if (urlState) {
         const newState = { ...defaultSharedState, ...urlState };
         setSharedState(newState);
@@ -180,25 +176,6 @@ export default function Home() {
     },
     [updateSharedState]
   );
-
-  // Handler for loading history
-  const handleLoadHistory = useCallback((state: SharedTaxState) => {
-    setSharedState(state);
-
-    const taxInput: TaxInputType = {
-      grossIncome: state.grossIncome,
-      declaredSalary: state.declaredSalary,
-      dependents: state.dependents,
-      otherDeductions: state.otherDeductions + state.pensionContribution,
-      hasInsurance: state.hasInsurance,
-      insuranceOptions: state.insuranceOptions,
-      region: state.region,
-    };
-
-    setOldResult(calculateOldTax(taxInput));
-    setNewResult(calculateNewTax(taxInput));
-    setActiveTab('calculator');
-  }, []);
 
   // Handler for other income changes
   const handleOtherIncomeChange = useCallback((otherIncome: OtherIncomeState) => {
@@ -267,14 +244,6 @@ export default function Home() {
               snapshot={currentSnapshot}
               onLoadSnapshot={handleLoadSnapshot}
             />
-            <ShareButton state={sharedState} />
-            <SaveButton
-              state={sharedState}
-              oldTax={oldResult.taxAmount}
-              newTax={newResult.taxAmount}
-              netIncome={newResult.netIncome}
-            />
-            <CalculationHistory onLoadHistory={handleLoadHistory} />
           </div>
         </header>
 

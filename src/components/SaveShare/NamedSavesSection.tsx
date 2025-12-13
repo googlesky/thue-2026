@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CalculatorSnapshot, NamedSave } from '@/lib/snapshotTypes';
-import { getNamedSaves, deleteNamedSave } from '@/lib/snapshotStorage';
-import { formatTimestamp } from '@/lib/historyStorage';
+import { getNamedSaves, deleteNamedSave, formatTimestamp } from '@/lib/snapshotStorage';
 import { formatCurrency } from '@/lib/taxCalculator';
 import SaveDialog from './SaveDialog';
 

@@ -4,6 +4,7 @@
  */
 import * as LZString from 'lz-string';
 import { CalculatorSnapshot, isValidSnapshot, mergeSnapshotWithDefaults } from './snapshotTypes';
+import { SharedTaxState, RegionType } from './taxCalculator';
 
 /**
  * Compact key mapping to minimize URL size
@@ -299,4 +300,88 @@ export function getEncodedSize(snapshot: CalculatorSnapshot): number {
 export function canShareViaURL(snapshot: CalculatorSnapshot): boolean {
   const size = getEncodedSize(snapshot);
   return size > 0 && size < 1800; // Conservative limit
+}
+
+/**
+ * Copy text to clipboard
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      return true;
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+}
+
+/**
+ * Decode legacy URL params to SharedTaxState (for backward compatibility)
+ * Supports old format: ?gross=30000000&dependents=2&region=1
+ */
+export function decodeLegacyURLParams(searchParams: string): Partial<SharedTaxState> | null {
+  const params = new URLSearchParams(searchParams);
+
+  // Check if there are any relevant params
+  if (!params.has('gross')) {
+    return null;
+  }
+
+  const state: Partial<SharedTaxState> = {};
+
+  const gross = parseInt(params.get('gross') || '', 10);
+  if (!isNaN(gross) && gross > 0) {
+    state.grossIncome = gross;
+  }
+
+  const declared = parseInt(params.get('declared') || '', 10);
+  if (!isNaN(declared) && declared > 0) {
+    state.declaredSalary = declared;
+  }
+
+  const dependents = parseInt(params.get('dependents') || '', 10);
+  if (!isNaN(dependents) && dependents >= 0) {
+    state.dependents = dependents;
+  }
+
+  const deductions = parseInt(params.get('deductions') || '', 10);
+  if (!isNaN(deductions) && deductions >= 0) {
+    state.otherDeductions = deductions;
+  }
+
+  const region = parseInt(params.get('region') || '', 10) as RegionType;
+  if ([1, 2, 3, 4].includes(region)) {
+    state.region = region;
+  }
+
+  const pension = parseInt(params.get('pension') || '', 10);
+  if (!isNaN(pension) && pension >= 0) {
+    state.pensionContribution = pension;
+  }
+
+  // Decode insurance flags
+  const insFlags = params.get('ins');
+  if (insFlags && insFlags.length === 3) {
+    state.insuranceOptions = {
+      bhxh: insFlags[0] === '1',
+      bhyt: insFlags[1] === '1',
+      bhtn: insFlags[2] === '1',
+    };
+    state.hasInsurance = state.insuranceOptions.bhxh || state.insuranceOptions.bhyt || state.insuranceOptions.bhtn;
+  }
+
+  return Object.keys(state).length > 0 ? state : null;
 }
