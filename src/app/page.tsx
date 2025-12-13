@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import TaxInput from '@/components/TaxInput';
 import TaxResult from '@/components/TaxResult';
 import TaxChart from '@/components/TaxChart';
@@ -15,6 +15,7 @@ import { YearlyComparison } from '@/components/YearlyComparison';
 import EmployerCostCalculator from '@/components/EmployerCostCalculator';
 import { FreelancerComparison } from '@/components/FreelancerComparison';
 import { SalaryComparison } from '@/components/SalaryComparison';
+import { SaveShareButton } from '@/components/SaveShare';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -29,6 +30,15 @@ import {
   calculateOtherIncomeTax,
 } from '@/lib/taxCalculator';
 import { decodeStateFromURL } from '@/lib/urlState';
+import {
+  CalculatorSnapshot,
+  EmployerCostTabState,
+  FreelancerTabState,
+  SalaryComparisonTabState,
+  YearlyComparisonTabState,
+} from '@/lib/snapshotTypes';
+import { decodeSnapshot } from '@/lib/snapshotCodec';
+import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
 
 type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'insurance' | 'other-income' | 'table';
 
@@ -50,6 +60,27 @@ export default function Home() {
   // Shared state across all tabs
   const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
 
+  // Tab-specific states (lifted from individual tab components)
+  const [employerCostState, setEmployerCostState] = useState<EmployerCostTabState>({
+    includeUnionFee: false,
+    useNewLaw: true,
+  });
+  const [freelancerState, setFreelancerState] = useState<FreelancerTabState>({
+    frequency: 'monthly',
+    useNewLaw: true,
+  });
+  const [salaryComparisonState, setSalaryComparisonState] = useState<SalaryComparisonTabState>({
+    companies: [
+      createDefaultCompanyOffer('company-1', 'Công ty A'),
+      createDefaultCompanyOffer('company-2', 'Công ty B'),
+    ],
+    useNewLaw: true,
+  });
+  const [yearlyState, setYearlyState] = useState<YearlyComparisonTabState>({
+    selectedPresetId: 'normal',
+    bonusAmount: 30_000_000,
+  });
+
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
     calculateOldTax(sharedState)
@@ -58,9 +89,32 @@ export default function Home() {
     calculateNewTax(sharedState)
   );
 
+  // Handler for loading a snapshot (defined early to avoid hoisting issues)
+  const handleLoadSnapshot = useCallback((snapshot: CalculatorSnapshot) => {
+    setSharedState(snapshot.sharedState);
+    setActiveTab(snapshot.activeTab as TabType);
+    setEmployerCostState(snapshot.tabs.employerCost);
+    setFreelancerState(snapshot.tabs.freelancer);
+    setSalaryComparisonState(snapshot.tabs.salaryComparison);
+    setYearlyState(snapshot.tabs.yearlyComparison);
+  }, []);
+
   // Load state from URL on mount
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialized) {
+      // Try to load from hash first (new snapshot format)
+      const hash = window.location.hash;
+      if (hash.startsWith('#s=')) {
+        const snapshot = decodeSnapshot(hash.slice(3));
+        if (snapshot) {
+          handleLoadSnapshot(snapshot);
+          window.history.replaceState(null, '', window.location.pathname);
+          setIsInitialized(true);
+          return;
+        }
+      }
+
+      // Fall back to legacy URL params for backward compatibility
       const urlState = decodeStateFromURL(window.location.search);
       if (urlState) {
         const newState = { ...defaultSharedState, ...urlState };
@@ -84,7 +138,7 @@ export default function Home() {
       }
       setIsInitialized(true);
     }
-  }, [isInitialized]);
+  }, [isInitialized, handleLoadSnapshot]);
 
   // Update shared state and recalculate tax
   const updateSharedState = useCallback((updates: Partial<SharedTaxState>) => {
@@ -151,6 +205,22 @@ export default function Home() {
     updateSharedState({ otherIncome });
   }, [updateSharedState]);
 
+  // Build current snapshot for save/share
+  const currentSnapshot = useMemo<CalculatorSnapshot>(() => ({
+    version: 1,
+    sharedState,
+    activeTab,
+    tabs: {
+      employerCost: employerCostState,
+      freelancer: freelancerState,
+      salaryComparison: salaryComparisonState,
+      yearlyComparison: yearlyState,
+    },
+    meta: {
+      createdAt: Date.now(),
+    },
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState]);
+
   // Calculate other income tax
   const otherIncomeTax = sharedState.otherIncome
     ? calculateOtherIncomeTax(sharedState.otherIncome)
@@ -193,6 +263,10 @@ export default function Home() {
 
           {/* Action buttons */}
           <div className="flex items-center justify-center gap-3 mt-4">
+            <SaveShareButton
+              snapshot={currentSnapshot}
+              onLoadSnapshot={handleLoadSnapshot}
+            />
             <ShareButton state={sharedState} />
             <SaveButton
               state={sharedState}
@@ -276,6 +350,8 @@ export default function Home() {
             <EmployerCostCalculator
               sharedState={sharedState}
               onStateChange={updateSharedState}
+              tabState={employerCostState}
+              onTabStateChange={setEmployerCostState}
             />
           </div>
         )}
@@ -285,6 +361,8 @@ export default function Home() {
             <FreelancerComparison
               sharedState={sharedState}
               onStateChange={updateSharedState}
+              tabState={freelancerState}
+              onTabStateChange={setFreelancerState}
             />
           </div>
         )}
@@ -294,6 +372,8 @@ export default function Home() {
             <SalaryComparison
               sharedState={sharedState}
               onStateChange={updateSharedState}
+              tabState={salaryComparisonState}
+              onTabStateChange={setSalaryComparisonState}
             />
           </div>
         )}
@@ -303,6 +383,8 @@ export default function Home() {
             <YearlyComparison
               sharedState={sharedState}
               onStateChange={updateSharedState}
+              tabState={yearlyState}
+              onTabStateChange={setYearlyState}
             />
           </div>
         )}

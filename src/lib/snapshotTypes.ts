@@ -1,0 +1,257 @@
+import {
+  SharedTaxState,
+  DEFAULT_INSURANCE_OPTIONS,
+  DEFAULT_OTHER_INCOME,
+} from './taxCalculator';
+import { CompanyOffer } from './salaryComparisonCalculator';
+import { IncomeFrequency } from './freelancerCalculator';
+
+/**
+ * Tab-specific state types for each calculator tab
+ */
+
+// Employer Cost Calculator tab state
+export interface EmployerCostTabState {
+  includeUnionFee: boolean;
+  useNewLaw: boolean;
+}
+
+// Freelancer Comparison tab state
+export interface FreelancerTabState {
+  frequency: IncomeFrequency;
+  useNewLaw: boolean;
+}
+
+// Salary Comparison tab state
+export interface SalaryComparisonTabState {
+  companies: CompanyOffer[];
+  useNewLaw: boolean;
+}
+
+// Yearly Comparison tab state
+export interface YearlyComparisonTabState {
+  selectedPresetId: string | null;
+  bonusAmount: number;
+}
+
+/**
+ * Combined snapshot state for all tabs
+ */
+export interface TabStates {
+  employerCost: EmployerCostTabState;
+  freelancer: FreelancerTabState;
+  salaryComparison: SalaryComparisonTabState;
+  yearlyComparison: YearlyComparisonTabState;
+}
+
+/**
+ * Complete calculator snapshot with all tab states
+ */
+export interface CalculatorSnapshot {
+  version: number;
+  sharedState: SharedTaxState;
+  activeTab: string;
+  tabs: TabStates;
+  meta: {
+    createdAt: number;
+    label?: string;
+    description?: string;
+  };
+  // Legacy fields for backward compatibility
+  state?: SharedTaxState;
+  timestamp?: number;
+}
+
+// A named save with metadata
+export interface NamedSave {
+  id: string;
+  label: string;
+  description?: string;
+  snapshot: CalculatorSnapshot;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Export data structure for JSON import/export
+export interface SaveExportData {
+  version: number;
+  exportedAt: number;
+  saves: NamedSave[];
+}
+
+/**
+ * Default tab states
+ */
+export const DEFAULT_EMPLOYER_COST_STATE: EmployerCostTabState = {
+  includeUnionFee: false,
+  useNewLaw: true,
+};
+
+export const DEFAULT_FREELANCER_STATE: FreelancerTabState = {
+  frequency: 'monthly',
+  useNewLaw: true,
+};
+
+export const DEFAULT_SALARY_COMPARISON_STATE: SalaryComparisonTabState = {
+  companies: [],
+  useNewLaw: true,
+};
+
+export const DEFAULT_YEARLY_COMPARISON_STATE: YearlyComparisonTabState = {
+  selectedPresetId: null,
+  bonusAmount: 0,
+};
+
+export const DEFAULT_TAB_STATES: TabStates = {
+  employerCost: DEFAULT_EMPLOYER_COST_STATE,
+  freelancer: DEFAULT_FREELANCER_STATE,
+  salaryComparison: DEFAULT_SALARY_COMPARISON_STATE,
+  yearlyComparison: DEFAULT_YEARLY_COMPARISON_STATE,
+};
+
+/**
+ * Default shared state
+ */
+export const DEFAULT_SHARED_STATE: SharedTaxState = {
+  grossIncome: 0,
+  declaredSalary: undefined,
+  dependents: 0,
+  otherDeductions: 0,
+  hasInsurance: true,
+  insuranceOptions: { ...DEFAULT_INSURANCE_OPTIONS },
+  region: 1,
+  pensionContribution: 0,
+  otherIncome: { ...DEFAULT_OTHER_INCOME },
+};
+
+/**
+ * Default complete snapshot
+ */
+export const DEFAULT_SNAPSHOT: CalculatorSnapshot = {
+  version: 1,
+  sharedState: DEFAULT_SHARED_STATE,
+  activeTab: 'calculator',
+  tabs: DEFAULT_TAB_STATES,
+  meta: {
+    createdAt: Date.now(),
+  },
+};
+
+/**
+ * Create a snapshot from current state
+ * This is the main function to capture calculator state for saving/sharing
+ */
+export function createSnapshot(
+  sharedState: Partial<SharedTaxState>,
+  activeTab: string = 'calculator',
+  tabStates?: Partial<TabStates>,
+  meta?: Partial<CalculatorSnapshot['meta']>
+): CalculatorSnapshot {
+  return {
+    version: 1,
+    sharedState: {
+      ...DEFAULT_SHARED_STATE,
+      ...sharedState,
+      insuranceOptions: {
+        ...DEFAULT_INSURANCE_OPTIONS,
+        ...(sharedState.insuranceOptions || {}),
+      },
+      otherIncome: {
+        ...DEFAULT_OTHER_INCOME,
+        ...(sharedState.otherIncome || {}),
+      },
+    },
+    activeTab,
+    tabs: {
+      employerCost: {
+        ...DEFAULT_EMPLOYER_COST_STATE,
+        ...(tabStates?.employerCost || {}),
+      },
+      freelancer: {
+        ...DEFAULT_FREELANCER_STATE,
+        ...(tabStates?.freelancer || {}),
+      },
+      salaryComparison: {
+        ...DEFAULT_SALARY_COMPARISON_STATE,
+        ...(tabStates?.salaryComparison || {}),
+      },
+      yearlyComparison: {
+        ...DEFAULT_YEARLY_COMPARISON_STATE,
+        ...(tabStates?.yearlyComparison || {}),
+      },
+    },
+    meta: {
+      createdAt: Date.now(),
+      ...meta,
+    },
+  };
+}
+
+/**
+ * Validate snapshot version and structure
+ */
+export function isValidSnapshot(snapshot: unknown): snapshot is CalculatorSnapshot {
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  const s = snapshot as Partial<CalculatorSnapshot>;
+
+  return !!(
+    s.version &&
+    s.sharedState &&
+    s.activeTab &&
+    s.tabs &&
+    s.meta &&
+    typeof s.version === 'number' &&
+    typeof s.sharedState === 'object' &&
+    typeof s.activeTab === 'string' &&
+    typeof s.tabs === 'object' &&
+    typeof s.meta === 'object'
+  );
+}
+
+/**
+ * Merge partial snapshot with defaults
+ * Used when loading snapshots that may have missing fields
+ */
+export function mergeSnapshotWithDefaults(
+  partial: Partial<CalculatorSnapshot>
+): CalculatorSnapshot {
+  return {
+    version: partial.version || 1,
+    sharedState: {
+      ...DEFAULT_SHARED_STATE,
+      ...(partial.sharedState || {}),
+      insuranceOptions: {
+        ...DEFAULT_INSURANCE_OPTIONS,
+        ...(partial.sharedState?.insuranceOptions || {}),
+      },
+      otherIncome: {
+        ...DEFAULT_OTHER_INCOME,
+        ...(partial.sharedState?.otherIncome || {}),
+      },
+    },
+    activeTab: partial.activeTab || 'calculator',
+    tabs: {
+      employerCost: {
+        ...DEFAULT_EMPLOYER_COST_STATE,
+        ...(partial.tabs?.employerCost || {}),
+      },
+      freelancer: {
+        ...DEFAULT_FREELANCER_STATE,
+        ...(partial.tabs?.freelancer || {}),
+      },
+      salaryComparison: {
+        ...DEFAULT_SALARY_COMPARISON_STATE,
+        ...(partial.tabs?.salaryComparison || {}),
+      },
+      yearlyComparison: {
+        ...DEFAULT_YEARLY_COMPARISON_STATE,
+        ...(partial.tabs?.yearlyComparison || {}),
+      },
+    },
+    meta: {
+      createdAt: partial.meta?.createdAt || Date.now(),
+      label: partial.meta?.label,
+      description: partial.meta?.description,
+    },
+  };
+}

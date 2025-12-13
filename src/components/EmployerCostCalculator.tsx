@@ -12,15 +12,20 @@ import {
   formatNumber,
   parseCurrency,
 } from '@/lib/taxCalculator';
+import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
 interface EmployerCostCalculatorProps {
   sharedState?: SharedTaxState;
   onStateChange?: (updates: Partial<SharedTaxState>) => void;
+  tabState?: EmployerCostTabState;
+  onTabStateChange?: (state: EmployerCostTabState) => void;
 }
 
 export default function EmployerCostCalculator({
   sharedState,
   onStateChange,
+  tabState,
+  onTabStateChange,
 }: EmployerCostCalculatorProps) {
   const isLocalChange = useRef(false);
 
@@ -32,8 +37,8 @@ export default function EmployerCostCalculator({
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
     sharedState?.insuranceOptions || DEFAULT_INSURANCE_OPTIONS
   );
-  const [includeUnionFee, setIncludeUnionFee] = useState(false);
-  const [useNewLaw, setUseNewLaw] = useState(true);
+  const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
+  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
 
   // Sync từ shared state
   useEffect(() => {
@@ -51,6 +56,14 @@ export default function EmployerCostCalculator({
     }
     isLocalChange.current = false;
   }, [sharedState]);
+
+  // Sync from tab state
+  useEffect(() => {
+    if (tabState) {
+      setIncludeUnionFee(tabState.includeUnionFee);
+      setUseNewLaw(tabState.useNewLaw);
+    }
+  }, [tabState]);
 
   // Tính toán kết quả
   const result = useMemo(() => {
@@ -230,7 +243,11 @@ export default function EmployerCostCalculator({
             <input
               type="checkbox"
               checked={includeUnionFee}
-              onChange={(e) => setIncludeUnionFee(e.target.checked)}
+              onChange={(e) => {
+                const value = e.target.checked;
+                setIncludeUnionFee(value);
+                onTabStateChange?.({ includeUnionFee: value, useNewLaw });
+              }}
               className="w-4 h-4 text-primary-600 border-gray-300 rounded"
             />
             <span className="text-sm text-gray-700">Phí công đoàn (DN: 2%)</span>
@@ -243,7 +260,10 @@ export default function EmployerCostCalculator({
               <input
                 type="radio"
                 checked={!useNewLaw}
-                onChange={() => setUseNewLaw(false)}
+                onChange={() => {
+                  setUseNewLaw(false);
+                  onTabStateChange?.({ includeUnionFee, useNewLaw: false });
+                }}
                 className="w-4 h-4 text-primary-600"
               />
               <span className="text-sm">Hiện hành (7 bậc)</span>
@@ -252,7 +272,10 @@ export default function EmployerCostCalculator({
               <input
                 type="radio"
                 checked={useNewLaw}
-                onChange={() => setUseNewLaw(true)}
+                onChange={() => {
+                  setUseNewLaw(true);
+                  onTabStateChange?.({ includeUnionFee, useNewLaw: true });
+                }}
                 className="w-4 h-4 text-primary-600"
               />
               <span className="text-sm">Mới 2026 (5 bậc)</span>
