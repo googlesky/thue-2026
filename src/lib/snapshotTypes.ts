@@ -2,10 +2,18 @@ import {
   SharedTaxState,
   DEFAULT_INSURANCE_OPTIONS,
   DEFAULT_OTHER_INCOME,
+  InsuranceOptions,
+  RegionType,
 } from './taxCalculator';
 import { CompanyOffer } from './salaryComparisonCalculator';
 import { IncomeFrequency } from './freelancerCalculator';
 import { OvertimeEntry, DEFAULT_WORKING_DAYS, DEFAULT_HOURS_PER_DAY } from './overtimeCalculator';
+import {
+  SettlementYear,
+  MonthlyIncomeEntry,
+  DependentInfo,
+  createDefaultMonthlyIncome,
+} from './annualSettlementCalculator';
 
 /**
  * Tab-specific state types for each calculator tab
@@ -45,6 +53,21 @@ export interface OvertimeTabState {
   useNewLaw: boolean;
 }
 
+// Annual Settlement tab state
+export interface AnnualSettlementTabState {
+  year: SettlementYear;
+  useAverageSalary: boolean;
+  averageSalary: number;
+  monthlyIncome: MonthlyIncomeEntry[];
+  dependents: DependentInfo[];
+  charitableContributions: number;
+  voluntaryPension: number;
+  insuranceOptions: InsuranceOptions;
+  region: RegionType;
+  manualTaxPaidMode: boolean;
+  manualTaxPaid: number;
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -54,6 +77,7 @@ export interface TabStates {
   salaryComparison: SalaryComparisonTabState;
   yearlyComparison: YearlyComparisonTabState;
   overtime: OvertimeTabState;
+  annualSettlement: AnnualSettlementTabState;
 }
 
 /**
@@ -123,12 +147,27 @@ export const DEFAULT_OVERTIME_STATE: OvertimeTabState = {
   useNewLaw: true,
 };
 
+export const DEFAULT_ANNUAL_SETTLEMENT_STATE: AnnualSettlementTabState = {
+  year: 2025,
+  useAverageSalary: true,
+  averageSalary: 0,
+  monthlyIncome: createDefaultMonthlyIncome(0, 0, 0),
+  dependents: [],
+  charitableContributions: 0,
+  voluntaryPension: 0,
+  insuranceOptions: { ...DEFAULT_INSURANCE_OPTIONS },
+  region: 1,
+  manualTaxPaidMode: false,
+  manualTaxPaid: 0,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
   salaryComparison: DEFAULT_SALARY_COMPARISON_STATE,
   yearlyComparison: DEFAULT_YEARLY_COMPARISON_STATE,
   overtime: DEFAULT_OVERTIME_STATE,
+  annualSettlement: DEFAULT_ANNUAL_SETTLEMENT_STATE,
 };
 
 /**
@@ -205,6 +244,10 @@ export function createSnapshot(
         ...DEFAULT_OVERTIME_STATE,
         ...(tabStates?.overtime || {}),
       },
+      annualSettlement: {
+        ...DEFAULT_ANNUAL_SETTLEMENT_STATE,
+        ...(tabStates?.annualSettlement || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -276,6 +319,10 @@ export function mergeSnapshotWithDefaults(
       overtime: {
         ...DEFAULT_OVERTIME_STATE,
         ...(partial.tabs?.overtime || {}),
+      },
+      annualSettlement: {
+        ...DEFAULT_ANNUAL_SETTLEMENT_STATE,
+        ...(partial.tabs?.annualSettlement || {}),
       },
     },
     meta: {
