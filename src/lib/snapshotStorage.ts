@@ -176,6 +176,10 @@ export function saveNamedSave(
           companies: snapshot.tabs.salaryComparison.companies.map(c => ({ ...c })),
         },
         yearlyComparison: { ...snapshot.tabs.yearlyComparison },
+        overtime: {
+          ...snapshot.tabs.overtime,
+          entries: snapshot.tabs.overtime.entries.map(e => ({ ...e })),
+        },
       },
       meta: {
         ...snapshot.meta,

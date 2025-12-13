@@ -12,6 +12,7 @@ import { YearlyComparison } from '@/components/YearlyComparison';
 import EmployerCostCalculator from '@/components/EmployerCostCalculator';
 import { FreelancerComparison } from '@/components/FreelancerComparison';
 import { SalaryComparison } from '@/components/SalaryComparison';
+import OvertimeCalculator from '@/components/OvertimeCalculator';
 import { SaveShareButton } from '@/components/SaveShare';
 import {
   calculateOldTax,
@@ -32,11 +33,13 @@ import {
   FreelancerTabState,
   SalaryComparisonTabState,
   YearlyComparisonTabState,
+  OvertimeTabState,
+  DEFAULT_OVERTIME_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
 
-type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'insurance' | 'other-income' | 'table';
+type TabType = 'calculator' | 'gross-net' | 'employer-cost' | 'freelancer' | 'salary-compare' | 'yearly' | 'overtime' | 'insurance' | 'other-income' | 'table';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -76,6 +79,7 @@ export default function Home() {
     selectedPresetId: 'normal',
     bonusAmount: 30_000_000,
   });
+  const [overtimeState, setOvertimeState] = useState<OvertimeTabState>(DEFAULT_OVERTIME_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -93,6 +97,9 @@ export default function Home() {
     setFreelancerState(snapshot.tabs.freelancer);
     setSalaryComparisonState(snapshot.tabs.salaryComparison);
     setYearlyState(snapshot.tabs.yearlyComparison);
+    if (snapshot.tabs.overtime) {
+      setOvertimeState(snapshot.tabs.overtime);
+    }
   }, []);
 
   // Load state from URL on mount
@@ -192,11 +199,12 @@ export default function Home() {
       freelancer: freelancerState,
       salaryComparison: salaryComparisonState,
       yearlyComparison: yearlyState,
+      overtime: overtimeState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState]);
 
   // Calculate other income tax
   const otherIncomeTax = sharedState.otherIncome
@@ -210,6 +218,7 @@ export default function Home() {
     { id: 'freelancer' as TabType, label: 'Freelancer', icon: '👤' },
     { id: 'salary-compare' as TabType, label: 'So sánh lương', icon: '📊' },
     { id: 'yearly' as TabType, label: 'So sánh năm', icon: '📅' },
+    { id: 'overtime' as TabType, label: 'Tăng ca', icon: '⏰' },
     { id: 'insurance' as TabType, label: 'Bảo hiểm', icon: '🛡️' },
     { id: 'other-income' as TabType, label: 'Thu nhập khác', icon: '💼' },
     { id: 'table' as TabType, label: 'Biểu thuế', icon: '📈' },
@@ -354,6 +363,17 @@ export default function Home() {
               onStateChange={updateSharedState}
               tabState={yearlyState}
               onTabStateChange={setYearlyState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'overtime' && (
+          <div className="mb-8">
+            <OvertimeCalculator
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+              tabState={overtimeState}
+              onTabStateChange={setOvertimeState}
             />
           </div>
         )}

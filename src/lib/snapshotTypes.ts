@@ -5,6 +5,7 @@ import {
 } from './taxCalculator';
 import { CompanyOffer } from './salaryComparisonCalculator';
 import { IncomeFrequency } from './freelancerCalculator';
+import { OvertimeEntry, DEFAULT_WORKING_DAYS, DEFAULT_HOURS_PER_DAY } from './overtimeCalculator';
 
 /**
  * Tab-specific state types for each calculator tab
@@ -34,6 +35,16 @@ export interface YearlyComparisonTabState {
   bonusAmount: number;
 }
 
+// Overtime Calculator tab state
+export interface OvertimeTabState {
+  monthlySalary: number;
+  workingDaysPerMonth: number;
+  hoursPerDay: number;
+  entries: OvertimeEntry[];
+  includeHolidayBasePay: boolean;
+  useNewLaw: boolean;
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -42,6 +53,7 @@ export interface TabStates {
   freelancer: FreelancerTabState;
   salaryComparison: SalaryComparisonTabState;
   yearlyComparison: YearlyComparisonTabState;
+  overtime: OvertimeTabState;
 }
 
 /**
@@ -102,11 +114,21 @@ export const DEFAULT_YEARLY_COMPARISON_STATE: YearlyComparisonTabState = {
   bonusAmount: 0,
 };
 
+export const DEFAULT_OVERTIME_STATE: OvertimeTabState = {
+  monthlySalary: 0,
+  workingDaysPerMonth: DEFAULT_WORKING_DAYS,
+  hoursPerDay: DEFAULT_HOURS_PER_DAY,
+  entries: [],
+  includeHolidayBasePay: true,
+  useNewLaw: true,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
   salaryComparison: DEFAULT_SALARY_COMPARISON_STATE,
   yearlyComparison: DEFAULT_YEARLY_COMPARISON_STATE,
+  overtime: DEFAULT_OVERTIME_STATE,
 };
 
 /**
@@ -179,6 +201,10 @@ export function createSnapshot(
         ...DEFAULT_YEARLY_COMPARISON_STATE,
         ...(tabStates?.yearlyComparison || {}),
       },
+      overtime: {
+        ...DEFAULT_OVERTIME_STATE,
+        ...(tabStates?.overtime || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -246,6 +272,10 @@ export function mergeSnapshotWithDefaults(
       yearlyComparison: {
         ...DEFAULT_YEARLY_COMPARISON_STATE,
         ...(partial.tabs?.yearlyComparison || {}),
+      },
+      overtime: {
+        ...DEFAULT_OVERTIME_STATE,
+        ...(partial.tabs?.overtime || {}),
       },
     },
     meta: {
