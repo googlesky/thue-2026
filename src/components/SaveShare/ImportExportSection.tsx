@@ -31,7 +31,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
       console.error('Export failed:', error);
       setImportResult({
         success: false,
-        message: 'Khong the xuat file',
+        message: 'Không thể xuất file',
       });
     }
   };
@@ -58,13 +58,13 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
       if (result.success) {
         setImportResult({
           success: true,
-          message: `Da nhap thanh cong ${result.count} ban luu`,
+          message: `Đã nhập thành công ${result.count} bản lưu`,
         });
         onImportSuccess?.();
       } else {
         setImportResult({
           success: false,
-          message: result.error || 'Khong the nhap file',
+          message: result.error || 'Không thể nhập file',
         });
       }
 
@@ -74,7 +74,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
       console.error('Import failed:', error);
       setImportResult({
         success: false,
-        message: 'File khong hop le',
+        message: 'File không hợp lệ',
       });
       setTimeout(() => setImportResult(null), 5000);
     }
@@ -100,7 +100,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
     } else {
       setImportResult({
         success: false,
-        message: 'Vui long chon file JSON',
+        message: 'Vui lòng chọn file JSON',
       });
       setTimeout(() => setImportResult(null), 5000);
     }
@@ -110,9 +110,9 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
     <div className="p-4 space-y-4">
       {/* Export section */}
       <div>
-        <h4 className="font-medium text-gray-800 mb-2">Xuat du lieu</h4>
+        <h4 className="font-medium text-gray-800 mb-2">Xuất dữ liệu</h4>
         <p className="text-sm text-gray-600 mb-3">
-          Luu tat ca cac ban luu thanh file JSON de sao luu hoac chuyen sang thiet bi khac.
+          Lưu tất cả các bản lưu thành file JSON để sao lưu hoặc chuyển sang thiết bị khác.
         </p>
         <button
           onClick={handleExport}
@@ -126,7 +126,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
               d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          Xuat file JSON
+          Xuất file JSON
         </button>
       </div>
 
@@ -135,9 +135,9 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
 
       {/* Import section */}
       <div>
-        <h4 className="font-medium text-gray-800 mb-2">Nhap du lieu</h4>
+        <h4 className="font-medium text-gray-800 mb-2">Nhập dữ liệu</h4>
         <p className="text-sm text-gray-600 mb-3">
-          Khoi phuc cac ban luu tu file JSON da xuat truoc do.
+          Khôi phục các bản lưu từ file JSON đã xuất trước đó.
         </p>
 
         {/* File input (hidden) */}
@@ -174,14 +174,14 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
             />
           </svg>
           <p className="text-sm text-gray-600 mb-2">
-            Keo tha file JSON vao day hoac
+            Kéo thả file JSON vào đây hoặc
           </p>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors"
           >
-            Chon file
+            Chọn file
           </button>
         </div>
 
@@ -227,7 +227,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
             />
           </svg>
           <p className="text-xs text-blue-800">
-            Du lieu duoc luu tru tren thiet bi nay. Xuat file de sao luu hoac chuyen sang thiet bi khac.
+            Dữ liệu được lưu trữ trên thiết bị này. Xuất file để sao lưu hoặc chuyển sang thiết bị khác.
           </p>
         </div>
       </div>

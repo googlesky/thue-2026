@@ -57,7 +57,7 @@ export default function NamedSavesSection({
             d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
           />
         </svg>
-        Luu tinh toan hien tai
+        Lưu tính toán hiện tại
       </button>
 
       {/* Saves list */}
@@ -71,8 +71,8 @@ export default function NamedSavesSection({
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p>Chua co ban luu nao</p>
-          <p className="text-sm mt-1">Luu tinh toan de truy cap sau</p>
+          <p>Chưa có bản lưu nào</p>
+          <p className="text-sm mt-1">Lưu tính toán để truy cập sau</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -103,7 +103,7 @@ export default function NamedSavesSection({
                   <button
                     onClick={() => handleLoad(save)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    title="Tai"
+                    title="Tải"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -120,20 +120,20 @@ export default function NamedSavesSection({
                         onClick={() => handleDelete(save.id)}
                         className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                       >
-                        Xac nhan
+                        Xác nhận
                       </button>
                       <button
                         onClick={() => setDeleteConfirmId(null)}
                         className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
                       >
-                        Huy
+                        Hủy
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setDeleteConfirmId(save.id)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Xoa"
+                      title="Xóa"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
