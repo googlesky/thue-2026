@@ -224,6 +224,12 @@ export default function FreelancerComparison({
       {/* Results */}
       {result ? (
         <div className="space-y-6">
+          {/* Debug - remove after testing */}
+          <div className="text-xs text-gray-400 bg-gray-100 p-2 rounded">
+            Debug: region={region}, hasIns={hasInsurance.toString()},
+            empIns={result.employee.insurance}, empNet={result.employee.net}
+          </div>
+
           {/* Summary Card */}
           <div className={`rounded-xl p-4 ${result.comparison.freelancerBetter ? 'bg-green-50 border-2 border-green-400' : 'bg-blue-50 border-2 border-blue-400'}`}>
             <div className="flex items-center gap-3">
