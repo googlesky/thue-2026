@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SharedTaxState,
   RegionType,
@@ -29,44 +29,45 @@ export default function EmployerCostCalculator({
   tabState,
   onTabStateChange,
 }: EmployerCostCalculatorProps) {
-  const isLocalChange = useRef(false);
-
+  // Local state
   const [grossSalary, setGrossSalary] = useState(sharedState?.grossIncome || 30_000_000);
-  const [useDeclaredSalary, setUseDeclaredSalary] = useState(false);
+  const [useDeclaredSalary, setUseDeclaredSalary] = useState(sharedState?.declaredSalary !== undefined);
   const [declaredSalary, setDeclaredSalary] = useState(sharedState?.declaredSalary || 0);
-  const [dependents, setDependents] = useState(sharedState?.dependents || 0);
-  const [region, setRegion] = useState<RegionType>(sharedState?.region || 1);
+  const [dependents, setDependents] = useState(sharedState?.dependents ?? 0);
+  const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
-    sharedState?.insuranceOptions || DEFAULT_INSURANCE_OPTIONS
+    sharedState?.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS
   );
   const [allowances, setAllowances] = useState<AllowancesState>(
-    sharedState?.allowances || DEFAULT_ALLOWANCES
+    sharedState?.allowances ?? DEFAULT_ALLOWANCES
   );
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
-  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
+  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? false);
 
-  // Sync từ shared state
+  // Sync from shared state
   useEffect(() => {
-    if (sharedState && !isLocalChange.current) {
-      if (sharedState.grossIncome > 0) {
-        setGrossSalary(sharedState.grossIncome);
-      }
+    if (sharedState) {
+      if (sharedState.grossIncome > 0) setGrossSalary(sharedState.grossIncome);
       setDependents(sharedState.dependents);
       setRegion(sharedState.region);
-      setInsuranceOptions(sharedState.insuranceOptions);
+      if (sharedState.insuranceOptions) setInsuranceOptions(sharedState.insuranceOptions);
+      if (sharedState.allowances) setAllowances(sharedState.allowances);
 
-      // Sync declared salary - consistent with TaxInput and GrossNetConverter
+      // Sync declared salary
       const hasDeclared = sharedState.declaredSalary !== undefined;
       setUseDeclaredSalary(hasDeclared);
       if (hasDeclared && sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
       }
-
-      // Sync allowances
-      setAllowances(sharedState.allowances ?? DEFAULT_ALLOWANCES);
     }
-    isLocalChange.current = false;
-  }, [sharedState]);
+  }, [
+    sharedState?.grossIncome,
+    sharedState?.dependents,
+    sharedState?.region,
+    sharedState?.insuranceOptions,
+    sharedState?.allowances,
+    sharedState?.declaredSalary,
+  ]);
 
   // Sync from tab state
   useEffect(() => {
@@ -74,41 +75,10 @@ export default function EmployerCostCalculator({
       setIncludeUnionFee(tabState.includeUnionFee);
       setUseNewLaw(tabState.useNewLaw);
     }
-  }, [tabState]);
+  }, [tabState?.includeUnionFee, tabState?.useNewLaw]);
 
-  // Tính toán kết quả
-  const result = useMemo(() => {
-    if (grossSalary <= 0) return null;
-
-    return getFullEmployerCostResult({
-      grossIncome: grossSalary,
-      declaredSalary: useDeclaredSalary ? declaredSalary : undefined,
-      dependents,
-      region,
-      insuranceOptions,
-      includeUnionFee,
-      useNewLaw,
-      allowances,
-    });
-  }, [grossSalary, useDeclaredSalary, declaredSalary, dependents, region, insuranceOptions, includeUnionFee, useNewLaw, allowances]);
-
-  const handleGrossChange = (value: string) => {
-    const numValue = parseCurrency(value);
-    isLocalChange.current = true;
-    setGrossSalary(numValue);
-    onStateChange?.({ grossIncome: numValue });
-  };
-
-  const handleDeclaredChange = (value: string) => {
-    const numValue = parseCurrency(value);
-    isLocalChange.current = true;
-    setDeclaredSalary(numValue);
-    onStateChange?.({ declaredSalary: numValue });
-  };
-
+  // Reset declared salary when all insurance is toggled off
   const hasInsurance = insuranceOptions.bhxh || insuranceOptions.bhyt || insuranceOptions.bhtn;
-
-  // Reset declared salary when insurance is toggled off
   useEffect(() => {
     if (!hasInsurance && useDeclaredSalary) {
       setUseDeclaredSalary(false);
@@ -116,6 +86,59 @@ export default function EmployerCostCalculator({
       onStateChange?.({ declaredSalary: undefined });
     }
   }, [hasInsurance, useDeclaredSalary, onStateChange]);
+
+  // Direct calculation - no useMemo
+  const result = grossSalary > 0
+    ? getFullEmployerCostResult({
+        grossIncome: grossSalary,
+        declaredSalary: useDeclaredSalary ? declaredSalary : undefined,
+        dependents,
+        region,
+        insuranceOptions,
+        includeUnionFee,
+        useNewLaw,
+        allowances,
+      })
+    : null;
+
+  // Handlers
+  const handleGrossChange = (value: string) => {
+    const numValue = parseCurrency(value);
+    setGrossSalary(numValue);
+    onStateChange?.({ grossIncome: numValue });
+  };
+
+  const handleDeclaredChange = (value: string) => {
+    const numValue = parseCurrency(value);
+    setDeclaredSalary(numValue);
+    onStateChange?.({ declaredSalary: numValue });
+  };
+
+  const handleRegionChange = (value: RegionType) => {
+    setRegion(value);
+    onStateChange?.({ region: value });
+  };
+
+  const handleDependentsChange = (value: number) => {
+    setDependents(value);
+    onStateChange?.({ dependents: value });
+  };
+
+  const handleInsuranceChange = (key: keyof InsuranceOptions, checked: boolean) => {
+    const newOptions = { ...insuranceOptions, [key]: checked };
+    setInsuranceOptions(newOptions);
+    onStateChange?.({ insuranceOptions: newOptions });
+  };
+
+  const handleUnionFeeChange = (checked: boolean) => {
+    setIncludeUnionFee(checked);
+    onTabStateChange?.({ includeUnionFee: checked, useNewLaw });
+  };
+
+  const handleLawChange = (newLaw: boolean) => {
+    setUseNewLaw(newLaw);
+    onTabStateChange?.({ includeUnionFee, useNewLaw: newLaw });
+  };
 
   return (
     <div className="card">
@@ -183,12 +206,7 @@ export default function EmployerCostCalculator({
             <label className="block text-sm font-medium text-gray-700 mb-1">Vùng lương</label>
             <select
               value={region}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) as RegionType;
-                isLocalChange.current = true;
-                setRegion(value);
-                onStateChange?.({ region: value });
-              }}
+              onChange={(e) => handleRegionChange(parseInt(e.target.value) as RegionType)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {Object.entries(REGIONAL_MINIMUM_WAGES).map(([key, info]) => (
@@ -204,12 +222,7 @@ export default function EmployerCostCalculator({
             <label className="block text-sm font-medium text-gray-700 mb-1">Người phụ thuộc</label>
             <select
               value={dependents}
-              onChange={(e) => {
-                const value = parseInt(e.target.value);
-                isLocalChange.current = true;
-                setDependents(value);
-                onStateChange?.({ dependents: value });
-              }}
+              onChange={(e) => handleDependentsChange(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {[0, 1, 2, 3, 4, 5].map(n => (
@@ -225,11 +238,7 @@ export default function EmployerCostCalculator({
               <input
                 type="checkbox"
                 checked={insuranceOptions.bhxh}
-                onChange={(e) => {
-                  const newOptions = { ...insuranceOptions, bhxh: e.target.checked };
-                  setInsuranceOptions(newOptions);
-                  onStateChange?.({ insuranceOptions: newOptions });
-                }}
+                onChange={(e) => handleInsuranceChange('bhxh', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
               <span className="text-sm">BHXH (NLĐ: 8%, DN: 17.5%)</span>
@@ -238,11 +247,7 @@ export default function EmployerCostCalculator({
               <input
                 type="checkbox"
                 checked={insuranceOptions.bhyt}
-                onChange={(e) => {
-                  const newOptions = { ...insuranceOptions, bhyt: e.target.checked };
-                  setInsuranceOptions(newOptions);
-                  onStateChange?.({ insuranceOptions: newOptions });
-                }}
+                onChange={(e) => handleInsuranceChange('bhyt', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
               <span className="text-sm">BHYT (NLĐ: 1.5%, DN: 3%)</span>
@@ -251,11 +256,7 @@ export default function EmployerCostCalculator({
               <input
                 type="checkbox"
                 checked={insuranceOptions.bhtn}
-                onChange={(e) => {
-                  const newOptions = { ...insuranceOptions, bhtn: e.target.checked };
-                  setInsuranceOptions(newOptions);
-                  onStateChange?.({ insuranceOptions: newOptions });
-                }}
+                onChange={(e) => handleInsuranceChange('bhtn', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
               <span className="text-sm">BHTN (NLĐ: 1%, DN: 1%)</span>
@@ -267,11 +268,7 @@ export default function EmployerCostCalculator({
             <input
               type="checkbox"
               checked={includeUnionFee}
-              onChange={(e) => {
-                const value = e.target.checked;
-                setIncludeUnionFee(value);
-                onTabStateChange?.({ includeUnionFee: value, useNewLaw });
-              }}
+              onChange={(e) => handleUnionFeeChange(e.target.checked)}
               className="w-4 h-4 text-primary-600 border-gray-300 rounded"
             />
             <span className="text-sm text-gray-700">Phí công đoàn (DN: 2%)</span>
@@ -284,10 +281,7 @@ export default function EmployerCostCalculator({
               <input
                 type="radio"
                 checked={!useNewLaw}
-                onChange={() => {
-                  setUseNewLaw(false);
-                  onTabStateChange?.({ includeUnionFee, useNewLaw: false });
-                }}
+                onChange={() => handleLawChange(false)}
                 className="w-4 h-4 text-primary-600"
               />
               <span className="text-sm">Hiện hành (7 bậc)</span>
@@ -296,10 +290,7 @@ export default function EmployerCostCalculator({
               <input
                 type="radio"
                 checked={useNewLaw}
-                onChange={() => {
-                  setUseNewLaw(true);
-                  onTabStateChange?.({ includeUnionFee, useNewLaw: true });
-                }}
+                onChange={() => handleLawChange(true)}
                 className="w-4 h-4 text-primary-600"
               />
               <span className="text-sm">Mới 2026 (5 bậc)</span>
