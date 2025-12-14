@@ -40,6 +40,9 @@ export default function FreelancerComparison({
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region || 1);
+  const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
+    sharedState?.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS
+  );
   const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -52,6 +55,9 @@ export default function FreelancerComparison({
       setDependents(sharedState.dependents);
       setHasInsurance(sharedState.hasInsurance);
       setRegion(sharedState.region);
+      if (sharedState.insuranceOptions) {
+        setInsuranceOptions(sharedState.insuranceOptions);
+      }
     }
     isLocalChange.current = false;
   }, [sharedState]);
@@ -73,11 +79,11 @@ export default function FreelancerComparison({
       frequency,
       dependents,
       hasInsurance,
-      insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
+      insuranceOptions,
       region,
       useNewLaw,
     });
-  }, [grossIncome, frequency, dependents, hasInsurance, region, useNewLaw]);
+  }, [grossIncome, frequency, dependents, hasInsurance, insuranceOptions, region, useNewLaw]);
 
   const handleGrossChange = (value: string) => {
     const numValue = parseCurrency(value);
@@ -156,7 +162,7 @@ export default function FreelancerComparison({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Vùng lương</label>
           <select
-            value={region}
+            value={region.toString()}
             onChange={(e) => {
               const value = parseInt(e.target.value) as RegionType;
               isLocalChange.current = true;
@@ -165,8 +171,8 @@ export default function FreelancerComparison({
             }}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            {Object.entries(REGIONAL_MINIMUM_WAGES).map(([key, info]) => (
-              <option key={key} value={key}>{info.name}</option>
+            {([1, 2, 3, 4] as RegionType[]).map((r) => (
+              <option key={r} value={r.toString()}>{REGIONAL_MINIMUM_WAGES[r].name}</option>
             ))}
           </select>
         </div>
