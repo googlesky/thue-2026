@@ -47,6 +47,21 @@ const KEY_MAP: Record<string, string> = {
   salaryComparison: 'sc',
   yearlyComparison: 'yc',
   overtime: 'ot',
+  bonus: 'bn',
+  esop: 'es',
+
+  // BonusTabState
+  thirteenthMonthSalary: 'tm',
+  tetBonus: 'tt',
+  otherBonuses: 'obb',
+  selectedScenarioId: 'ssi',
+
+  // ESOPTabState
+  grantPrice: 'gp',
+  exercisePrice: 'ep',
+  numberOfShares: 'ns',
+  exerciseDate: 'ed',
+  selectedPeriodId: 'spi',
 
   // EmployerCostTabState
   includeUnionFee: 'uf',
@@ -200,6 +215,33 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
       ot.useNewLaw !== true
     ) {
       tabs.overtime = ot;
+    }
+  }
+
+  // Bonus tab state
+  if (snapshot.tabs.bonus) {
+    const bn = snapshot.tabs.bonus;
+    if (
+      bn.thirteenthMonthSalary !== 0 ||
+      bn.tetBonus !== 0 ||
+      bn.otherBonuses !== 0 ||
+      bn.selectedScenarioId !== null
+    ) {
+      tabs.bonus = bn;
+    }
+  }
+
+  // ESOP tab state
+  if (snapshot.tabs.esop) {
+    const es = snapshot.tabs.esop;
+    if (
+      es.grantPrice !== 0 ||
+      es.exercisePrice !== 0 ||
+      es.numberOfShares !== 0 ||
+      es.exerciseDate !== '' ||
+      es.selectedPeriodId !== null
+    ) {
+      tabs.esop = es;
     }
   }
 
