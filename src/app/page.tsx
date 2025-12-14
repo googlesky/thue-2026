@@ -62,6 +62,13 @@ const defaultSharedState: SharedTaxState = {
   otherIncome: DEFAULT_OTHER_INCOME,
 };
 
+// Valid tab types for hash navigation
+const VALID_TABS: TabType[] = [
+  'calculator', 'gross-net', 'overtime', 'annual-settlement',
+  'bonus-calculator', 'esop-calculator', 'employer-cost', 'freelancer',
+  'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history'
+];
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
@@ -128,12 +135,24 @@ export default function Home() {
   // Load state from URL on mount
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialized) {
-      // Try to load from hash first (new snapshot format)
       const hash = window.location.hash;
+
+      // Try to load from hash first (new snapshot format)
       if (hash.startsWith('#s=')) {
         const snapshot = decodeSnapshot(hash.slice(3));
         if (snapshot) {
           handleLoadSnapshot(snapshot);
+          window.history.replaceState(null, '', window.location.pathname);
+          setIsInitialized(true);
+          return;
+        }
+      }
+
+      // Handle simple hash navigation (e.g., #gross-net, #overtime)
+      if (hash.startsWith('#') && hash.length > 1) {
+        const tabId = hash.slice(1) as TabType;
+        if (VALID_TABS.includes(tabId)) {
+          setActiveTab(tabId);
           window.history.replaceState(null, '', window.location.pathname);
           setIsInitialized(true);
           return;
