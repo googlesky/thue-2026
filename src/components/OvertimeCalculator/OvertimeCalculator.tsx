@@ -276,12 +276,13 @@ export default function OvertimeCalculator({
                 type="number"
                 value={hoursPerDay}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value) || DEFAULT_HOURS_PER_DAY;
+                  const val = parseFloat(e.target.value) || DEFAULT_HOURS_PER_DAY;
                   setHoursPerDay(val);
                   updateTabState({ hoursPerDay: val });
                 }}
                 min={4}
                 max={12}
+                step={0.5}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
               />
             </div>

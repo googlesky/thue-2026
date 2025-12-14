@@ -175,10 +175,10 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
     dependentDeduction: 6_200_000,
     brackets: [
       { bracket: 1, rate: 5, minIncome: 0, maxIncome: 10_000_000 },
-      { bracket: 2, rate: 10, minIncome: 10_000_000, maxIncome: 20_000_000 },
-      { bracket: 3, rate: 20, minIncome: 20_000_000, maxIncome: 40_000_000 },
-      { bracket: 4, rate: 30, minIncome: 40_000_000, maxIncome: 80_000_000 },
-      { bracket: 5, rate: 35, minIncome: 80_000_000, maxIncome: null },
+      { bracket: 2, rate: 10, minIncome: 10_000_000, maxIncome: 30_000_000 },
+      { bracket: 3, rate: 20, minIncome: 30_000_000, maxIncome: 60_000_000 },
+      { bracket: 4, rate: 30, minIncome: 60_000_000, maxIncome: 100_000_000 },
+      { bracket: 5, rate: 35, minIncome: 100_000_000, maxIncome: null },
     ],
   },
 ];
