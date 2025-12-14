@@ -189,13 +189,13 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         </div>
 
         {/* Lương khai báo */}
-        <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+        <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
           <label className="flex items-center gap-3 cursor-pointer mb-3">
             <input
               type="checkbox"
               checked={useDeclaredSalary}
               onChange={(e) => setUseDeclaredSalary(e.target.checked)}
-              className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+              className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500"
             />
             <span className="text-sm font-medium text-gray-700">
               Lương khai báo khác lương thực
@@ -218,7 +218,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                 className="input-field"
                 placeholder="Ví dụ: lương thực 70tr, khai báo 50tr"
               />
-              <p className="text-xs text-orange-600 mt-1">
+              <p className="text-xs text-amber-600 mt-1">
                 Thuế và bảo hiểm sẽ tính trên mức lương khai báo này
               </p>
             </div>

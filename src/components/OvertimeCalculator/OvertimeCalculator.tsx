@@ -165,8 +165,14 @@ export default function OvertimeCalculator({
 
   return (
     <div className="card">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-800">Tính Lương Tăng Ca</h3>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg">
+          <span className="text-2xl">⏰</span>
+        </div>
+        <div className="flex-1">
+          <h2 className="text-xl font-bold text-gray-900">Tính lương tăng ca</h2>
+          <p className="text-sm text-gray-500">Tính thu nhập và thuế từ làm thêm giờ</p>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Luật thuế:</span>
           <button
@@ -333,22 +339,19 @@ export default function OvertimeCalculator({
           )}
 
           {entries.length === 0 && (
-            <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
-              <svg
-                className="w-12 h-12 mx-auto mb-2 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="text-sm">Chưa có giờ tăng ca</p>
-              <p className="text-xs mt-1">Bấm nút phía trên để thêm</p>
+            <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+              <div className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Chưa có lịch tăng ca</h3>
+              <p className="text-gray-500">Thêm ca làm thêm để tính thu nhập</p>
             </div>
           )}
 

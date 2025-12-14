@@ -491,7 +491,16 @@ export default function ESOPCalculator({
       {/* Empty State */}
       {!hasValidInput && (
         <div className="card text-center py-12">
-          <div className="text-6xl mb-4">📈</div>
+          <div className="w-16 h-16 mx-auto mb-4 text-gray-300">
+            <svg className="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+              />
+            </svg>
+          </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Nhập thông tin ESOP</h3>
           <p className="text-gray-500">
             Điền giá cấp quyền, giá thực hiện và số lượng cổ phiếu để tính thuế

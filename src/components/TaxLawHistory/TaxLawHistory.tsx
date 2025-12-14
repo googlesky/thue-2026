@@ -10,6 +10,7 @@ import {
   type TaxLawMilestone,
   type TaxLawPeriod,
 } from '@/lib/taxLawHistory';
+import Tooltip from '@/components/ui/Tooltip';
 
 function TimelineItem({ milestone, isLast }: { milestone: TaxLawMilestone; isLast: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -150,8 +151,30 @@ function DeductionHistory() {
         <thead>
           <tr className="border-b border-gray-200">
             <th className="text-left py-2 px-3 font-medium text-gray-500">Giai đoạn</th>
-            <th className="text-right py-2 px-3 font-medium text-gray-500">Giảm trừ bản thân</th>
-            <th className="text-right py-2 px-3 font-medium text-gray-500">Giảm trừ NPT</th>
+            <th className="text-right py-2 px-3 font-medium text-gray-500">
+              <div className="flex items-center justify-end gap-1">
+                Giảm trừ bản thân
+                <Tooltip content="Mức thu nhập được miễn thuế dành cho người nộp thuế">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </Tooltip>
+              </div>
+            </th>
+            <th className="text-right py-2 px-3 font-medium text-gray-500">
+              <div className="flex items-center justify-end gap-1">
+                Giảm trừ NPT
+                <Tooltip content="Mức giảm trừ cho mỗi người phụ thuộc được đăng ký">
+                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                </Tooltip>
+              </div>
+            </th>
             <th className="text-right py-2 px-3 font-medium text-gray-500">% Tăng</th>
           </tr>
         </thead>
@@ -293,9 +316,25 @@ export default function TaxLawHistory() {
       {/* Bracket Comparison Section */}
       {activeSection === 'comparison' && (
         <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4">So sánh biểu thuế lũy tiến</h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-1">
+            So sánh biểu thuế lũy tiến
+            <Tooltip content="Thuế suất tăng dần theo mức thu nhập chịu thuế">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </Tooltip>
+          </h3>
+          <p className="text-sm text-gray-600 mb-4 flex items-center gap-1">
             Thu nhập tính thuế = Thu nhập chịu thuế - Giảm trừ gia cảnh
+            <Tooltip content="Thu nhập sau khi đã trừ các khoản giảm trừ">
+              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </Tooltip>
           </p>
           <BracketComparison oldPeriod={oldPeriod} newPeriod={newPeriod} />
 
