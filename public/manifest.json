@@ -1,0 +1,34 @@
+{
+  "name": "Tính Thuế TNCN 2026",
+  "short_name": "Thuế TNCN",
+  "description": "Công cụ tính thuế thu nhập cá nhân Việt Nam. So sánh thuế TNCN giữa luật hiện hành và luật mới 2026.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["finance", "utilities"],
+  "lang": "vi",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}
