@@ -188,7 +188,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           </div>
         </div>
 
-        {/* Lương khai báo */}
+        {/* Lương đóng bảo hiểm */}
         <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
           <label className="flex items-center gap-3 cursor-pointer mb-3">
             <input
@@ -198,14 +198,14 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
               className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500"
             />
             <span className="text-sm font-medium text-gray-700">
-              Lương khai báo khác lương thực
+              Lương đóng BH khác lương thực
             </span>
           </label>
           {useDeclaredSalary && (
             <div>
               <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-                <span>Lương khai báo với nhà nước (VNĐ)</span>
-                <Tooltip content="Mức lương đăng ký đóng bảo hiểm (nếu khác lương thực nhận)">
+                <span>Lương đóng BHXH, BHYT, BHTN (VNĐ)</span>
+                <Tooltip content="Mức lương công ty đăng ký đóng bảo hiểm. Bảo hiểm sẽ tính trên mức này, còn thuế TNCN vẫn tính trên lương thực nhận.">
                   <span className="text-gray-400 hover:text-gray-600 cursor-help">
                     <InfoIcon />
                   </span>
@@ -216,10 +216,10 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                 value={declaredSalary ? formatNumber(parseInt(declaredSalary, 10) || 0) : ''}
                 onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
                 className="input-field"
-                placeholder="Ví dụ: lương thực 70tr, khai báo 50tr"
+                placeholder="Ví dụ: lương thực 30tr, đóng BH trên 5tr"
               />
               <p className="text-xs text-amber-600 mt-1">
-                Thuế và bảo hiểm sẽ tính trên mức lương khai báo này
+                Bảo hiểm tính trên mức này • Thuế tính trên lương thực ({grossIncome ? formatNumber(parseInt(grossIncome, 10)) : '0'}đ)
               </p>
             </div>
           )}
