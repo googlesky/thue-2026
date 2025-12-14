@@ -78,6 +78,89 @@ export interface InsuranceOptions {
   bhtn: boolean; // BHTN 1%
 }
 
+// ===== PHỤ CẤP (ALLOWANCES) =====
+
+// Phụ cấp miễn thuế và chịu thuế
+export interface AllowancesState {
+  // Miễn thuế hoàn toàn
+  meal: number;           // Tiền ăn trưa/ăn ca
+  phone: number;          // Phụ cấp điện thoại
+  transport: number;      // Xăng xe, đi lại
+  hazardous: number;      // Phụ cấp độc hại (nếu đủ điều kiện)
+
+  // Miễn thuế có giới hạn
+  clothing: number;       // Trang phục (max 5tr/năm miễn thuế)
+
+  // Chịu thuế hoàn toàn
+  housing: number;        // Tiền thuê nhà
+  position: number;       // Phụ cấp chức vụ/trách nhiệm
+}
+
+export const DEFAULT_ALLOWANCES: AllowancesState = {
+  meal: 0,
+  phone: 0,
+  transport: 0,
+  hazardous: 0,
+  clothing: 0,
+  housing: 0,
+  position: 0,
+};
+
+// Giới hạn phụ cấp miễn thuế
+export const ALLOWANCE_LIMITS = {
+  clothingYearlyMax: 5_000_000,   // 5tr/năm (Thông tư 111/2013)
+  clothingMonthlyMax: 416_667,    // ~417k/tháng
+};
+
+// Tính toán phụ cấp miễn thuế và chịu thuế
+export interface AllowancesBreakdown {
+  taxExempt: number;      // Tổng miễn thuế
+  taxable: number;        // Tổng chịu thuế
+  total: number;          // Tổng cộng
+  clothingExempt: number; // Phần trang phục miễn thuế
+  clothingTaxable: number; // Phần trang phục chịu thuế (vượt mức)
+}
+
+export function calculateAllowancesBreakdown(allowances?: AllowancesState): AllowancesBreakdown {
+  if (!allowances) {
+    return {
+      taxExempt: 0,
+      taxable: 0,
+      total: 0,
+      clothingExempt: 0,
+      clothingTaxable: 0,
+    };
+  }
+
+  // Validate and default all fields to 0 if undefined/null (prevent NaN)
+  const meal = allowances.meal ?? 0;
+  const phone = allowances.phone ?? 0;
+  const transport = allowances.transport ?? 0;
+  const hazardous = allowances.hazardous ?? 0;
+  const clothing = allowances.clothing ?? 0;
+  const housing = allowances.housing ?? 0;
+  const position = allowances.position ?? 0;
+
+  // Phần trang phục miễn thuế (tối đa 417k/tháng)
+  const clothingExempt = Math.min(clothing, ALLOWANCE_LIMITS.clothingMonthlyMax);
+  // Phần trang phục vượt mức → chịu thuế
+  const clothingTaxable = Math.max(0, clothing - ALLOWANCE_LIMITS.clothingMonthlyMax);
+
+  // Tổng miễn thuế
+  const taxExempt = meal + phone + transport + hazardous + clothingExempt;
+
+  // Tổng chịu thuế
+  const taxable = housing + position + clothingTaxable;
+
+  return {
+    taxExempt,
+    taxable,
+    total: taxExempt + taxable,
+    clothingExempt,
+    clothingTaxable,
+  };
+}
+
 // Shared state interface for all tabs
 export interface SharedTaxState {
   grossIncome: number;
@@ -90,6 +173,8 @@ export interface SharedTaxState {
   pensionContribution: number;
   // Multiple income sources
   otherIncome?: OtherIncomeState;
+  // Phụ cấp
+  allowances?: AllowancesState;
 }
 
 // Other income sources
@@ -134,6 +219,7 @@ export interface TaxInput {
   insuranceOptions?: InsuranceOptions; // Tùy chọn từng loại bảo hiểm
   region?: RegionType; // Vùng lương tối thiểu
   pensionContribution?: number; // Quỹ hưu trí tự nguyện (tối đa 1tr/tháng)
+  allowances?: AllowancesState; // Phụ cấp (ăn trưa, điện thoại, độc hại...)
 }
 
 export interface TaxResult {
@@ -149,6 +235,9 @@ export interface TaxResult {
   netIncome: number;
   effectiveRate: number;
   taxBreakdown: TaxBreakdownItem[];
+  // Phụ cấp
+  allowancesBreakdown?: AllowancesBreakdown;
+  totalIncome: number; // grossIncome + tổng phụ cấp
 }
 
 export interface TaxBreakdownItem {
@@ -272,6 +361,7 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     hasInsurance = true,
     insuranceOptions,
     region = 1,
+    allowances,
   } = input;
 
   // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
@@ -284,6 +374,9 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
+  // Tính phụ cấp miễn thuế và chịu thuế
+  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
+
   // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
   const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
   const insuranceDeduction = insuranceDetail.total;
@@ -291,13 +384,14 @@ export function calculateOldTax(input: TaxInput): TaxResult {
   const dependentDeduction = dependents * OLD_DEDUCTIONS.dependent;
 
   const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
-  // Tính thuế dựa trên LƯƠNG THỰC (grossIncome), không phải lương đóng BH
-  const taxableIncome = Math.max(0, grossIncome - totalDeductions);
+  // Thu nhập tính thuế = lương thực + phụ cấp chịu thuế - các khoản giảm trừ
+  const taxableIncome = Math.max(0, grossIncome + allowancesBreakdown.taxable - totalDeductions);
 
   const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, OLD_TAX_BRACKETS);
-  // Thu nhập thực nhận = lương thực - bảo hiểm (theo khai báo) - thuế
-  const netIncome = grossIncome - insuranceDeduction - tax;
-  const effectiveRate = grossIncome > 0 ? (tax / grossIncome) * 100 : 0;
+  // Thu nhập thực nhận = lương + tổng phụ cấp - bảo hiểm - thuế
+  const totalIncome = grossIncome + allowancesBreakdown.total;
+  const netIncome = totalIncome - insuranceDeduction - tax;
+  const effectiveRate = totalIncome > 0 ? (tax / totalIncome) * 100 : 0;
 
   return {
     grossIncome,
@@ -312,6 +406,8 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     netIncome,
     effectiveRate,
     taxBreakdown: breakdown,
+    allowancesBreakdown,
+    totalIncome,
   };
 }
 
@@ -324,6 +420,7 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     hasInsurance = true,
     insuranceOptions,
     region = 1,
+    allowances,
   } = input;
 
   // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
@@ -336,6 +433,9 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
+  // Tính phụ cấp miễn thuế và chịu thuế
+  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
+
   // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
   const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
   const insuranceDeduction = insuranceDetail.total;
@@ -343,13 +443,14 @@ export function calculateNewTax(input: TaxInput): TaxResult {
   const dependentDeduction = dependents * NEW_DEDUCTIONS.dependent;
 
   const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
-  // Tính thuế dựa trên LƯƠNG THỰC (grossIncome), không phải lương đóng BH
-  const taxableIncome = Math.max(0, grossIncome - totalDeductions);
+  // Thu nhập tính thuế = lương thực + phụ cấp chịu thuế - các khoản giảm trừ
+  const taxableIncome = Math.max(0, grossIncome + allowancesBreakdown.taxable - totalDeductions);
 
   const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, NEW_TAX_BRACKETS);
-  // Thu nhập thực nhận = lương thực - bảo hiểm (theo khai báo) - thuế
-  const netIncome = grossIncome - insuranceDeduction - tax;
-  const effectiveRate = grossIncome > 0 ? (tax / grossIncome) * 100 : 0;
+  // Thu nhập thực nhận = lương + tổng phụ cấp - bảo hiểm - thuế
+  const totalIncome = grossIncome + allowancesBreakdown.total;
+  const netIncome = totalIncome - insuranceDeduction - tax;
+  const effectiveRate = totalIncome > 0 ? (tax / totalIncome) * 100 : 0;
 
   return {
     grossIncome,
@@ -364,6 +465,8 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     netIncome,
     effectiveRate,
     taxBreakdown: breakdown,
+    allowancesBreakdown,
+    totalIncome,
   };
 }
 
@@ -572,6 +675,7 @@ export function getFullEmployerCostResult(input: {
   insuranceOptions: InsuranceOptions;
   includeUnionFee?: boolean;
   useNewLaw?: boolean;
+  allowances?: AllowancesState;
 }): EmployerCostResult {
   const {
     grossIncome,
@@ -581,6 +685,7 @@ export function getFullEmployerCostResult(input: {
     insuranceOptions,
     includeUnionFee = false,
     useNewLaw = true,
+    allowances,
   } = input;
 
   // Sử dụng lương khai báo cho bảo hiểm nếu có
@@ -600,6 +705,7 @@ export function getFullEmployerCostResult(input: {
         dependents,
         insuranceOptions,
         region,
+        allowances,
       })
     : calculateOldTax({
         grossIncome,
@@ -607,6 +713,7 @@ export function getFullEmployerCostResult(input: {
         dependents,
         insuranceOptions,
         region,
+        allowances,
       });
 
   const totalEmployerCost = grossIncome + employerInsurance.total;

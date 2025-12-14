@@ -11,6 +11,8 @@ import {
   getFullEmployerCostResult,
   formatNumber,
   parseCurrency,
+  AllowancesState,
+  DEFAULT_ALLOWANCES,
 } from '@/lib/taxCalculator';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
@@ -37,6 +39,9 @@ export default function EmployerCostCalculator({
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
     sharedState?.insuranceOptions || DEFAULT_INSURANCE_OPTIONS
   );
+  const [allowances, setAllowances] = useState<AllowancesState>(
+    sharedState?.allowances || DEFAULT_ALLOWANCES
+  );
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
   const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
 
@@ -56,6 +61,9 @@ export default function EmployerCostCalculator({
       if (hasDeclared && sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
       }
+
+      // Sync allowances
+      setAllowances(sharedState.allowances ?? DEFAULT_ALLOWANCES);
     }
     isLocalChange.current = false;
   }, [sharedState]);
@@ -80,8 +88,9 @@ export default function EmployerCostCalculator({
       insuranceOptions,
       includeUnionFee,
       useNewLaw,
+      allowances,
     });
-  }, [grossSalary, useDeclaredSalary, declaredSalary, dependents, region, insuranceOptions, includeUnionFee, useNewLaw]);
+  }, [grossSalary, useDeclaredSalary, declaredSalary, dependents, region, insuranceOptions, includeUnionFee, useNewLaw, allowances]);
 
   const handleGrossChange = (value: string) => {
     const numValue = parseCurrency(value);
