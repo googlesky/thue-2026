@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import { formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface TaxInputProps {
@@ -14,6 +14,7 @@ interface TaxInputProps {
     insuranceOptions: InsuranceOptions;
     region: RegionType;
     pensionContribution: number;
+    allowances?: AllowancesState;
   }) => void;
   initialValues?: {
     grossIncome: number;
@@ -24,6 +25,7 @@ interface TaxInputProps {
     insuranceOptions: InsuranceOptions;
     region: RegionType;
     pensionContribution: number;
+    allowances?: AllowancesState;
   };
 }
 
@@ -50,6 +52,10 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
     initialValues?.pensionContribution?.toString() ?? '0'
   );
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [showAllowances, setShowAllowances] = useState<boolean>(false);
+  const [allowances, setAllowances] = useState<AllowancesState>(
+    initialValues?.allowances ?? { ...DEFAULT_ALLOWANCES }
+  );
 
   // Track if we're syncing from external changes
   const isExternalUpdate = useRef(false);
@@ -67,6 +73,11 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
       setInsuranceOptions(initialValues.insuranceOptions);
       setRegion(initialValues.region);
       setPensionContribution(initialValues.pensionContribution.toString());
+      if (initialValues.allowances) {
+        setAllowances(initialValues.allowances);
+        const hasAnyAllowance = Object.values(initialValues.allowances).some(v => v !== 0);
+        setShowAllowances(hasAnyAllowance);
+      }
       setTimeout(() => {
         isExternalUpdate.current = false;
       }, 0);
@@ -102,6 +113,14 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
     }));
   };
 
+  const handleAllowanceChange = (field: keyof AllowancesState, value: string) => {
+    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+    setAllowances(prev => ({
+      ...prev,
+      [field]: numericValue,
+    }));
+  };
+
   // Sync hasInsurance with individual options
   useEffect(() => {
     const allEnabled = insuranceOptions.bhxh && insuranceOptions.bhyt && insuranceOptions.bhtn;
@@ -118,6 +137,8 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
     const declared = useDeclaredSalary ? (parseInt(declaredSalary, 10) || income) : undefined;
     const other = parseInt(otherDeductions, 10) || 0;
     const pension = parseInt(pensionContribution, 10) || 0;
+    // Only include allowances if showAllowances is enabled
+    const effectiveAllowances = showAllowances ? allowances : undefined;
     onCalculate({
       grossIncome: income,
       declaredSalary: declared,
@@ -127,8 +148,9 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
       insuranceOptions,
       region,
       pensionContribution: pension,
+      allowances: effectiveAllowances,
     });
-  }, [grossIncome, useDeclaredSalary, declaredSalary, dependents, otherDeductions, hasInsurance, insuranceOptions, region, pensionContribution, onCalculate]);
+  }, [grossIncome, useDeclaredSalary, declaredSalary, dependents, otherDeductions, hasInsurance, insuranceOptions, region, pensionContribution, showAllowances, allowances, onCalculate]);
 
   const presetIncomes = [15_000_000, 20_000_000, 30_000_000, 50_000_000, 80_000_000, 100_000_000];
 
@@ -385,6 +407,210 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                 Đóng góp qua các tổ chức từ thiện được công nhận
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Toggle allowances section */}
+        <button
+          onClick={() => setShowAllowances(!showAllowances)}
+          className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1"
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showAllowances ? 'rotate-90' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Phụ cấp (ăn trưa, điện thoại, độc hại...)
+        </button>
+
+        {showAllowances && (
+          <div className="space-y-4 bg-green-50 rounded-lg p-4 border border-green-200">
+            {/* Tax-exempt allowances */}
+            <div>
+              <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Phụ cấp MIỄN THUẾ
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Meal allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Tiền ăn trưa/ăn ca</span>
+                    <Tooltip content="Không giới hạn (từ 15/6/2025). Phải ghi trong HĐLĐ hoặc quy chế công ty.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.meal ? formatNumber(allowances.meal) : ''}
+                    onChange={(e) => handleAllowanceChange('meal', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                </div>
+
+                {/* Phone allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Phụ cấp điện thoại</span>
+                    <Tooltip content="Không giới hạn. Phục vụ công việc, cần có hóa đơn.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.phone ? formatNumber(allowances.phone) : ''}
+                    onChange={(e) => handleAllowanceChange('phone', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                </div>
+
+                {/* Transport allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Xăng xe, đi lại</span>
+                    <Tooltip content="Không giới hạn. Phục vụ công việc, cần chứng từ.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.transport ? formatNumber(allowances.transport) : ''}
+                    onChange={(e) => handleAllowanceChange('transport', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                </div>
+
+                {/* Clothing allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Phụ cấp trang phục</span>
+                    <Tooltip content={`Miễn thuế tối đa ${formatNumber(ALLOWANCE_LIMITS.clothingMonthlyMax)}đ/tháng (5tr/năm). Phần vượt chịu thuế.`}>
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.clothing ? formatNumber(allowances.clothing) : ''}
+                    onChange={(e) => handleAllowanceChange('clothing', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                  {allowances.clothing > ALLOWANCE_LIMITS.clothingMonthlyMax && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Vượt {formatNumber(allowances.clothing - ALLOWANCE_LIMITS.clothingMonthlyMax)}đ sẽ chịu thuế
+                    </p>
+                  )}
+                </div>
+
+                {/* Hazardous allowance */}
+                <div className="sm:col-span-2">
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Phụ cấp độc hại, nguy hiểm</span>
+                    <Tooltip content="Miễn thuế nếu thuộc danh mục nghề độc hại (TT 11/2020). Mức 5-15% lương cơ sở.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.hazardous ? formatNumber(allowances.hazardous) : ''}
+                    onChange={(e) => handleAllowanceChange('hazardous', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng (nếu đủ điều kiện)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Cần thuộc danh mục nghề độc hại theo Thông tư 11/2020
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Taxable allowances */}
+            <div className="pt-3 border-t border-green-200">
+              <h4 className="text-sm font-semibold text-amber-700 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Phụ cấp CHỊU THUẾ (như lương)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Housing allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Tiền thuê nhà</span>
+                    <Tooltip content="Chịu thuế như lương. Cộng vào thu nhập tính thuế.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.housing ? formatNumber(allowances.housing) : ''}
+                    onChange={(e) => handleAllowanceChange('housing', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                </div>
+
+                {/* Position allowance */}
+                <div>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
+                    <span>Phụ cấp chức vụ/trách nhiệm</span>
+                    <Tooltip content="Chịu thuế như lương. Cộng vào thu nhập tính thuế.">
+                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                        <InfoIcon />
+                      </span>
+                    </Tooltip>
+                  </label>
+                  <input
+                    type="text"
+                    value={allowances.position ? formatNumber(allowances.position) : ''}
+                    onChange={(e) => handleAllowanceChange('position', e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="VNĐ/tháng"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            {(() => {
+              const breakdown = calculateAllowancesBreakdown(allowances);
+              if (breakdown.total === 0) return null;
+              return (
+                <div className="pt-3 border-t border-green-200 bg-white rounded-lg p-3">
+                  <div className="text-sm font-medium text-gray-800 mb-2">
+                    Tổng phụ cấp: {formatCurrency(breakdown.total)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="text-green-700">
+                      Miễn thuế: {formatCurrency(breakdown.taxExempt)}
+                    </div>
+                    <div className="text-amber-700">
+                      Chịu thuế: {formatCurrency(breakdown.taxable)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

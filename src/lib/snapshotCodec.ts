@@ -41,6 +41,16 @@ const KEY_MAP: Record<string, string> = {
   transfer: 'tr',
   lottery: 'lt',
 
+  // Allowances
+  allowances: 'aw',
+  meal: 'ml',
+  phone: 'ph',
+  transport: 'tp',
+  hazardous: 'hz',
+  clothing: 'cl',
+  housing: 'hs',
+  position: 'ps',
+
   // Tabs
   employerCost: 'ec',
   freelancer: 'fl',
@@ -172,6 +182,14 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     const hasOtherIncome = Object.values(s.otherIncome).some((v) => v !== 0);
     if (hasOtherIncome) {
       shared.otherIncome = s.otherIncome;
+    }
+  }
+
+  // Allowances (only if any value is non-zero)
+  if (s.allowances) {
+    const hasAllowances = Object.values(s.allowances).some((v) => v !== 0);
+    if (hasAllowances) {
+      shared.allowances = s.allowances;
     }
   }
 

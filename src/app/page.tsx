@@ -33,6 +33,7 @@ import {
   OtherIncomeState,
   DEFAULT_OTHER_INCOME,
   calculateOtherIncomeTax,
+  AllowancesState,
 } from '@/lib/taxCalculator';
 import {
   CalculatorSnapshot,
@@ -191,6 +192,7 @@ export default function Home() {
           hasInsurance: newState.hasInsurance,
           insuranceOptions: newState.insuranceOptions,
           region: newState.region,
+          allowances: newState.allowances,
         };
         setOldResult(calculateOldTax(taxInput));
         setNewResult(calculateNewTax(taxInput));
@@ -252,6 +254,7 @@ export default function Home() {
         hasInsurance: newState.hasInsurance,
         insuranceOptions: newState.insuranceOptions,
         region: newState.region,
+        allowances: newState.allowances,
       };
 
       // Recalculate tax results
@@ -273,6 +276,7 @@ export default function Home() {
       insuranceOptions: InsuranceOptions;
       region: RegionType;
       pensionContribution: number;
+      allowances?: AllowancesState;
     }) => {
       updateSharedState(newInput);
     },

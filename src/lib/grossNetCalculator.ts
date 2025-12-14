@@ -8,6 +8,8 @@ import {
   OLD_TAX_BRACKETS,
   NEW_TAX_BRACKETS,
   RegionType,
+  AllowancesState,
+  calculateAllowancesBreakdown,
 } from './taxCalculator';
 
 export interface GrossNetInput {
@@ -18,6 +20,7 @@ export interface GrossNetInput {
   useNewLaw: boolean;
   region?: RegionType;
   declaredSalary?: number; // Lương khai báo (nếu khác lương thực)
+  allowances?: AllowancesState; // Phụ cấp
 }
 
 export interface GrossNetResult {
@@ -67,7 +70,7 @@ function calculateTax(taxableIncome: number, brackets: typeof OLD_TAX_BRACKETS):
 }
 
 export function grossToNet(input: GrossNetInput): GrossNetResult {
-  const { amount: gross, dependents, hasInsurance, useNewLaw, region = 1, declaredSalary } = input;
+  const { amount: gross, dependents, hasInsurance, useNewLaw, region = 1, declaredSalary, allowances } = input;
   const deductionRates = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
   const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
 
@@ -77,9 +80,14 @@ export function grossToNet(input: GrossNetInput): GrossNetResult {
   const personalDeduction = deductionRates.personal;
   const dependentDeduction = dependents * deductionRates.dependent;
 
-  const taxableIncome = Math.max(0, gross - insurance - personalDeduction - dependentDeduction);
+  // Tính phụ cấp
+  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
+
+  // Thu nhập tính thuế = lương + phụ cấp chịu thuế - các khoản giảm trừ
+  const taxableIncome = Math.max(0, gross + allowancesBreakdown.taxable - insurance - personalDeduction - dependentDeduction);
   const tax = calculateTax(taxableIncome, brackets);
-  const net = gross - insurance - tax;
+  // Net = lương + tất cả phụ cấp - bảo hiểm - thuế
+  const net = gross + allowancesBreakdown.total - insurance - tax;
 
   return {
     gross,
@@ -142,7 +150,12 @@ export function convertGrossNet(input: GrossNetInput): GrossNetResult {
 }
 
 // Tính lương theo năm
-export function calculateYearlyTax(monthlyGross: number, dependents: number, useNewLaw: boolean): {
+export function calculateYearlyTax(
+  monthlyGross: number,
+  dependents: number,
+  useNewLaw: boolean,
+  allowances?: AllowancesState
+): {
   monthlyResult: GrossNetResult;
   yearlyGross: number;
   yearlyNet: number;
@@ -155,6 +168,7 @@ export function calculateYearlyTax(monthlyGross: number, dependents: number, use
     dependents,
     hasInsurance: true,
     useNewLaw,
+    allowances,
   });
 
   return {

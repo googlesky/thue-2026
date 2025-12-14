@@ -2,6 +2,7 @@ import {
   SharedTaxState,
   DEFAULT_INSURANCE_OPTIONS,
   DEFAULT_OTHER_INCOME,
+  DEFAULT_ALLOWANCES,
   InsuranceOptions,
   RegionType,
 } from './taxCalculator';
@@ -219,6 +220,7 @@ export const DEFAULT_SHARED_STATE: SharedTaxState = {
   region: 1,
   pensionContribution: 0,
   otherIncome: { ...DEFAULT_OTHER_INCOME },
+  allowances: { ...DEFAULT_ALLOWANCES },
 };
 
 /**
@@ -256,6 +258,10 @@ export function createSnapshot(
       otherIncome: {
         ...DEFAULT_OTHER_INCOME,
         ...(sharedState.otherIncome || {}),
+      },
+      allowances: {
+        ...DEFAULT_ALLOWANCES,
+        ...(sharedState.allowances || {}),
       },
     },
     activeTab,
@@ -348,6 +354,10 @@ export function mergeSnapshotWithDefaults(
       otherIncome: {
         ...DEFAULT_OTHER_INCOME,
         ...(partial.sharedState?.otherIncome || {}),
+      },
+      allowances: {
+        ...DEFAULT_ALLOWANCES,
+        ...(partial.sharedState?.allowances || {}),
       },
     },
     activeTab: partial.activeTab || 'calculator',
