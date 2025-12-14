@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import TaxInput from '@/components/TaxInput';
 import TaxResult from '@/components/TaxResult';
 import TaxChart from '@/components/TaxChart';
@@ -70,6 +71,9 @@ const VALID_TABS: TabType[] = [
 ];
 
 export default function Home() {
+  // Next.js hook for navigation tracking
+  const pathname = usePathname();
+
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLawInfoOpen, setIsLawInfoOpen] = useState(false);
@@ -132,31 +136,44 @@ export default function Home() {
     }
   }, []);
 
+  // Helper function to handle hash navigation
+  const handleHashNavigation = useCallback((hash: string) => {
+    // Try to load from hash first (new snapshot format)
+    if (hash.startsWith('#s=')) {
+      const snapshot = decodeSnapshot(hash.slice(3));
+      if (snapshot) {
+        handleLoadSnapshot(snapshot);
+        window.history.replaceState(null, '', window.location.pathname);
+        return true;
+      }
+    }
+
+    // Handle simple hash navigation (e.g., #gross-net, #overtime)
+    if (hash.startsWith('#') && hash.length > 1) {
+      const tabId = hash.slice(1) as TabType;
+      if (VALID_TABS.includes(tabId)) {
+        setActiveTab(tabId);
+        // Don't clear the hash immediately - let it work for a moment
+        // then clear it to keep URL clean
+        setTimeout(() => {
+          window.history.replaceState(null, '', window.location.pathname);
+        }, 100);
+        return true;
+      }
+    }
+
+    return false;
+  }, [handleLoadSnapshot]);
+
   // Load state from URL on mount
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialized) {
       const hash = window.location.hash;
 
-      // Try to load from hash first (new snapshot format)
-      if (hash.startsWith('#s=')) {
-        const snapshot = decodeSnapshot(hash.slice(3));
-        if (snapshot) {
-          handleLoadSnapshot(snapshot);
-          window.history.replaceState(null, '', window.location.pathname);
-          setIsInitialized(true);
-          return;
-        }
-      }
-
-      // Handle simple hash navigation (e.g., #gross-net, #overtime)
-      if (hash.startsWith('#') && hash.length > 1) {
-        const tabId = hash.slice(1) as TabType;
-        if (VALID_TABS.includes(tabId)) {
-          setActiveTab(tabId);
-          window.history.replaceState(null, '', window.location.pathname);
-          setIsInitialized(true);
-          return;
-        }
+      // Try hash navigation first
+      if (handleHashNavigation(hash)) {
+        setIsInitialized(true);
+        return;
       }
 
       // Fall back to legacy URL params for backward compatibility
@@ -183,7 +200,43 @@ export default function Home() {
       }
       setIsInitialized(true);
     }
-  }, [isInitialized, handleLoadSnapshot]);
+  }, [isInitialized, handleHashNavigation]);
+
+  // Listen for hash changes (for navigation from 404 page and other client-side navigation)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        handleHashNavigation(hash);
+      }
+    };
+
+    // Listen to hashchange events
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Also check on mount after initialization (for client-side navigation)
+    if (isInitialized && window.location.hash) {
+      handleHashNavigation(window.location.hash);
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [isInitialized, handleHashNavigation]);
+
+  // Handle Next.js client-side navigation (pathname changes)
+  // This catches navigation from 404 page when using Next.js Link component
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isInitialized) return;
+
+    // Check if there's a hash after navigation
+    const hash = window.location.hash;
+    if (hash && hash.length > 1) {
+      handleHashNavigation(hash);
+    }
+  }, [pathname, isInitialized, handleHashNavigation]);
 
   // Update shared state and recalculate tax
   const updateSharedState = useCallback((updates: Partial<SharedTaxState>) => {
@@ -263,17 +316,17 @@ export default function Home() {
         <header className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20" role="img" aria-label="Calculator icon">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Thuế TNCN 2026
+                  Tính Thuế TNCN 2026
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500">
-                  So sánh luật cũ & mới từ 1/7/2026
+                  So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/7/2026
                 </p>
               </div>
             </div>
