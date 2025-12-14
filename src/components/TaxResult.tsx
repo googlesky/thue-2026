@@ -1,6 +1,6 @@
 'use client';
 
-import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult } from '@/lib/taxCalculator';
+import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult, AllowancesBreakdown } from '@/lib/taxCalculator';
 
 interface TaxResultProps {
   oldResult: TaxResultType;
@@ -151,13 +151,40 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
 }
 
 function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResultType; colorClass: string; declaredSalary?: number }) {
-  const { insuranceDetail } = result;
+  const { insuranceDetail, allowancesBreakdown } = result;
   const hasInsurance = result.insuranceDeduction > 0;
   const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
+  const hasAllowances = allowancesBreakdown && allowancesBreakdown.total > 0;
 
-  const items: Array<{ label: string; value: number; isHeader?: boolean }> = [
+  const items: Array<{ label: string; value: number; isHeader?: boolean; isPositive?: boolean; isSubItem?: boolean }> = [
     { label: 'Thu nhập gộp', value: result.grossIncome },
   ];
+
+  // Thêm chi tiết phụ cấp nếu có
+  if (hasAllowances) {
+    items.push({
+      label: 'Phụ cấp',
+      value: allowancesBreakdown.total,
+      isHeader: true,
+      isPositive: true
+    });
+    if (allowancesBreakdown.taxExempt > 0) {
+      items.push({
+        label: '  └ Miễn thuế',
+        value: allowancesBreakdown.taxExempt,
+        isPositive: true,
+        isSubItem: true
+      });
+    }
+    if (allowancesBreakdown.taxable > 0) {
+      items.push({
+        label: '  └ Chịu thuế',
+        value: allowancesBreakdown.taxable,
+        isPositive: true,
+        isSubItem: true
+      });
+    }
+  }
 
   // Thêm chi tiết bảo hiểm nếu có
   if (hasInsurance) {
@@ -193,8 +220,12 @@ function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResu
       {items.map((item, index) => (
         <div key={index} className="flex justify-between text-sm">
           <span className={item.isHeader ? 'text-gray-700 font-medium' : 'text-gray-600'}>{item.label}</span>
-          <span className={item.value < 0 ? 'text-gray-500' : 'font-medium'}>
-            {item.value < 0 ? '' : ''}{formatCurrency(item.value)}
+          <span className={
+            item.isPositive
+              ? (item.isSubItem ? 'text-green-500' : 'font-medium text-green-600')
+              : (item.value < 0 ? 'text-gray-500' : 'font-medium')
+          }>
+            {item.isPositive ? '+' : ''}{formatCurrency(item.value)}
           </span>
         </div>
       ))}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
-import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, SharedTaxState, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, SharedTaxState, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES } from '@/lib/taxCalculator';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface GrossNetConverterProps {
@@ -36,6 +36,11 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     sharedState?.declaredSalary ?? sharedState?.grossIncome ?? 30000000
   );
 
+  // Phụ cấp (synced from sharedState)
+  const [allowances, setAllowances] = useState<AllowancesState>(
+    sharedState?.allowances ?? DEFAULT_ALLOWANCES
+  );
+
   const [oldResult, setOldResult] = useState<GrossNetResult | null>(null);
   const [newResult, setNewResult] = useState<GrossNetResult | null>(null);
 
@@ -63,6 +68,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       useNewLaw: false,
       region,
       declaredSalary: effectiveDeclared,
+      allowances,
     });
     const newRes = convertGrossNet({
       amount: gross,
@@ -72,6 +78,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       useNewLaw: true,
       region,
       declaredSalary: effectiveDeclared,
+      allowances,
     });
 
     setOldResult(oldRes);
@@ -79,7 +86,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     setNetValue(newRes.net);
 
     return newRes;
-  }, [dependents, hasInsurance, region, getEffectiveDeclaredSalary]);
+  }, [dependents, hasInsurance, region, getEffectiveDeclaredSalary, allowances]);
 
   // Calculate GROSS from NET (only when user inputs NET)
   const calculateFromNet = useCallback((net: number) => {
@@ -98,6 +105,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       useNewLaw: true,
       region,
       declaredSalary: effectiveDeclared,
+      allowances,
     });
     const oldRes = convertGrossNet({
       amount: net,
@@ -107,6 +115,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       useNewLaw: false,
       region,
       declaredSalary: effectiveDeclared,
+      allowances,
     });
 
     setOldResult(oldRes);
@@ -120,7 +129,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
 
     return newRes;
-  }, [dependents, hasInsurance, region, onStateChange, getEffectiveDeclaredSalary]);
+  }, [dependents, hasInsurance, region, onStateChange, getEffectiveDeclaredSalary, allowances]);
 
   // Initial calculation
   useEffect(() => {
@@ -130,7 +139,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
     }
   }, [grossValue, calculateFromGross]);
 
-  // Recalculate when parameters change (dependents, insurance, region, etc.)
+  // Recalculate when parameters change (dependents, insurance, region, allowances, etc.)
   // Must recalculate from the value the user is currently working with
   useEffect(() => {
     if (isInitialized.current) {
@@ -148,7 +157,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
         calculateFromGross(grossValue);
       }
     }
-  }, [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, type, netValue, calculateFromGross, calculateFromNet, grossValue]);
+  }, [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, allowances, type, netValue, calculateFromGross, calculateFromNet, grossValue]);
 
   // Sync with sharedState when it changes from other tabs
   // NOTE: Don't call calculateFromGross here - let the main recalc effect handle it
@@ -169,6 +178,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       if (sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
       }
+
+      // Sync allowances
+      setAllowances(sharedState.allowances ?? DEFAULT_ALLOWANCES);
 
       // When syncing from external source, switch to GROSS mode
       // This ensures the synced GROSS value is the source of truth
