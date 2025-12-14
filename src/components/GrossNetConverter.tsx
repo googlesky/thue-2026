@@ -28,7 +28,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const [hasInsurance, setHasInsurance] = useState<boolean>(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
 
-  // Lương khai báo khác lương thực
+  // Lương đóng BH khác lương thực
   const [useDeclaredSalary, setUseDeclaredSalary] = useState<boolean>(
     sharedState?.declaredSalary !== undefined
   );
@@ -332,7 +332,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
             />
           </div>
 
-          {/* Lương khai báo */}
+          {/* Lương đóng bảo hiểm */}
           {hasInsurance && (
             <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
               <label className="flex items-center gap-3 cursor-pointer">
@@ -343,8 +343,8 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                   className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                 />
                 <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  Lương khai báo khác lương thực
-                  <Tooltip content="Mức lương đăng ký đóng bảo hiểm (nếu khác lương thực nhận)">
+                  Lương đóng BH khác lương thực
+                  <Tooltip content="Mức lương công ty đăng ký đóng bảo hiểm. Bảo hiểm tính trên mức này, thuế TNCN vẫn tính trên lương thực.">
                     <span className="text-gray-400 hover:text-gray-600 cursor-help">
                       <InfoIcon />
                     </span>
@@ -354,17 +354,17 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               {useDeclaredSalary && (
                 <div className="mt-3">
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Lương khai báo (VNĐ)
+                    Lương đóng BHXH, BHYT, BHTN (VNĐ)
                   </label>
                   <input
                     type="text"
                     value={formatNumber(declaredSalary)}
                     onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
                     className="input-field text-sm"
-                    placeholder="Lương khai báo với cơ quan"
+                    placeholder="Ví dụ: 5.000.000"
                   />
                   <p className="text-xs text-amber-600 mt-1">
-                    Bảo hiểm sẽ tính trên mức lương này
+                    BH tính trên mức này • Thuế tính trên lương thực
                   </p>
                 </div>
               )}

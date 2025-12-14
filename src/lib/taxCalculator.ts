@@ -274,8 +274,8 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     region = 1,
   } = input;
 
-  // Lương khai báo với nhà nước (mặc định = lương thực)
-  const taxableSalary = declaredSalary ?? grossIncome;
+  // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
+  const insuranceBaseSalary = declaredSalary ?? grossIncome;
 
   // Xác định các loại bảo hiểm được bật
   const insOptions: InsuranceOptions = insuranceOptions ?? {
@@ -284,15 +284,15 @@ export function calculateOldTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
-  // Tính bảo hiểm dựa trên lương khai báo (chi tiết từng loại)
-  const insuranceDetail = calculateInsuranceDetailed(taxableSalary, region, insOptions);
+  // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
+  const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
   const insuranceDeduction = insuranceDetail.total;
   const personalDeduction = OLD_DEDUCTIONS.personal;
   const dependentDeduction = dependents * OLD_DEDUCTIONS.dependent;
 
   const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
-  // Tính thuế dựa trên lương khai báo
-  const taxableIncome = Math.max(0, taxableSalary - totalDeductions);
+  // Tính thuế dựa trên LƯƠNG THỰC (grossIncome), không phải lương đóng BH
+  const taxableIncome = Math.max(0, grossIncome - totalDeductions);
 
   const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, OLD_TAX_BRACKETS);
   // Thu nhập thực nhận = lương thực - bảo hiểm (theo khai báo) - thuế
@@ -326,8 +326,8 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     region = 1,
   } = input;
 
-  // Lương khai báo với nhà nước (mặc định = lương thực)
-  const taxableSalary = declaredSalary ?? grossIncome;
+  // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
+  const insuranceBaseSalary = declaredSalary ?? grossIncome;
 
   // Xác định các loại bảo hiểm được bật
   const insOptions: InsuranceOptions = insuranceOptions ?? {
@@ -336,15 +336,15 @@ export function calculateNewTax(input: TaxInput): TaxResult {
     bhtn: hasInsurance,
   };
 
-  // Tính bảo hiểm dựa trên lương khai báo (chi tiết từng loại)
-  const insuranceDetail = calculateInsuranceDetailed(taxableSalary, region, insOptions);
+  // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
+  const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
   const insuranceDeduction = insuranceDetail.total;
   const personalDeduction = NEW_DEDUCTIONS.personal;
   const dependentDeduction = dependents * NEW_DEDUCTIONS.dependent;
 
   const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
-  // Tính thuế dựa trên lương khai báo
-  const taxableIncome = Math.max(0, taxableSalary - totalDeductions);
+  // Tính thuế dựa trên LƯƠNG THỰC (grossIncome), không phải lương đóng BH
+  const taxableIncome = Math.max(0, grossIncome - totalDeductions);
 
   const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, NEW_TAX_BRACKETS);
   // Thu nhập thực nhận = lương thực - bảo hiểm (theo khai báo) - thuế
