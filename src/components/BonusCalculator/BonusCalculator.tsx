@@ -37,7 +37,16 @@ function ScenarioCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      aria-pressed={isSelected}
       className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
         isSelected
           ? 'border-primary-500 bg-primary-50 shadow-lg'
@@ -222,7 +231,7 @@ export default function BonusCalculator({
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="bonus-monthly-salary" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Lương tháng (GROSS)
               <Tooltip content="Mức lương hàng tháng trước thuế">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -234,6 +243,7 @@ export default function BonusCalculator({
             </label>
             <div className="relative">
               <input
+                id="bonus-monthly-salary"
                 type="text"
                 value={localInputs.monthlySalary}
                 onChange={(e) => handleInputChange('monthlySalary', e.target.value)}
@@ -247,7 +257,7 @@ export default function BonusCalculator({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="bonus-thirteenth-month" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Lương tháng 13
               <Tooltip content="Thường bằng 1 tháng lương cơ bản">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -259,6 +269,7 @@ export default function BonusCalculator({
             </label>
             <div className="relative">
               <input
+                id="bonus-thirteenth-month"
                 type="text"
                 value={localInputs.thirteenthMonthSalary}
                 onChange={(e) => handleInputChange('thirteenthMonthSalary', e.target.value)}
@@ -272,7 +283,7 @@ export default function BonusCalculator({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="bonus-tet" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Thưởng Tết
               <Tooltip content="Khoản thưởng dịp Tết Nguyên đán">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -284,6 +295,7 @@ export default function BonusCalculator({
             </label>
             <div className="relative">
               <input
+                id="bonus-tet"
                 type="text"
                 value={localInputs.tetBonus}
                 onChange={(e) => handleInputChange('tetBonus', e.target.value)}
@@ -297,7 +309,7 @@ export default function BonusCalculator({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="bonus-other" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Thưởng khác
               <Tooltip content="Thưởng dự án, thưởng hiệu suất, etc.">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -309,6 +321,7 @@ export default function BonusCalculator({
             </label>
             <div className="relative">
               <input
+                id="bonus-other"
                 type="text"
                 value={localInputs.otherBonuses}
                 onChange={(e) => handleInputChange('otherBonuses', e.target.value)}

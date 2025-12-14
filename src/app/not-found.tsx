@@ -1,4 +1,39 @@
+import { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: '404 - Không tìm thấy trang',
+  description: 'Trang bạn đang tìm kiếm không tồn tại. Khám phá các công cụ tính thuế TNCN 2026, chuyển đổi GROSS-NET, tính thuế thưởng Tết, ESOP.',
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
+
+// JSON-LD structured data for 404 page
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: '404 - Không tìm thấy trang',
+  description: 'Trang bạn đang tìm kiếm không tồn tại. Khám phá các công cụ tính thuế TNCN 2026.',
+  url: 'https://thue.1devops.io/404',
+  breadcrumb: {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Trang chủ',
+        item: 'https://thue.1devops.io',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: '404',
+      },
+    ],
+  },
+};
 
 export default function NotFound() {
   const quickLinks = [
@@ -11,8 +46,14 @@ export default function NotFound() {
   ];
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-2xl w-full text-center">
+    <>
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="max-w-2xl w-full text-center">
         {/* 404 Icon */}
         <div className="mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-xl shadow-primary-500/30">
@@ -67,7 +108,8 @@ export default function NotFound() {
         <p className="mt-12 text-sm text-gray-400">
           Thuế TNCN 2026 · So sánh luật thuế cũ và mới từ 1/7/2026
         </p>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }
