@@ -45,10 +45,10 @@ export const metadata: Metadata = {
   creator: '1DevOps',
   publisher: '1DevOps',
 
-  // Canonical URL
+  // Canonical URL - ensure consistent URL format
   metadataBase: new URL(baseUrl),
   alternates: {
-    canonical: '/',
+    canonical: baseUrl + '/',
   },
 
   // Open Graph
@@ -163,6 +163,19 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        {/* Preconnect to external origins to reduce connection time */}
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        {/* JSON-LD Structured Data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
