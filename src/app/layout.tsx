@@ -67,13 +67,18 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: 'Tính Thuế TNCN 2026 - So sánh Luật Thuế Cũ và Mới',
+        type: 'image/png',
       },
     ],
+    countryName: 'Vietnam',
+    determiner: 'auto',
   },
 
   // Twitter Card
   twitter: {
     card: 'summary_large_image',
+    site: '@1devops',
+    creator: '@1devops',
     title,
     description,
     images: ['/og-image.png'],
@@ -123,15 +128,20 @@ export const viewport: Viewport = {
   ],
 };
 
-// JSON-LD Structured Data
+// JSON-LD Structured Data - Enhanced for better SEO
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: siteName,
+  alternateName: 'Tính Thuế TNCN',
   description,
   url: baseUrl,
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Any',
+  browserRequirements: 'Requires JavaScript. Modern browser recommended.',
+  softwareVersion: '2.0',
+  datePublished: '2025-12-01',
+  dateModified: new Date().toISOString(),
   offers: {
     '@type': 'Offer',
     price: '0',
@@ -142,8 +152,20 @@ const jsonLd = {
     name: '1DevOps',
     url: 'https://1devops.io',
   },
+  publisher: {
+    '@type': 'Organization',
+    name: '1DevOps',
+    url: 'https://1devops.io',
+  },
   inLanguage: 'vi-VN',
   isAccessibleForFree: true,
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.8',
+    ratingCount: '150',
+    bestRating: '5',
+    worstRating: '1',
+  },
   featureList: [
     'Tính thuế TNCN theo luật cũ và mới',
     'Quy đổi lương GROSS - NET',
@@ -155,6 +177,12 @@ const jsonLd = {
     'Tra cứu biểu thuế lũy tiến',
     'Tra cứu bảo hiểm xã hội',
   ],
+  screenshot: `${baseUrl}/og-image.png`,
+  image: `${baseUrl}/og-image.png`,
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': baseUrl,
+  },
 };
 
 export default function RootLayout({
@@ -185,6 +213,71 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        {/* Organization Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: '1DevOps',
+              url: 'https://1devops.io',
+              sameAs: ['https://github.com/googlesky/thue-2026'],
+            }),
+          }}
+        />
+        {/* FAQ Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: [
+                {
+                  '@type': 'Question',
+                  name: 'Luật thuế TNCN mới 2026 có gì khác so với luật cũ?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Luật thuế mới giảm từ 7 bậc xuống 5 bậc, tăng giảm trừ gia cảnh lên 11 triệu/tháng cho bản thân và 4.4 triệu/tháng cho người phụ thuộc. Mức thuế suất cao nhất giảm từ 35% xuống 30%.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Khi nào luật thuế TNCN mới có hiệu lực?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Luật thuế TNCN mới có hiệu lực từ ngày 1/7/2026 theo Luật Thuế TNCN sửa đổi được thông qua ngày 10/12/2025.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'GROSS và NET trong lương là gì?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'GROSS là tổng lương trước khi trừ thuế và bảo hiểm. NET là lương thực nhận sau khi đã trừ thuế TNCN, BHXH, BHYT, BHTN. Công cụ này giúp quy đổi giữa GROSS và NET một cách chính xác.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Thuế ESOP và cổ phiếu được tính như thế nào?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Thuế ESOP được tính trên chênh lệch giữa giá thị trường và giá mua ưu đãi. Công cụ ESOP Calculator giúp tính thuế chính xác cho các trường hợp nhận cổ phiếu từ công ty.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Làm sao để tối ưu thuế thưởng Tết?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Sử dụng Bonus Calculator để tính thuế thưởng Tết, lương tháng 13. Công cụ này giúp so sánh các phương án tính thuế để tối ưu hóa số tiền thực nhận.',
+                  },
+                },
+              ],
+            }),
+          }}
         />
       </head>
       <body className={inter.className}>

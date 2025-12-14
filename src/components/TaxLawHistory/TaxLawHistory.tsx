@@ -111,7 +111,7 @@ function BracketComparison({ oldPeriod, newPeriod }: { oldPeriod: TaxLawPeriod; 
           <tr className="border-b border-gray-100">
             <td className="py-2 px-3 font-medium">10%</td>
             <td className="text-right py-2 px-3 text-gray-600">5 - 10 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-900 font-medium">10 - 20 triệu</td>
+            <td className="text-right py-2 px-3 text-gray-900 font-medium">10 - 30 triệu</td>
           </tr>
           <tr className="border-b border-gray-100 bg-red-50">
             <td className="py-2 px-3 font-medium text-red-600">15%</td>
@@ -121,7 +121,7 @@ function BracketComparison({ oldPeriod, newPeriod }: { oldPeriod: TaxLawPeriod; 
           <tr className="border-b border-gray-100">
             <td className="py-2 px-3 font-medium">20%</td>
             <td className="text-right py-2 px-3 text-gray-600">18 - 32 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-900 font-medium">20 - 40 triệu</td>
+            <td className="text-right py-2 px-3 text-gray-900 font-medium">30 - 60 triệu</td>
           </tr>
           <tr className="border-b border-gray-100 bg-red-50">
             <td className="py-2 px-3 font-medium text-red-600">25%</td>
@@ -131,12 +131,12 @@ function BracketComparison({ oldPeriod, newPeriod }: { oldPeriod: TaxLawPeriod; 
           <tr className="border-b border-gray-100">
             <td className="py-2 px-3 font-medium">30%</td>
             <td className="text-right py-2 px-3 text-gray-600">52 - 80 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-900 font-medium">40 - 80 triệu</td>
+            <td className="text-right py-2 px-3 text-gray-900 font-medium">60 - 100 triệu</td>
           </tr>
           <tr>
             <td className="py-2 px-3 font-medium">35%</td>
             <td className="text-right py-2 px-3 text-gray-600">Trên 80 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-900 font-medium">Trên 80 triệu</td>
+            <td className="text-right py-2 px-3 text-gray-900 font-medium">Trên 100 triệu</td>
           </tr>
         </tbody>
       </table>

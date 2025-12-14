@@ -34,7 +34,16 @@ function PeriodCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      aria-pressed={isSelected}
       className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
         isSelected
           ? 'border-primary-500 bg-primary-50 shadow-lg'
@@ -227,7 +236,7 @@ export default function ESOPCalculator({
 
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="esop-grant-price" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Giá cấp quyền (Grant Price)
               <Tooltip content="Giá mua cổ phiếu được cấp khi tham gia ESOP">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -239,6 +248,7 @@ export default function ESOPCalculator({
             </label>
             <div className="relative">
               <input
+                id="esop-grant-price"
                 type="text"
                 value={localInputs.grantPrice}
                 onChange={(e) => handleInputChange('grantPrice', e.target.value)}
@@ -254,7 +264,7 @@ export default function ESOPCalculator({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="esop-exercise-price" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Giá thực hiện (Exercise Price)
               <Tooltip content="Giá thị trường tại thời điểm thực hiện quyền mua">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -266,6 +276,7 @@ export default function ESOPCalculator({
             </label>
             <div className="relative">
               <input
+                id="esop-exercise-price"
                 type="text"
                 value={localInputs.exercisePrice}
                 onChange={(e) => handleInputChange('exercisePrice', e.target.value)}
@@ -281,7 +292,7 @@ export default function ESOPCalculator({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label htmlFor="esop-num-shares" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Số lượng cổ phiếu
               <Tooltip content="Số cổ phiếu bạn muốn thực hiện quyền mua">
                 <span className="text-gray-400 hover:text-gray-600 cursor-help">
@@ -293,6 +304,7 @@ export default function ESOPCalculator({
             </label>
             <div className="relative">
               <input
+                id="esop-num-shares"
                 type="text"
                 value={localInputs.numberOfShares}
                 onChange={(e) => handleInputChange('numberOfShares', e.target.value)}
