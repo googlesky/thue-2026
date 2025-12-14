@@ -211,7 +211,7 @@ export default function SalaryComparison({
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 >
                   {Object.entries(REGIONAL_MINIMUM_WAGES).map(([key, info]) => (
-                    <option key={key} value={key}>{info.name}</option>
+                    <option key={key} value={Number(key)}>{info.name}</option>
                   ))}
                 </select>
               </div>
