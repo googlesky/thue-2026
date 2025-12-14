@@ -6,14 +6,17 @@ export type TabType =
   | 'calculator'
   | 'gross-net'
   | 'overtime'
+  | 'annual-settlement'
+  | 'bonus-calculator'
+  | 'esop-calculator'
   | 'employer-cost'
   | 'freelancer'
   | 'salary-compare'
   | 'yearly'
-  | 'annual-settlement'
   | 'insurance'
   | 'other-income'
-  | 'table';
+  | 'table'
+  | 'tax-history';
 
 interface TabItem {
   id: TabType;
@@ -38,6 +41,8 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'gross-net', label: 'GROSS ⇄ NET', icon: '💰' },
       { id: 'overtime', label: 'Lương tăng ca', icon: '⏰' },
       { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋' },
+      { id: 'bonus-calculator', label: 'Thưởng Tết', icon: '🎁' },
+      { id: 'esop-calculator', label: 'ESOP', icon: '📈' },
     ],
   },
   {
@@ -59,6 +64,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'insurance', label: 'Chi tiết bảo hiểm', icon: '🛡️' },
       { id: 'other-income', label: 'Thu nhập khác', icon: '💼' },
       { id: 'table', label: 'Biểu thuế suất', icon: '📈' },
+      { id: 'tax-history', label: 'Lịch sử luật', icon: '📜' },
     ],
   },
 ];

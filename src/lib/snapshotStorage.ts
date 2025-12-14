@@ -186,6 +186,8 @@ export function saveNamedSave(
           monthlyIncome: snapshot.tabs.annualSettlement.monthlyIncome.map(m => ({ ...m })),
           dependents: snapshot.tabs.annualSettlement.dependents.map(d => ({ ...d })),
         },
+        bonus: { ...snapshot.tabs.bonus },
+        esop: { ...snapshot.tabs.esop },
       },
       meta: {
         ...snapshot.meta,

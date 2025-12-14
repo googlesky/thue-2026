@@ -68,6 +68,23 @@ export interface AnnualSettlementTabState {
   manualTaxPaid: number;
 }
 
+// Bonus Calculator tab state (Lương 13 / Thưởng Tết)
+export interface BonusTabState {
+  thirteenthMonthSalary: number;
+  tetBonus: number;
+  otherBonuses: number;
+  selectedScenarioId: string | null;
+}
+
+// ESOP/Stock Options Calculator tab state
+export interface ESOPTabState {
+  grantPrice: number;
+  exercisePrice: number;
+  numberOfShares: number;
+  exerciseDate: string;
+  selectedPeriodId: string | null;
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -78,6 +95,8 @@ export interface TabStates {
   yearlyComparison: YearlyComparisonTabState;
   overtime: OvertimeTabState;
   annualSettlement: AnnualSettlementTabState;
+  bonus: BonusTabState;
+  esop: ESOPTabState;
 }
 
 /**
@@ -161,6 +180,21 @@ export const DEFAULT_ANNUAL_SETTLEMENT_STATE: AnnualSettlementTabState = {
   manualTaxPaid: 0,
 };
 
+export const DEFAULT_BONUS_STATE: BonusTabState = {
+  thirteenthMonthSalary: 0,
+  tetBonus: 0,
+  otherBonuses: 0,
+  selectedScenarioId: null,
+};
+
+export const DEFAULT_ESOP_STATE: ESOPTabState = {
+  grantPrice: 0,
+  exercisePrice: 0,
+  numberOfShares: 0,
+  exerciseDate: '',
+  selectedPeriodId: null,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
@@ -168,6 +202,8 @@ export const DEFAULT_TAB_STATES: TabStates = {
   yearlyComparison: DEFAULT_YEARLY_COMPARISON_STATE,
   overtime: DEFAULT_OVERTIME_STATE,
   annualSettlement: DEFAULT_ANNUAL_SETTLEMENT_STATE,
+  bonus: DEFAULT_BONUS_STATE,
+  esop: DEFAULT_ESOP_STATE,
 };
 
 /**
@@ -256,6 +292,14 @@ export function createSnapshot(
         dependents: tabStates?.annualSettlement?.dependents?.map(d => ({ ...d }))
           || [],
       },
+      bonus: {
+        ...DEFAULT_BONUS_STATE,
+        ...(tabStates?.bonus || {}),
+      },
+      esop: {
+        ...DEFAULT_ESOP_STATE,
+        ...(tabStates?.esop || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -339,6 +383,14 @@ export function mergeSnapshotWithDefaults(
           || DEFAULT_ANNUAL_SETTLEMENT_STATE.monthlyIncome.map(m => ({ ...m })),
         dependents: partial.tabs?.annualSettlement?.dependents?.map(d => ({ ...d }))
           || [],
+      },
+      bonus: {
+        ...DEFAULT_BONUS_STATE,
+        ...(partial.tabs?.bonus || {}),
+      },
+      esop: {
+        ...DEFAULT_ESOP_STATE,
+        ...(partial.tabs?.esop || {}),
       },
     },
     meta: {

@@ -17,6 +17,9 @@ import { AnnualSettlement } from '@/components/AnnualSettlement';
 import TabNavigation, { type TabType } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
 import LawInfoModal from '@/components/ui/LawInfoModal';
+import { TaxLawHistory } from '@/components/TaxLawHistory';
+import { BonusCalculator } from '@/components/BonusCalculator';
+import { ESOPCalculator } from '@/components/ESOPCalculator';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -38,8 +41,12 @@ import {
   YearlyComparisonTabState,
   OvertimeTabState,
   AnnualSettlementTabState,
+  BonusTabState,
+  ESOPTabState,
   DEFAULT_OVERTIME_STATE,
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
+  DEFAULT_BONUS_STATE,
+  DEFAULT_ESOP_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -85,6 +92,8 @@ export default function Home() {
   });
   const [overtimeState, setOvertimeState] = useState<OvertimeTabState>(DEFAULT_OVERTIME_STATE);
   const [annualSettlementState, setAnnualSettlementState] = useState<AnnualSettlementTabState>(DEFAULT_ANNUAL_SETTLEMENT_STATE);
+  const [bonusState, setBonusState] = useState<BonusTabState>(DEFAULT_BONUS_STATE);
+  const [esopState, setEsopState] = useState<ESOPTabState>(DEFAULT_ESOP_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -107,6 +116,12 @@ export default function Home() {
     }
     if (snapshot.tabs.annualSettlement) {
       setAnnualSettlementState(snapshot.tabs.annualSettlement);
+    }
+    if (snapshot.tabs.bonus) {
+      setBonusState(snapshot.tabs.bonus);
+    }
+    if (snapshot.tabs.esop) {
+      setEsopState(snapshot.tabs.esop);
     }
   }, []);
 
@@ -209,11 +224,13 @@ export default function Home() {
       yearlyComparison: yearlyState,
       overtime: overtimeState,
       annualSettlement: annualSettlementState,
+      bonus: bonusState,
+      esop: esopState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState]);
 
   // Calculate other income tax
   const otherIncomeTax = sharedState.otherIncome
@@ -407,6 +424,34 @@ export default function Home() {
         {activeTab === 'table' && (
           <div className="mb-8">
             <TaxBracketTable />
+          </div>
+        )}
+
+        {activeTab === 'bonus-calculator' && (
+          <div className="mb-8">
+            <BonusCalculator
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+              tabState={bonusState}
+              onTabStateChange={setBonusState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'esop-calculator' && (
+          <div className="mb-8">
+            <ESOPCalculator
+              sharedState={sharedState}
+              onStateChange={updateSharedState}
+              tabState={esopState}
+              onTabStateChange={setEsopState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'tax-history' && (
+          <div className="mb-8">
+            <TaxLawHistory />
           </div>
         )}
 
