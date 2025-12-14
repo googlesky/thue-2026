@@ -49,8 +49,11 @@ export default function EmployerCostCalculator({
       setDependents(sharedState.dependents);
       setRegion(sharedState.region);
       setInsuranceOptions(sharedState.insuranceOptions);
-      if (sharedState.declaredSalary && sharedState.declaredSalary !== sharedState.grossIncome) {
-        setUseDeclaredSalary(true);
+
+      // Sync declared salary - consistent with TaxInput and GrossNetConverter
+      const hasDeclared = sharedState.declaredSalary !== undefined;
+      setUseDeclaredSalary(hasDeclared);
+      if (hasDeclared && sharedState.declaredSalary !== undefined) {
         setDeclaredSalary(sharedState.declaredSalary);
       }
     }
