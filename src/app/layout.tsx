@@ -8,6 +8,8 @@ const GA_MEASUREMENT_ID = 'G-E2MGYR8HY4';
 const inter = Inter({
   subsets: ['latin', 'vietnamese'],
   display: 'optional', // Prevent FOUT - use fallback if font not cached
+  adjustFontFallback: true, // Reduce CLS by adjusting fallback font metrics
+  preload: true, // Preload font files
 });
 
 const baseUrl = 'https://thue.1devops.io';
@@ -163,19 +165,23 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
-        {/* Preconnect to external origins to reduce connection time */}
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        {/* Critical: Preconnect to font origins first */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
-        <link rel="preconnect" href="https://www.googletagmanager.com" />
-        {/* JSON-LD Structured Data */}
+        {/* DNS prefetch for analytics (lower priority) */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        {/* Preload GA script for faster analytics initialization */}
+        <link
+          rel="preload"
+          href={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+          as="script"
+        />
+        {/* JSON-LD Structured Data - non-blocking */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
