@@ -14,13 +14,13 @@ import {
 } from '@/lib/taxCalculator';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
-// Constants - inline để tránh dependency issues
+// Constants - inline to avoid dependency issues
 const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000;
 const MAX_UNEMPLOYMENT_INSURANCE_SALARY: Record<RegionType, number> = {
   1: 99_200_000,
   2: 88_400_000,
   3: 77_200_000,
-  4: 68_600_000,
+  4: 69_000_000,
 };
 
 const INSURANCE_RATES = {
@@ -51,10 +51,10 @@ const OLD_TAX_BRACKETS = [
 
 const NEW_TAX_BRACKETS = [
   { min: 0, max: 10_000_000, rate: 0.05 },
-  { min: 10_000_000, max: 20_000_000, rate: 0.1 },
-  { min: 20_000_000, max: 40_000_000, rate: 0.15 },
-  { min: 40_000_000, max: 80_000_000, rate: 0.2 },
-  { min: 80_000_000, max: Infinity, rate: 0.25 },
+  { min: 10_000_000, max: 30_000_000, rate: 0.1 },
+  { min: 30_000_000, max: 60_000_000, rate: 0.2 },
+  { min: 60_000_000, max: 100_000_000, rate: 0.3 },
+  { min: 100_000_000, max: Infinity, rate: 0.35 },
 ];
 
 interface EmployerCostCalculatorProps {
@@ -70,7 +70,7 @@ export default function EmployerCostCalculator({
   tabState,
   onTabStateChange,
 }: EmployerCostCalculatorProps) {
-  // Local state
+  // Local state - simple and direct
   const [grossSalary, setGrossSalary] = useState(sharedState?.grossIncome || 30_000_000);
   const [useDeclaredSalary, setUseDeclaredSalary] = useState(sharedState?.declaredSalary !== undefined);
   const [declaredSalary, setDeclaredSalary] = useState(sharedState?.declaredSalary || 0);
@@ -78,9 +78,6 @@ export default function EmployerCostCalculator({
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
     sharedState?.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS
-  );
-  const [allowances, setAllowances] = useState<AllowancesState>(
-    sharedState?.allowances ?? DEFAULT_ALLOWANCES
   );
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
   const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? false);
@@ -92,7 +89,6 @@ export default function EmployerCostCalculator({
       setDependents(sharedState.dependents);
       setRegion(sharedState.region);
       if (sharedState.insuranceOptions) setInsuranceOptions(sharedState.insuranceOptions);
-      if (sharedState.allowances) setAllowances(sharedState.allowances);
 
       const hasDeclared = sharedState.declaredSalary !== undefined;
       setUseDeclaredSalary(hasDeclared);
@@ -105,7 +101,6 @@ export default function EmployerCostCalculator({
     sharedState?.dependents,
     sharedState?.region,
     sharedState?.insuranceOptions,
-    sharedState?.allowances,
     sharedState?.declaredSalary,
   ]);
 
@@ -117,7 +112,7 @@ export default function EmployerCostCalculator({
     }
   }, [tabState?.includeUnionFee, tabState?.useNewLaw]);
 
-  // ========== INLINE CALCULATIONS ==========
+  // ========== INLINE CALCULATIONS - Recalculate on every render ==========
 
   // Base for insurance calculation
   const insuranceBase = (useDeclaredSalary && declaredSalary > 0) ? declaredSalary : grossSalary;
