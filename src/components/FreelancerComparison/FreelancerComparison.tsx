@@ -70,20 +70,18 @@ export default function FreelancerComparison({
     }
   }, [tabState]);
 
-  // Tính toán kết quả
-  const result = useMemo(() => {
-    if (grossIncome <= 0) return null;
-
-    return calculateFreelancerComparison({
-      grossIncome,
-      frequency,
-      dependents,
-      hasInsurance,
-      insuranceOptions,
-      region,
-      useNewLaw,
-    });
-  }, [grossIncome, frequency, dependents, hasInsurance, insuranceOptions, region, useNewLaw]);
+  // Tính toán kết quả - calculate directly without useMemo to ensure updates
+  const result = grossIncome > 0
+    ? calculateFreelancerComparison({
+        grossIncome,
+        frequency,
+        dependents,
+        hasInsurance,
+        insuranceOptions,
+        region,
+        useNewLaw,
+      })
+    : null;
 
   const handleGrossChange = (value: string) => {
     const numValue = parseCurrency(value);
