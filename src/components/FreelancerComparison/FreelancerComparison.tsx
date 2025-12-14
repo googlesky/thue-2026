@@ -311,28 +311,44 @@ export default function FreelancerComparison({
             </div>
           </div>
 
-          {/* Break-even Point */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex gap-3">
-              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              <div>
-                <div className="font-medium text-amber-800 mb-1">Điểm hòa vốn (tiền mặt)</div>
-                <div className="text-sm text-amber-700">
-                  Với điều kiện hiện tại ({dependents} người phụ thuộc, {hasInsurance ? 'có' : 'không'} BHXH),
-                  mức lương hòa vốn là khoảng <span className="font-bold">{formatNumber(result.comparison.breakEvenGross)}</span> VND/tháng.
-                </div>
-                <div className="text-sm text-amber-600 mt-2">
-                  • Dưới mức này: Nhân viên có lợi hơn (do được giảm trừ gia cảnh)<br />
-                  • Trên mức này: Freelancer có lợi hơn (do thuế suất cố định 10%)
-                </div>
-                <div className="text-xs text-amber-500 mt-2 italic">
-                  * Đây là điểm hòa vốn về tiền mặt, chưa tính chi phí tự mua BHYT và giá trị lương hưu mà nhân viên được hưởng.
+          {/* Break-even Point - Only show when meaningful */}
+          {hasInsurance ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="flex gap-3">
+                <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <div>
+                  <div className="font-medium text-green-800 mb-1">Về tiền mặt: Freelancer luôn có lợi hơn</div>
+                  <div className="text-sm text-green-700">
+                    Khi NV đóng BHXH (10.5%), Freelancer chỉ đóng 10% thuế → Freelancer luôn giữ được nhiều hơn 0.5% lương.
+                  </div>
+                  <div className="text-xs text-green-600 mt-2 italic">
+                    * Tuy nhiên NV được DN đóng thêm 21.5% BH (lương hưu, thai sản). Freelancer phải tự mua BHYT riêng (~1-2tr/tháng).
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex gap-3">
+                <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <div>
+                  <div className="font-medium text-amber-800 mb-1">Điểm hòa vốn (tiền mặt)</div>
+                  <div className="text-sm text-amber-700">
+                    Với {dependents} người phụ thuộc, không đóng BHXH:
+                    mức lương hòa vốn là khoảng <span className="font-bold">{formatNumber(result.comparison.breakEvenGross)}</span> VND/tháng.
+                  </div>
+                  <div className="text-sm text-amber-600 mt-2">
+                    • Dưới mức này: Nhân viên có lợi hơn (do được giảm trừ gia cảnh, không đóng thuế)<br />
+                    • Trên mức này: Freelancer có lợi hơn (do thuế suất cố định 10%)
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Pros/Cons Toggle */}
           <button
