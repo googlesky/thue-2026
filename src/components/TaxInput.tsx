@@ -75,8 +75,12 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
       setPensionContribution(initialValues.pensionContribution.toString());
       if (initialValues.allowances) {
         setAllowances(initialValues.allowances);
+        // Only auto-open if there are non-zero allowances (e.g., from URL)
+        // Never auto-close if user manually opened
         const hasAnyAllowance = Object.values(initialValues.allowances).some(v => v !== 0);
-        setShowAllowances(hasAnyAllowance);
+        if (hasAnyAllowance) {
+          setShowAllowances(true);
+        }
       }
       setTimeout(() => {
         isExternalUpdate.current = false;
