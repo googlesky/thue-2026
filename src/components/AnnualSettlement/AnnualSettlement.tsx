@@ -248,12 +248,13 @@ export default function AnnualSettlement({
     <div className="space-y-6">
       {/* Header */}
       <div className="card">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Quyết Toán Thuế TNCN</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Tính thuế TNCN cả năm và so sánh với thuế đã tạm nộp
-            </p>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <span className="text-2xl">📊</span>
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold text-gray-900">Quyết toán thuế năm</h2>
+            <p className="text-sm text-gray-500">Tính thuế phải nộp hoặc được hoàn khi quyết toán</p>
           </div>
           {/* Year selector */}
           <div className="flex items-center gap-2">

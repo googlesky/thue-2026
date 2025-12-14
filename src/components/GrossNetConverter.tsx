@@ -257,12 +257,15 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   return (
     <div className="card">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-        </svg>
-        Chuyển đổi GROSS - NET
-      </h3>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+          <span className="text-2xl">💰</span>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Quy đổi GROSS ↔ NET</h2>
+          <p className="text-sm text-gray-500">Chuyển đổi giữa lương GROSS và NET</p>
+        </div>
+      </div>
 
       {/* Sync indicator */}
       {sharedState && (
@@ -331,13 +334,13 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
           {/* Lương khai báo */}
           {hasInsurance && (
-            <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+            <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={useDeclaredSalary}
                   onChange={(e) => handleUseDeclaredSalaryChange(e.target.checked)}
-                  className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                  className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                 />
                 <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   Lương khai báo khác lương thực
@@ -360,7 +363,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                     className="input-field text-sm"
                     placeholder="Lương khai báo với cơ quan"
                   />
-                  <p className="text-xs text-orange-600 mt-1">
+                  <p className="text-xs text-amber-600 mt-1">
                     Bảo hiểm sẽ tính trên mức lương này
                   </p>
                 </div>
@@ -529,7 +532,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-700 mb-2">Chi tiết các khoản giảm trừ (Luật mới)</div>
                 {useDeclaredSalary && (
-                  <div className="mb-2 px-2 py-1 bg-orange-100 rounded text-xs text-orange-700">
+                  <div className="mb-2 px-2 py-1 bg-amber-100 rounded text-xs text-amber-700">
                     Bảo hiểm tính trên lương khai báo: {formatCurrency(declaredSalary)}
                   </div>
                 )}

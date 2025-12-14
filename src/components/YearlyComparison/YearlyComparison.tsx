@@ -16,6 +16,7 @@ import ScenarioPresets, { PresetDescription } from './ScenarioPresets';
 import ScenarioColumn from './ScenarioColumn';
 import StrategyComparison from './StrategyComparison';
 import { YearlyComparisonTabState } from '@/lib/snapshotTypes';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface YearlyComparisonProps {
   sharedState?: SharedTaxState;
@@ -165,6 +166,19 @@ export default function YearlyComparison({
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg">
+            <span className="text-2xl">📅</span>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">So sánh thuế theo năm</h2>
+            <p className="text-sm text-gray-500">So sánh thuế TNCN giữa các năm và luật</p>
+          </div>
+        </div>
+      </div>
+
       {/* Common Parameters */}
       <div className="card">
         <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -178,7 +192,16 @@ export default function YearlyComparison({
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Monthly Salary */}
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Lương tháng (GROSS)</label>
+            <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
+              Lương tháng (GROSS)
+              <Tooltip content="Thu nhập gộp hàng tháng trước khi trừ BHXH và thuế">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              </Tooltip>
+            </label>
             <input
               type="text"
               value={monthlySalary > 0 ? formatNumber(monthlySalary) : ''}
@@ -197,7 +220,16 @@ export default function YearlyComparison({
 
           {/* Bonus Amount */}
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Thưởng T13</label>
+            <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
+              Thưởng T13
+              <Tooltip content="Tiền thưởng tháng 13 hoặc Tết (thường bằng 1 tháng lương)">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              </Tooltip>
+            </label>
             <input
               type="text"
               value={bonusAmount > 0 ? formatNumber(bonusAmount) : ''}
@@ -213,7 +245,16 @@ export default function YearlyComparison({
 
           {/* Dependents */}
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Người phụ thuộc</label>
+            <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
+              Người phụ thuộc
+              <Tooltip content="Số người được đăng ký giảm trừ gia cảnh (con nhỏ, cha mẹ...)">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              </Tooltip>
+            </label>
             <select
               value={dependents}
               onChange={(e) => {
@@ -231,7 +272,16 @@ export default function YearlyComparison({
 
           {/* Insurance */}
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Bảo hiểm</label>
+            <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
+              Bảo hiểm
+              <Tooltip content="Đóng bảo hiểm xã hội bắt buộc 10.5% trên thu nhập GROSS">
+                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              </Tooltip>
+            </label>
             <label className="flex items-center gap-2 cursor-pointer py-2">
               <input
                 type="checkbox"
