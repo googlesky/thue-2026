@@ -6,9 +6,10 @@ interface TaxResultProps {
   oldResult: TaxResultType;
   newResult: TaxResultType;
   otherIncomeTax?: OtherIncomeTaxResult | null;
+  declaredSalary?: number;
 }
 
-export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxResultProps) {
+export default function TaxResult({ oldResult, newResult, otherIncomeTax, declaredSalary }: TaxResultProps) {
   const savings = oldResult.taxAmount - newResult.taxAmount;
   const savingsPercent = oldResult.taxAmount > 0
     ? ((savings / oldResult.taxAmount) * 100).toFixed(1)
@@ -18,8 +19,29 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxR
   const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
   const totalNewTax = newResult.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
 
+  // Check if using declared salary for insurance
+  const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== oldResult.grossIncome;
+
   return (
     <div className="space-y-6">
+      {/* Notice about declared salary */}
+      {hasDeclaredSalary && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700">
+                <span className="font-medium">Lưu ý:</span> Bảo hiểm tính trên lương khai báo <span className="font-semibold">{formatCurrency(declaredSalary)}</span>,
+                nhưng thuế TNCN vẫn tính trên lương thực tế <span className="font-semibold">{formatCurrency(oldResult.grossIncome)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Tổng kết tiết kiệm */}
       {savings > 0 && (
         <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 text-white">
@@ -105,7 +127,7 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxR
             <h3 className="text-lg font-bold text-gray-800">Luật hiện hành</h3>
             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">7 bậc</span>
           </div>
-          <ResultDetails result={oldResult} colorClass="text-red-600" />
+          <ResultDetails result={oldResult} colorClass="text-red-600" declaredSalary={declaredSalary} />
         </div>
 
         {/* Luật mới */}
@@ -115,7 +137,7 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxR
             <h3 className="text-lg font-bold text-gray-800">Luật mới 2026</h3>
             <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">5 bậc</span>
           </div>
-          <ResultDetails result={newResult} colorClass="text-primary-600" />
+          <ResultDetails result={newResult} colorClass="text-primary-600" declaredSalary={declaredSalary} />
         </div>
       </div>
 
@@ -128,16 +150,24 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax }: TaxR
   );
 }
 
-function ResultDetails({ result, colorClass }: { result: TaxResultType; colorClass: string }) {
+function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResultType; colorClass: string; declaredSalary?: number }) {
   const { insuranceDetail } = result;
   const hasInsurance = result.insuranceDeduction > 0;
+  const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
 
-  const items = [
+  const items: Array<{ label: string; value: number; isHeader?: boolean }> = [
     { label: 'Thu nhập gộp', value: result.grossIncome },
   ];
 
   // Thêm chi tiết bảo hiểm nếu có
   if (hasInsurance) {
+    if (hasDeclaredSalary) {
+      items.push({
+        label: `Bảo hiểm (trên ${formatCurrency(declaredSalary)})`,
+        value: -result.insuranceDeduction,
+        isHeader: true
+      });
+    }
     if (insuranceDetail.bhxh > 0) {
       items.push({ label: '  └ BHXH (8%)', value: -insuranceDetail.bhxh });
     }
@@ -162,7 +192,7 @@ function ResultDetails({ result, colorClass }: { result: TaxResultType; colorCla
     <div className="space-y-3">
       {items.map((item, index) => (
         <div key={index} className="flex justify-between text-sm">
-          <span className="text-gray-600">{item.label}</span>
+          <span className={item.isHeader ? 'text-gray-700 font-medium' : 'text-gray-600'}>{item.label}</span>
           <span className={item.value < 0 ? 'text-gray-500' : 'font-medium'}>
             {item.value < 0 ? '' : ''}{formatCurrency(item.value)}
           </span>

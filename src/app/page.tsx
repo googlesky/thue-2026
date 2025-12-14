@@ -388,6 +388,7 @@ export default function Home() {
                   oldResult={oldResult}
                   newResult={newResult}
                   otherIncomeTax={otherIncomeTax}
+                  declaredSalary={sharedState.declaredSalary}
                 />
               </div>
             </div>
@@ -477,9 +478,10 @@ export default function Home() {
         {activeTab === 'insurance' && (
           <div className="mb-8">
             <InsuranceBreakdown
-              grossIncome={sharedState.declaredSalary ?? sharedState.grossIncome}
+              grossIncome={sharedState.grossIncome}
               region={sharedState.region}
               insuranceOptions={sharedState.insuranceOptions}
+              declaredSalary={sharedState.declaredSalary}
             />
           </div>
         )}
