@@ -18,7 +18,7 @@ import { EmployerCostTabState } from '@/lib/snapshotTypes';
 const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000;
 const MAX_UNEMPLOYMENT_INSURANCE_SALARY: Record<RegionType, number> = {
   1: 99_200_000,
-  2: 88_400_000,
+  2: 88_200_000,
   3: 77_200_000,
   4: 69_000_000,
 };
@@ -37,7 +37,7 @@ const EMPLOYER_RATES = {
 };
 
 const OLD_DEDUCTIONS = { personal: 11_000_000, dependent: 4_400_000 };
-const NEW_DEDUCTIONS = { personal: 18_000_000, dependent: 8_000_000 };
+const NEW_DEDUCTIONS = { personal: 15_500_000, dependent: 6_200_000 };
 
 const OLD_TAX_BRACKETS = [
   { min: 0, max: 5_000_000, rate: 0.05 },
