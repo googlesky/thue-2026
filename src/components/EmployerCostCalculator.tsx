@@ -91,7 +91,7 @@ export default function EmployerCostCalculator({
   const result = grossSalary > 0
     ? getFullEmployerCostResult({
         grossIncome: grossSalary,
-        declaredSalary: useDeclaredSalary ? declaredSalary : undefined,
+        declaredSalary: (useDeclaredSalary && declaredSalary > 0) ? declaredSalary : undefined,
         dependents,
         region,
         insuranceOptions,
@@ -182,7 +182,14 @@ export default function EmployerCostCalculator({
               <input
                 type="checkbox"
                 checked={useDeclaredSalary}
-                onChange={(e) => setUseDeclaredSalary(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setUseDeclaredSalary(checked);
+                  if (!checked) {
+                    setDeclaredSalary(0);
+                    onStateChange?.({ declaredSalary: undefined });
+                  }
+                }}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
               <span className="text-sm text-gray-700">Lương đóng BH khác lương thực</span>
@@ -210,7 +217,7 @@ export default function EmployerCostCalculator({
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {Object.entries(REGIONAL_MINIMUM_WAGES).map(([key, info]) => (
-                <option key={key} value={key}>
+                <option key={key} value={Number(key)}>
                   {info.name} - {formatNumber(info.wage)} VND
                 </option>
               ))}
