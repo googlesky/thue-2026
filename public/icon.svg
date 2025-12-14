@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="calcGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+  <!-- Calculator body -->
+  <rect x="96" y="64" width="320" height="384" rx="24" fill="url(#calcGrad)"/>
+  <!-- Screen -->
+  <rect x="120" y="88" width="272" height="80" rx="12" fill="#1e293b"/>
+  <!-- VND symbol on screen -->
+  <text x="256" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="#22c55e">₫</text>
+  <!-- Calculator buttons grid -->
+  <!-- Row 1 -->
+  <rect x="120" y="192" width="56" height="48" rx="8" fill="#dc2626"/>
+  <rect x="192" y="192" width="56" height="48" rx="8" fill="#6b7280"/>
+  <rect x="264" y="192" width="56" height="48" rx="8" fill="#6b7280"/>
+  <rect x="336" y="192" width="56" height="48" rx="8" fill="#f97316"/>
+  <!-- Row 2 -->
+  <rect x="120" y="256" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="192" y="256" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="264" y="256" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="336" y="256" width="56" height="48" rx="8" fill="#f97316"/>
+  <!-- Row 3 -->
+  <rect x="120" y="320" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="192" y="320" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="264" y="320" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="336" y="320" width="56" height="48" rx="8" fill="#f97316"/>
+  <!-- Row 4 -->
+  <rect x="120" y="384" width="128" height="48" rx="8" fill="#374151"/>
+  <rect x="264" y="384" width="56" height="48" rx="8" fill="#374151"/>
+  <rect x="336" y="384" width="56" height="48" rx="8" fill="#22c55e"/>
+  <!-- "2026" label -->
+  <text x="256" y="475" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2026</text>
+</svg>
