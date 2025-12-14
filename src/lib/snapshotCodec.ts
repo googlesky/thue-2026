@@ -161,10 +161,10 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     version: snapshot.version,
   };
 
-  // Remove default shared state values
+  // Remove default shared state values (default grossIncome is 30_000_000)
   const s = snapshot.sharedState;
   const shared: Record<string, unknown> = {};
-  if (s.grossIncome !== 0) shared.grossIncome = s.grossIncome;
+  if (s.grossIncome !== 30_000_000) shared.grossIncome = s.grossIncome;
   if (s.declaredSalary !== undefined) shared.declaredSalary = s.declaredSalary;
   if (s.dependents !== 0) shared.dependents = s.dependents;
   if (s.otherDeductions !== 0) shared.otherDeductions = s.otherDeductions;
@@ -213,11 +213,14 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     tabs.freelancer = snapshot.tabs.freelancer;
   }
 
-  if (snapshot.tabs.salaryComparison.companies.length > 0 || snapshot.tabs.salaryComparison.useNewLaw !== true) {
+  // Only include if companies have non-zero salary or useNewLaw is false
+  const hasNonDefaultCompanies = snapshot.tabs.salaryComparison.companies.some(c => c.grossSalary > 0);
+  if (hasNonDefaultCompanies || snapshot.tabs.salaryComparison.useNewLaw !== true) {
     tabs.salaryComparison = snapshot.tabs.salaryComparison;
   }
 
-  if (snapshot.tabs.yearlyComparison.selectedPresetId !== null || snapshot.tabs.yearlyComparison.bonusAmount !== 0) {
+  // Check actual defaults: selectedPresetId='normal', bonusAmount=30_000_000
+  if (snapshot.tabs.yearlyComparison.selectedPresetId !== 'normal' || snapshot.tabs.yearlyComparison.bonusAmount !== 30_000_000) {
     tabs.yearlyComparison = snapshot.tabs.yearlyComparison;
   }
 

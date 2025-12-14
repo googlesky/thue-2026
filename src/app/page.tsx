@@ -50,7 +50,7 @@ import {
   DEFAULT_BONUS_STATE,
   DEFAULT_ESOP_STATE,
 } from '@/lib/snapshotTypes';
-import { decodeSnapshot, decodeLegacyURLParams } from '@/lib/snapshotCodec';
+import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
 
 const defaultSharedState: SharedTaxState = {
@@ -154,17 +154,22 @@ export default function Home() {
       const tabId = hash.slice(1) as TabType;
       if (VALID_TABS.includes(tabId)) {
         setActiveTab(tabId);
-        // Don't clear the hash immediately - let it work for a moment
-        // then clear it to keep URL clean
-        setTimeout(() => {
-          window.history.replaceState(null, '', window.location.pathname);
-        }, 100);
         return true;
       }
     }
 
     return false;
   }, [handleLoadSnapshot]);
+
+  // Handler for tab change - updates both state and URL
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    // Update URL hash without triggering navigation
+    if (typeof window !== 'undefined') {
+      const newHash = tab === 'calculator' ? '' : `#${tab}`;
+      window.history.replaceState(null, '', window.location.pathname + newHash);
+    }
+  }, []);
 
   // Load state from URL on mount
   useEffect(() => {
@@ -308,6 +313,58 @@ export default function Home() {
     },
   }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState]);
 
+  // Auto-update URL when state changes (debounced)
+  useEffect(() => {
+    if (!isInitialized || typeof window === 'undefined') return;
+
+    const timeoutId = setTimeout(() => {
+      const encoded = encodeSnapshot(currentSnapshot);
+
+      // Check if state is basically default (encoded string is very short)
+      // Short encoded = mostly defaults, just use simple tab hash
+      if (encoded.length < 20) {
+        // Use simple tab hash or clean URL for default tab
+        const newURL = activeTab === 'calculator'
+          ? window.location.pathname
+          : `${window.location.pathname}#${activeTab}`;
+        window.history.replaceState(null, '', newURL);
+      } else {
+        // Full state encoding needed
+        const newURL = `${window.location.pathname}#s=${encoded}`;
+        window.history.replaceState(null, '', newURL);
+      }
+    }, 500); // Debounce 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [currentSnapshot, isInitialized, activeTab]);
+
+  // Reset to home (default state)
+  const handleGoHome = useCallback(() => {
+    setSharedState(defaultSharedState);
+    setActiveTab('calculator');
+    setEmployerCostState({ includeUnionFee: false, useNewLaw: true });
+    setFreelancerState({ frequency: 'monthly', useNewLaw: true });
+    setSalaryComparisonState({
+      companies: [
+        createDefaultCompanyOffer('company-1', 'Công ty A'),
+        createDefaultCompanyOffer('company-2', 'Công ty B'),
+      ],
+      useNewLaw: true,
+    });
+    setYearlyState({ selectedPresetId: 'normal', bonusAmount: 30_000_000 });
+    setOvertimeState(DEFAULT_OVERTIME_STATE);
+    setAnnualSettlementState(DEFAULT_ANNUAL_SETTLEMENT_STATE);
+    setBonusState(DEFAULT_BONUS_STATE);
+    setEsopState(DEFAULT_ESOP_STATE);
+
+    // Recalculate with default values
+    setOldResult(calculateOldTax(defaultSharedState));
+    setNewResult(calculateNewTax(defaultSharedState));
+
+    // Clear URL
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
+
   // Calculate other income tax
   const otherIncomeTax = sharedState.otherIncome
     ? calculateOtherIncomeTax(sharedState.otherIncome)
@@ -346,6 +403,15 @@ export default function Home() {
                 </span>
               </div>
               <button
+                onClick={handleGoHome}
+                className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Về trang chủ (reset)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </button>
+              <button
                 onClick={() => setIsLawInfoOpen(true)}
                 className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Thông tin luật thuế 2026"
@@ -363,7 +429,7 @@ export default function Home() {
         </header>
 
         {/* Tab Navigation */}
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+        <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
         {/* Tab Content */}
         {activeTab === 'calculator' && (

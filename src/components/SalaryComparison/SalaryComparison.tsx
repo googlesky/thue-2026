@@ -46,7 +46,7 @@ export default function SalaryComparison({
     if (sharedState && !isLocalChange.current) {
       setDependents(sharedState.dependents);
       // Nếu có grossIncome, điền vào công ty đầu tiên nếu trống
-      if (sharedState.grossIncome > 0 && companies[0].grossSalary === 0) {
+      if (sharedState.grossIncome > 0 && companies.length > 0 && companies[0]?.grossSalary === 0) {
         setCompanies(prev => prev.map((c, i) =>
           i === 0 ? { ...c, grossSalary: sharedState.grossIncome, region: sharedState.region } : c
         ));
@@ -58,7 +58,12 @@ export default function SalaryComparison({
   // Sync from tab state
   useEffect(() => {
     if (tabState) {
-      setCompanies(tabState.companies);
+      // Ensure companies array is never empty
+      const validCompanies = tabState.companies?.length > 0 ? tabState.companies : [
+        createDefaultCompanyOffer('company-1', 'Công ty A'),
+        createDefaultCompanyOffer('company-2', 'Công ty B'),
+      ];
+      setCompanies(validCompanies);
       setUseNewLaw(tabState.useNewLaw);
     }
   }, [tabState]);
