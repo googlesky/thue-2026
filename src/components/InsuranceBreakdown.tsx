@@ -6,15 +6,20 @@ interface InsuranceBreakdownProps {
   grossIncome: number;
   region?: RegionType;
   insuranceOptions?: InsuranceOptions;
+  declaredSalary?: number;
 }
 
-export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceOptions = DEFAULT_INSURANCE_OPTIONS }: InsuranceBreakdownProps) {
+export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceOptions = DEFAULT_INSURANCE_OPTIONS, declaredSalary }: InsuranceBreakdownProps) {
+  // Sử dụng lương khai báo nếu có, ngược lại dùng lương thực tế
+  const insuranceBaseSalary = declaredSalary ?? grossIncome;
+  const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== grossIncome;
+
   // BHXH và BHYT: tối đa 20 lần lương cơ sở
-  const bhxhBhytBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
+  const bhxhBhytBase = Math.min(insuranceBaseSalary, MAX_SOCIAL_INSURANCE_SALARY);
 
   // BHTN: tối đa 20 lần lương tối thiểu vùng
   const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
-  const bhtnBase = Math.min(grossIncome, maxBhtn);
+  const bhtnBase = Math.min(insuranceBaseSalary, maxBhtn);
 
   // Calculate based on enabled options
   const bhxh = insuranceOptions.bhxh ? bhxhBhytBase * INSURANCE_RATES.socialInsurance : 0;
@@ -41,6 +46,24 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
         </svg>
         Chi tiết Bảo hiểm bắt buộc
       </h3>
+
+      {/* Notice if using declared salary */}
+      {hasDeclaredSalary && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                Bảo hiểm được tính trên lương khai báo <span className="font-semibold">{formatCurrency(declaredSalary)}</span> (khác lương thực tế {formatCurrency(grossIncome)})
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mức lương đóng BH */}
       <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
