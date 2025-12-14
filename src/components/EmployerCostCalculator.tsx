@@ -150,16 +150,19 @@ export default function EmployerCostCalculator({
                 onChange={(e) => setUseDeclaredSalary(e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700">Lương khai báo khác lương thực</span>
+              <span className="text-sm text-gray-700">Lương đóng BH khác lương thực</span>
             </label>
             {useDeclaredSalary && (
-              <input
-                type="text"
-                value={declaredSalary > 0 ? formatNumber(declaredSalary) : ''}
-                onChange={(e) => handleDeclaredChange(e.target.value)}
-                placeholder="Nhập lương khai báo"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              <>
+                <input
+                  type="text"
+                  value={declaredSalary > 0 ? formatNumber(declaredSalary) : ''}
+                  onChange={(e) => handleDeclaredChange(e.target.value)}
+                  placeholder="Lương đóng BHXH, BHYT, BHTN"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <p className="text-xs text-amber-600">BH tính trên mức này • Thuế tính trên lương thực</p>
+              </>
             )}
           </div>
 
