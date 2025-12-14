@@ -1,179 +1,262 @@
-## Mô tả dự án
+# Thuế TNCN 2026
 
-Tool web tính thuế TNCN Việt Nam 2026 - so sánh luật thuế mới (5 bậc) với luật thuế cũ (7 bậc). Viết bằng Next.js, build static HTML để host trên GitHub Pages.
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fthue.1devops.io&style=flat-square)](https://thue.1devops.io)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-**Website:** https://thue.1devops.io
+Công cụ tính thuế thu nhập cá nhân Việt Nam - So sánh luật thuế hiện hành (7 bậc) với luật thuế mới 2026 (5 bậc).
 
-## Tính năng
+**Live:** [https://thue.1devops.io](https://thue.1devops.io)
 
-### Tính thuế TNCN
-- [x] So sánh luật cũ (7 bậc) vs luật mới 2026 (5 bậc)
-- [x] Hiển thị tiết kiệm thuế theo tháng và năm
-- [x] Miễn trừ gia cảnh / Người phụ thuộc
-- [x] Quỹ hưu trí tự nguyện (tối đa 1 triệu/tháng)
-- [x] Đóng góp từ thiện, nhân đạo
+---
 
-### Chuyển đổi GROSS ⇄ NET
-- [x] Chuyển đổi 2 chiều GROSS → NET và NET → GROSS
-- [x] Lưu riêng giá trị GROSS và NET, không bị drift khi chuyển mode
-- [x] Đồng bộ dữ liệu với tab Tính thuế
+## Features
 
-### Chi phí Nhà tuyển dụng (Mới)
-- [x] Tính tổng chi phí DN phải trả (lương + bảo hiểm phần DN)
-- [x] BHXH 17.5%, BHYT 3%, BHTN 1% phần doanh nghiệp
-- [x] Tùy chọn phí công đoàn 2%
-- [x] Hiển thị tỷ lệ chi phí/lương và thống kê năm
-- [x] So sánh góc nhìn DN vs NLĐ
+### Calculators
 
-### So sánh Freelancer vs Nhân viên (Mới)
-- [x] So sánh thu nhập thực nhận giữa 2 hình thức
-- [x] Freelancer: thuế khấu trừ 10% (phương pháp khoán)
-- [x] Nhân viên: thuế lũy tiến + giảm trừ gia cảnh + BHXH
-- [x] Tính điểm hòa vốn (break-even point)
-- [x] Phân tích ưu/nhược điểm chi tiết từng hình thức
-- [x] Cảnh báo: freelancer phải tự mua BHYT, không có lương hưu
+| Feature | Description |
+|---------|-------------|
+| **Tính thuế TNCN** | So sánh thuế theo 2 biểu thuế, hiển thị tiết kiệm theo tháng/năm |
+| **GROSS ⇄ NET** | Chuyển đổi 2 chiều với binary search, đồng bộ với các tab khác |
+| **Lương tăng ca** | Tính lương OT theo ngày thường, cuối tuần, lễ |
+| **Quyết toán thuế** | Tổng hợp thu nhập năm, thưởng, tính thuế phải nộp/hoàn |
+| **Thưởng Tết** | So sánh các scenario trả thưởng tối ưu thuế (T12/2025 vs T1-6/2026 vs T7+/2026) |
+| **ESOP Calculator** | Tính thuế cổ phiếu ESOP/stock options với so sánh thời điểm exercise |
 
-### So sánh lương giữa các công ty (Mới)
-- [x] So sánh 2-4 offers từ các công ty khác nhau
-- [x] Tính toán bao gồm thưởng tháng 13, 14
-- [x] Phụ cấp hàng tháng (giả định không chịu thuế)
-- [x] Biểu đồ so sánh trực quan
-- [x] Highlight offer tốt nhất theo NET năm
+### Comparisons
 
-### So sánh thuế theo năm (Mới)
-- [x] So sánh thuế phải đóng qua các năm
-- [x] Hiển thị xu hướng thay đổi
+| Feature | Description |
+|---------|-------------|
+| **So sánh offers** | So sánh 2-4 job offers với lương, thưởng, phụ cấp |
+| **So sánh năm** | Xu hướng thuế qua các năm 2024-2026 |
+| **Freelancer vs Fulltime** | So sánh thuế 10% khoán vs lũy tiến + BHXH |
+| **Chi phí NTD** | Tổng chi phí doanh nghiệp (lương + BHXH DN + công đoàn) |
 
-### Bảo hiểm bắt buộc
-- [x] Tùy chọn bật/tắt từng loại: BHXH (8%), BHYT (1.5%), BHTN (1%)
-- [x] Tính phần người lao động đóng và phần công ty đóng
-- [x] Hỗ trợ 4 vùng lương tối thiểu
-- [x] BHXH/BHYT: tối đa 20x lương cơ sở (46.8 triệu)
-- [x] BHTN: tối đa 20x lương tối thiểu vùng
+### Reference
 
-### Lương khai báo
-- [x] Tùy chọn mức lương khai báo khác lương thực tế
-- [x] Thuế và bảo hiểm tính trên lương khai báo
+| Feature | Description |
+|---------|-------------|
+| **Chi tiết bảo hiểm** | BHXH/BHYT/BHTN với 4 vùng lương, mức trần |
+| **Thu nhập khác** | Thuế các loại thu nhập vãng lai |
+| **Biểu thuế suất** | Bảng so sánh 7 bậc vs 5 bậc |
+| **Lịch sử luật** | Timeline thay đổi luật thuế TNCN |
 
-### Biểu đồ & Bảng biểu
-- [x] Biểu đồ so sánh thuế cũ vs mới theo mức thu nhập
-- [x] Bảng biểu thuế chi tiết 7 bậc và 5 bậc
+### Technical Features
 
-### Đồng bộ dữ liệu
-- [x] Liên thông giữa các tab (Tính thuế ↔ GROSS-NET ↔ Bảo hiểm ↔ Freelancer ↔ So sánh lương)
-- [x] SharedTaxState quản lý state tập trung
-- [x] Tránh vòng lặp vô hạn với useRef (isLocalChange)
+- **URL Sharing**: Lưu/chia sẻ state qua URL với LZ compression
+- **QR Code**: Tạo QR để scan trên mobile
+- **Responsive**: Mobile-first design
+- **Static Export**: Host trên GitHub Pages, CDN
+- **SEO Optimized**: Open Graph, Twitter Cards, JSON-LD, sitemap
 
-## Các hằng số quan trọng
+---
 
-### Biểu thuế mới 2026 (5 bậc)
-| Bậc | Thu nhập tính thuế | Thuế suất |
-|-----|-------------------|-----------|
-| 1   | Đến 10 triệu      | 5%        |
-| 2   | 10-30 triệu       | 10%       |
-| 3   | 30-60 triệu       | 20%       |
-| 4   | 60-100 triệu      | 30%       |
-| 5   | Trên 100 triệu    | 35%       |
+## Tech Stack
 
-### Biểu thuế hiện hành (7 bậc)
-| Bậc | Thu nhập tính thuế | Thuế suất |
-|-----|-------------------|-----------|
-| 1   | Đến 5 triệu       | 5%        |
-| 2   | 5-10 triệu        | 10%       |
-| 3   | 10-18 triệu       | 15%       |
-| 4   | 18-32 triệu       | 20%       |
-| 5   | 32-52 triệu       | 25%       |
-| 6   | 52-80 triệu       | 30%       |
-| 7   | Trên 80 triệu     | 35%       |
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript 5.7 |
+| UI | React 19, Tailwind CSS 3.4 |
+| Charts | Recharts 2.15 |
+| Compression | lz-string |
+| QR | qrcode.react |
+| Build | Static HTML export |
+| Hosting | GitHub Pages |
 
-### Giảm trừ gia cảnh
-| Khoản | Luật hiện hành | Luật mới 2026 |
-|-------|----------------|---------------|
-| Bản thân | 11 triệu/tháng | 15.5 triệu/tháng |
-| Người phụ thuộc | 4.4 triệu/người/tháng | 6.2 triệu/người/tháng |
+---
 
-### Vùng lương tối thiểu 2024-2025
-| Vùng | Mức lương     | Khu vực                    |
-|------|---------------|----------------------------|
-| I    | 4,960,000 VNĐ | Hà Nội, HCM, Bình Dương... |
-| II   | 4,410,000 VNĐ | Đà Nẵng, Hải Phòng...      |
-| III  | 3,860,000 VNĐ | Tỉnh lỵ, thành phố nhỏ     |
-| IV   | 3,450,000 VNĐ | Nông thôn                  |
-
-### Bảo hiểm bắt buộc
-| Loại | Người lao động | Doanh nghiệp | Mức trần |
-|------|----------------|--------------|----------|
-| BHXH | 8% | 17.5% | 20x lương cơ sở (46.8 triệu) |
-| BHYT | 1.5% | 3% | 20x lương cơ sở (46.8 triệu) |
-| BHTN | 1% | 1% | 20x lương tối thiểu vùng |
-| Công đoàn | - | 2% | Không giới hạn |
-
-### Thuế thu nhập vãng lai (Freelancer)
-- Thuế suất: 10% trên tổng thu nhập (phương pháp khoán)
-- Không được giảm trừ gia cảnh
-- Không được trừ bảo hiểm
-
-## Cấu trúc dự án
+## Project Structure
 
 ```
 src/
 ├── app/
-│   └── page.tsx              # Trang chính với 9 tabs
+│   ├── layout.tsx          # Root layout với SEO metadata
+│   ├── page.tsx             # Main page với 14 tabs
+│   ├── robots.ts            # robots.txt generation
+│   └── sitemap.ts           # sitemap.xml generation
 ├── components/
-│   ├── TaxCalculator.tsx     # Tính thuế TNCN
-│   ├── GrossNetConverter.tsx # Chuyển đổi GROSS-NET
-│   ├── EmployerCostCalculator.tsx # Chi phí NTD
-│   ├── FreelancerComparison/ # So sánh Freelancer vs NV
-│   ├── SalaryComparison/     # So sánh lương các công ty
-│   ├── YearlyTaxComparison.tsx
-│   ├── InsuranceCalculator.tsx
-│   ├── OtherIncomeCalculator.tsx
-│   └── TaxTable.tsx
-└── lib/
-    ├── taxCalculator.ts      # Logic tính thuế chính
-    ├── freelancerCalculator.ts # Logic freelancer
-    ├── salaryComparisonCalculator.ts # Logic so sánh lương
-    └── constants.ts          # Hằng số thuế, bảo hiểm
+│   ├── AnnualSettlement/    # Quyết toán thuế năm
+│   ├── BonusCalculator/     # Tính thuế thưởng Tết
+│   ├── ESOPCalculator/      # Tính thuế ESOP
+│   ├── FreelancerComparison/# So sánh Freelancer vs NV
+│   ├── OvertimeCalculator/  # Tính lương tăng ca
+│   ├── SalaryComparison/    # So sánh offers
+│   ├── SaveShare/           # URL sharing + QR
+│   ├── TaxLawHistory/       # Lịch sử luật thuế
+│   ├── YearlyComparison/    # So sánh thuế theo năm
+│   ├── ui/                  # Shared UI (Tooltip, Modal)
+│   ├── GrossNetConverter.tsx
+│   ├── EmployerCostCalculator.tsx
+│   ├── TaxInput.tsx
+│   ├── TaxResult.tsx
+│   ├── TaxChart.tsx
+│   └── TabNavigation.tsx
+├── lib/
+│   ├── taxCalculator.ts     # Core tax calculation logic
+│   ├── bonusCalculator.ts   # Bonus optimization logic
+│   ├── esopCalculator.ts    # ESOP tax calculation
+│   ├── yearlyTaxCalculator.ts
+│   ├── snapshotCodec.ts     # URL encoding/decoding
+│   └── snapshotTypes.ts     # State type definitions
+└── public/
+    ├── icon.svg             # SVG favicon
+    ├── og-image.png         # Open Graph image
+    └── manifest.json        # PWA manifest
 ```
 
-## Lưu ý kỹ thuật
+---
 
-### Tránh value drift trong GROSS-NET
-- Lưu riêng `grossValue` và `netValue`
-- Khi chuyển mode chỉ đổi display, không recalculate
-- Chỉ tính toán khi user thay đổi input
+## Tax Constants
 
-### Đồng bộ giữa các tab
-- Sử dụng `SharedTaxState` lifted lên page.tsx
-- `isLocalChange` ref để tránh vòng lặp sync
-- Callback `onStateChange` để notify parent
+### Biểu thuế mới 2026 (5 bậc)
 
-### Binary search cho NET → GROSS
-- Độ chính xác 1000 VNĐ
-- Max 50 iterations
-- Tránh recalculate liên tục gây drift
+| Bậc | Thu nhập tính thuế | Thuế suất |
+|:---:|:-------------------|:---------:|
+| 1 | ≤ 10 triệu | 5% |
+| 2 | 10 - 30 triệu | 10% |
+| 3 | 30 - 60 triệu | 20% |
+| 4 | 60 - 100 triệu | 30% |
+| 5 | > 100 triệu | 35% |
 
-### Input validation
-- Tất cả giá trị đầu vào được validate không âm
-- Bonus months giới hạn tối đa 12 tháng
-- Graceful handling cho edge cases
+### Biểu thuế hiện hành (7 bậc)
 
-## Phát triển
+| Bậc | Thu nhập tính thuế | Thuế suất |
+|:---:|:-------------------|:---------:|
+| 1 | ≤ 5 triệu | 5% |
+| 2 | 5 - 10 triệu | 10% |
+| 3 | 10 - 18 triệu | 15% |
+| 4 | 18 - 32 triệu | 20% |
+| 5 | 32 - 52 triệu | 25% |
+| 6 | 52 - 80 triệu | 30% |
+| 7 | > 80 triệu | 35% |
+
+### Giảm trừ gia cảnh
+
+| Khoản | Luật hiện hành | Luật mới 2026 |
+|-------|:--------------:|:-------------:|
+| Bản thân | 11 triệu/tháng | 15.5 triệu/tháng |
+| Người phụ thuộc | 4.4 triệu/người | 6.2 triệu/người |
+
+### Bảo hiểm bắt buộc
+
+| Loại | NLĐ | DN | Mức trần |
+|------|:---:|:--:|----------|
+| BHXH | 8% | 17.5% | 20× lương cơ sở (46.8tr) |
+| BHYT | 1.5% | 3% | 20× lương cơ sở (46.8tr) |
+| BHTN | 1% | 1% | 20× lương tối thiểu vùng |
+| Công đoàn | - | 2% | Không giới hạn |
+
+### Vùng lương tối thiểu (2024-2025)
+
+| Vùng | Mức lương | Khu vực |
+|:----:|----------:|---------|
+| I | 4,960,000₫ | HN, HCM, Bình Dương... |
+| II | 4,410,000₫ | Đà Nẵng, Hải Phòng... |
+| III | 3,860,000₫ | Tỉnh lỵ, TP nhỏ |
+| IV | 3,450,000₫ | Nông thôn |
+
+---
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+
+### Quick Start
 
 ```bash
-# Cài dependencies
+# Clone
+git clone https://github.com/googlesky/thue-2026.git
+cd thue-2026
+
+# Install
 npm install
 
-# Chạy dev server
+# Dev server
 npm run dev
-
-# Build production
-npm run build
-
-# Export static HTML
-npm run export
 ```
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server at localhost:3000 |
+| `npm run build` | Production build + static export to `out/` |
+| `npm run lint` | Run ESLint |
+| `npm start` | Start production server (not for static) |
+
+### Generate Icons
+
+```bash
+node scripts/generate-icons.mjs
+```
+
+Generates favicon, apple-touch-icon, PWA icons, and OG image from SVG.
+
+---
+
+## Deployment
+
+### GitHub Pages
+
+The project is configured for static export. Build output goes to `out/`.
+
+```bash
+npm run build
+# Deploy out/ to GitHub Pages
+```
+
+### Custom Domain
+
+1. Add CNAME file with your domain
+2. Configure DNS to point to GitHub Pages
+3. Enable HTTPS in repo settings
+
+---
+
+## Architecture Notes
+
+### State Management
+
+- Centralized state in `page.tsx`
+- Props drilling to child components
+- `useCallback` with functional updates to avoid stale closures
+- `useEffect` for prop sync to local state
+
+### GROSS ↔ NET Conversion
+
+- Binary search algorithm for NET → GROSS
+- Separate storage for gross/net values to prevent drift
+- Precision: 1,000₫, max 50 iterations
+
+### URL State Sharing
+
+- LZ-string compression for compact URLs
+- Base64 encoding for URL safety
+- Versioned codec for backward compatibility
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open Pull Request
+
+---
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## Author
+
+**1DevOps** - [https://1devops.io](https://1devops.io)
