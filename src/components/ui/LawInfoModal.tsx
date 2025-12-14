@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface LawInfoModalProps {
   isOpen: boolean
@@ -8,11 +8,15 @@ interface LawInfoModalProps {
 }
 
 export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
+  // Use ref to avoid including onClose in dependency array
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   // Handle Escape key press
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
+      if (e.key === 'Escape') {
+        onCloseRef.current()
       }
     }
 
@@ -26,7 +30,7 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 
