@@ -83,22 +83,6 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
     }
   };
 
-  const getArrowClasses = () => {
-    const baseClasses = 'absolute w-2 h-2 bg-white border-gray-200 transform rotate-45';
-
-    switch (adjustedPosition) {
-      case 'top':
-        return `${baseClasses} -bottom-1 left-1/2 -translate-x-1/2 border-b border-r`;
-      case 'bottom':
-        return `${baseClasses} -top-1 left-1/2 -translate-x-1/2 border-t border-l`;
-      case 'left':
-        return `${baseClasses} -right-1 top-1/2 -translate-y-1/2 border-t border-r`;
-      case 'right':
-        return `${baseClasses} -left-1 top-1/2 -translate-y-1/2 border-b border-l`;
-      default:
-        return `${baseClasses} -top-1 left-1/2 -translate-x-1/2 border-t border-l`;
-    }
-  };
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,9 +108,8 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
           className={getPositionClasses()}
           role="tooltip"
         >
-          <div className="relative bg-white text-gray-700 text-sm rounded-lg px-3 py-2 shadow-lg border border-gray-200 max-w-xs animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative bg-gray-800 text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap">
             {content}
-            <div className={getArrowClasses()} />
           </div>
         </div>
       )}
