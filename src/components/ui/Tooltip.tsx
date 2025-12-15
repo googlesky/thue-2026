@@ -108,7 +108,7 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
           className={getPositionClasses()}
           role="tooltip"
         >
-          <div className="relative bg-gray-800 text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap">
+          <div className="relative bg-gray-800 text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg max-w-[280px] sm:max-w-xs">
             {content}
           </div>
         </div>

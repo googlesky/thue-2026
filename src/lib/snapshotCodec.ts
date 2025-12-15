@@ -209,10 +209,8 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     result.sharedState = shared;
   }
 
-  // Active tab (only if not default)
-  if (snapshot.activeTab !== 'calculator') {
-    result.activeTab = snapshot.activeTab;
-  }
+  // Note: activeTab is NOT included in encoding
+  // It's stored separately in the URL hash for cleaner URLs
 
   // Remove default tab states
   const tabs: Record<string, unknown> = {};
@@ -379,17 +377,24 @@ export function decodeSnapshot(encoded: string): CalculatorSnapshot | null {
 
 /**
  * Generate full share URL with encoded snapshot
- * Format: https://example.com/#s=<encoded>
+ * Format: https://example.com/#<tab>~<encoded> or https://example.com/#<tab>
+ * The tab is stored separately from the encoded state for cleaner URLs
  */
 export function generateShareURL(snapshot: CalculatorSnapshot): string {
   const encoded = encodeSnapshot(snapshot);
-  if (!encoded) return '';
+  const tab = snapshot.activeTab || 'calculator';
 
   const baseURL = typeof window !== 'undefined'
     ? window.location.origin + window.location.pathname
     : '';
 
-  return `${baseURL}#s=${encoded}`;
+  // If encoded is empty or very short (just version), only include tab
+  if (!encoded || encoded.length < 10) {
+    return tab === 'calculator' ? baseURL : `${baseURL}#${tab}`;
+  }
+
+  // Include both tab and encoded state
+  return `${baseURL}#${tab}~${encoded}`;
 }
 
 /**
