@@ -297,7 +297,7 @@ export default function OvertimeCalculator({
               <Tooltip content="Tăng ca ngoài giờ hành chính (150% lương giờ)">
                 <button
                   onClick={() => addEntry('weekday', 'day')}
-                  className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="px-3 py-2.5 sm:py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
                 >
                   + Ngày thường
                 </button>
@@ -305,7 +305,7 @@ export default function OvertimeCalculator({
               <Tooltip content="Làm việc thứ 7, Chủ nhật (200% lương giờ)">
                 <button
                   onClick={() => addEntry('weekend', 'day')}
-                  className="px-3 py-1.5 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
+                  className="px-3 py-2.5 sm:py-1.5 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
                 >
                   + Cuối tuần
                 </button>
@@ -313,7 +313,7 @@ export default function OvertimeCalculator({
               <Tooltip content="Làm việc ngày lễ, tết (300% lương giờ + lương ngày nếu được chọn)">
                 <button
                   onClick={() => addEntry('holiday', 'day')}
-                  className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                  className="px-3 py-2.5 sm:py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
                 >
                   + Ngày lễ
                 </button>
