@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CalculatorSnapshot, NamedSave } from '@/lib/snapshotTypes';
 import { getNamedSaves, deleteNamedSave, formatTimestamp } from '@/lib/snapshotStorage';
 import { formatCurrency } from '@/lib/taxCalculator';
@@ -22,18 +22,22 @@ export default function NamedSavesSection({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Load saves
-  useEffect(() => {
+  const loadSaves = useCallback(() => {
     setSaves(getNamedSaves());
   }, []);
 
+  useEffect(() => {
+    loadSaves();
+  }, [loadSaves]);
+
   const handleSaveSuccess = () => {
-    setSaves(getNamedSaves());
+    loadSaves();
     setShowSaveDialog(false);
   };
 
   const handleDelete = (id: string) => {
     deleteNamedSave(id);
-    setSaves(getNamedSaves());
+    loadSaves();
     setDeleteConfirmId(null);
   };
 

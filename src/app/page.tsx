@@ -81,6 +81,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLawInfoOpen, setIsLawInfoOpen] = useState(false);
+  const [isLoadingFromURL, setIsLoadingFromURL] = useState(false);
 
   // Shared state across all tabs
   const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
@@ -145,20 +146,50 @@ export default function Home() {
   }, []);
 
   // Helper function to handle hash navigation
+  // Supports formats: #<tab>, #<tab>~<encoded>, #s=<encoded> (legacy)
   const handleHashNavigation = useCallback((hash: string) => {
-    // Try to load from hash first (new snapshot format)
-    if (hash.startsWith('#s=')) {
-      const snapshot = decodeSnapshot(hash.slice(3));
+    if (!hash || hash === '#') return false;
+
+    const hashContent = hash.slice(1); // Remove '#'
+
+    // Legacy format: #s=<encoded>
+    if (hashContent.startsWith('s=')) {
+      const snapshot = decodeSnapshot(hashContent.slice(2));
       if (snapshot) {
+        setIsLoadingFromURL(true);
         handleLoadSnapshot(snapshot);
-        window.history.replaceState(null, '', window.location.pathname);
+        // Let auto-update effect handle URL update after state is loaded
+        setTimeout(() => setIsLoadingFromURL(false), 600);
         return true;
       }
     }
 
-    // Handle simple hash navigation (e.g., #gross-net, #overtime)
-    if (hash.startsWith('#') && hash.length > 1) {
-      const tabId = hash.slice(1) as TabType;
+    // New format: #<tab>~<encoded> or #<tab>
+    const tildeIndex = hashContent.indexOf('~');
+    if (tildeIndex >= 0) {
+      // Has encoded state: #<tab>~<encoded> or #~<encoded>
+      const tabPart = tildeIndex > 0
+        ? hashContent.slice(0, tildeIndex) as TabType
+        : 'calculator';
+      const encodedPart = hashContent.slice(tildeIndex + 1);
+
+      if (VALID_TABS.includes(tabPart)) {
+        setActiveTab(tabPart);
+
+        if (encodedPart) {
+          const snapshot = decodeSnapshot(encodedPart);
+          if (snapshot) {
+            setIsLoadingFromURL(true);
+            // Load state but keep the tab from URL
+            handleLoadSnapshot({ ...snapshot, activeTab: tabPart });
+            setTimeout(() => setIsLoadingFromURL(false), 600);
+          }
+        }
+        return true;
+      }
+    } else {
+      // Simple tab navigation: #<tab>
+      const tabId = hashContent as TabType;
       if (VALID_TABS.includes(tabId)) {
         setActiveTab(tabId);
         return true;
@@ -169,12 +200,15 @@ export default function Home() {
   }, [handleLoadSnapshot]);
 
   // Handler for tab change - updates both state and URL
+  // Don't preserve encoded state here - let auto-update effect handle it
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab);
-    // Update URL hash without triggering navigation
+    // Update URL with just the tab - auto-update effect will add state if needed
     if (typeof window !== 'undefined') {
-      const newHash = tab === 'calculator' ? '' : `#${tab}`;
-      window.history.replaceState(null, '', window.location.pathname + newHash);
+      const newURL = tab === 'calculator'
+        ? window.location.pathname
+        : `${window.location.pathname}#${tab}`;
+      window.history.replaceState(null, '', newURL);
     }
   }, []);
 
@@ -322,29 +356,33 @@ export default function Home() {
   }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState]);
 
   // Auto-update URL when state changes (debounced)
+  // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
   useEffect(() => {
-    if (!isInitialized || typeof window === 'undefined') return;
+    // Skip if not initialized, loading from URL, or not in browser
+    if (!isInitialized || isLoadingFromURL || typeof window === 'undefined') return;
 
     const timeoutId = setTimeout(() => {
       const encoded = encodeSnapshot(currentSnapshot);
 
       // Check if state is basically default (encoded string is very short)
       // Short encoded = mostly defaults, just use simple tab hash
-      if (encoded.length < 20) {
+      if (encoded.length < 10) {
         // Use simple tab hash or clean URL for default tab
         const newURL = activeTab === 'calculator'
           ? window.location.pathname
           : `${window.location.pathname}#${activeTab}`;
         window.history.replaceState(null, '', newURL);
       } else {
-        // Full state encoding needed
-        const newURL = `${window.location.pathname}#s=${encoded}`;
+        // Include both tab and encoded state: #<tab>~<encoded>
+        const newURL = activeTab === 'calculator'
+          ? `${window.location.pathname}#calculator~${encoded}`
+          : `${window.location.pathname}#${activeTab}~${encoded}`;
         window.history.replaceState(null, '', newURL);
       }
     }, 500); // Debounce 500ms
 
     return () => clearTimeout(timeoutId);
-  }, [currentSnapshot, isInitialized, activeTab]);
+  }, [currentSnapshot, isInitialized, isLoadingFromURL, activeTab]);
 
   // Reset to home (default state)
   const handleGoHome = useCallback(() => {

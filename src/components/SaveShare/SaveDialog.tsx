@@ -13,6 +13,7 @@ interface SaveDialogProps {
 export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProps) {
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus on label input when opened
@@ -40,8 +41,12 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
       return;
     }
 
-    saveNamedSave(snapshot, label.trim(), description.trim() || undefined);
-    onSave();
+    try {
+      saveNamedSave(snapshot, label.trim(), description.trim() || undefined);
+      onSave();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể lưu. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -100,6 +105,13 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-2">

@@ -69,7 +69,7 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
             </svg>
             <h3 className="text-xl font-bold">Thu nhập khác</h3>
           </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-blue-100 text-sm">Tổng thu nhập</div>
               <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalIncome)}</div>

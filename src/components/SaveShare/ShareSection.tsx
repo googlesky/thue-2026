@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CalculatorSnapshot } from '@/lib/snapshotTypes';
 import { generateShareURL, copyToClipboard } from '@/lib/snapshotCodec';
@@ -13,7 +13,12 @@ interface ShareSectionProps {
 export default function ShareSection({ snapshot }: ShareSectionProps) {
   const [copied, setCopied] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const shareURL = generateShareURL(snapshot);
+  const [shareURL, setShareURL] = useState<string>('');
+
+  // Generate share URL
+  useEffect(() => {
+    setShareURL(generateShareURL(snapshot));
+  }, [snapshot]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(shareURL);
@@ -58,7 +63,8 @@ export default function ShareSection({ snapshot }: ShareSectionProps) {
           />
           <button
             onClick={handleCopy}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+            disabled={!shareURL}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
             title="Copy link"
           >
             {copied ? (
