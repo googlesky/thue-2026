@@ -30,8 +30,8 @@ export default function SaveSharePanel({ snapshot, onLoadSnapshot, onClose }: Sa
         onClick={onClose}
       />
 
-      {/* Panel */}
-      <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-[80vh] overflow-hidden flex flex-col">
+      {/* Panel - Full screen on mobile, dropdown on desktop */}
+      <div className="fixed inset-4 sm:inset-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-[calc(100vh-2rem)] sm:max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header with tabs */}
         <div className="border-b bg-gray-50">
           <div className="flex items-center justify-between p-4 pb-0">
