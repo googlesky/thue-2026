@@ -238,7 +238,7 @@ export const DEFAULT_TAB_STATES: TabStates = {
  * Default shared state
  */
 export const DEFAULT_SHARED_STATE: SharedTaxState = {
-  grossIncome: 0,
+  grossIncome: 30_000_000,
   declaredSalary: undefined,
   dependents: 0,
   otherDeductions: 0,

@@ -202,7 +202,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
               <button
                 key={income}
                 onClick={() => setGrossIncome(income.toString())}
-                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                className={`px-3 py-2.5 sm:py-1.5 text-sm rounded-full transition-colors ${
                   parseInt(grossIncome, 10) === income
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

@@ -266,7 +266,7 @@ export default function AnnualSettlement({
             <div className="flex gap-2">
               <button
                 onClick={() => handleYearChange(2025)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
+                className={`px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
                   year === 2025
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -276,7 +276,7 @@ export default function AnnualSettlement({
               </button>
               <button
                 onClick={() => handleYearChange(2026)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
+                className={`px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
                   year === 2026
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -415,7 +415,7 @@ export default function AnnualSettlement({
               </div>
               <button
                 onClick={addDependent}
-                className="px-3 py-1.5 text-sm bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors"
+                className="px-3 py-2.5 sm:py-1.5 text-sm bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors"
               >
                 + Thêm NPT
               </button>
