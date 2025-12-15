@@ -14,26 +14,16 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
 
   // Handle export
   const handleExport = () => {
-    try {
-      const json = exportToJSON();
-
-      // Create download
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tax-calculator-saves-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export failed:', error);
-      setImportResult({
-        success: false,
-        message: 'Không thể xuất file',
-      });
-    }
+    const data = exportToJSON();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tax-calculator-saves-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Handle file selection
@@ -70,8 +60,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
 
       // Clear message after 5 seconds
       setTimeout(() => setImportResult(null), 5000);
-    } catch (error) {
-      console.error('Import failed:', error);
+    } catch {
       setImportResult({
         success: false,
         message: 'File không hợp lệ',

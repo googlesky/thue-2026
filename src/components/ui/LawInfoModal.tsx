@@ -67,7 +67,7 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6">
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4 sm:p-6">
           <div className="grid md:grid-cols-2 gap-6">
             {/* Key Changes Section */}
             <div className="card">

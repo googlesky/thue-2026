@@ -248,13 +248,15 @@ export default function AnnualSettlement({
     <div className="space-y-6">
       {/* Header */}
       <div className="card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-            <span className="text-2xl">📊</span>
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900">Quyết toán thuế năm</h2>
-            <p className="text-sm text-gray-500">Tính thuế phải nộp hoặc được hoàn khi quyết toán</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <span className="text-xl sm:text-2xl">📊</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Quyết toán thuế năm</h2>
+              <p className="text-xs sm:text-sm text-gray-500">Tính thuế phải nộp hoặc được hoàn khi quyết toán</p>
+            </div>
           </div>
           {/* Year selector */}
           <div className="flex items-center gap-2">
@@ -264,23 +266,23 @@ export default function AnnualSettlement({
             <div className="flex gap-2">
               <button
                 onClick={() => handleYearChange(2025)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
                   year === 2025
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Năm 2025
+                2025
               </button>
               <button
                 onClick={() => handleYearChange(2026)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-sm sm:text-base transition-all ${
                   year === 2026
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Năm 2026
+                2026
               </button>
             </div>
           </div>
@@ -424,14 +426,24 @@ export default function AnnualSettlement({
             ) : (
               <div className="space-y-3">
                 {dependents.map((dep) => (
-                  <div key={dep.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <input
-                      type="text"
-                      value={dep.name}
-                      onChange={(e) => updateDependent(dep.id, { name: e.target.value })}
-                      className="flex-1 px-2 py-1 border border-gray-200 rounded text-sm"
-                      placeholder="Tên NPT"
-                    />
+                  <div key={dep.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="text"
+                        value={dep.name}
+                        onChange={(e) => updateDependent(dep.id, { name: e.target.value })}
+                        className="flex-1 px-2 py-1 border border-gray-200 rounded text-sm"
+                        placeholder="Tên NPT"
+                      />
+                      <button
+                        onClick={() => removeDependent(dep.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded sm:hidden"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-gray-500">Từ</span>
                       <select
@@ -456,7 +468,7 @@ export default function AnnualSettlement({
                     </div>
                     <button
                       onClick={() => removeDependent(dep.id)}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      className="hidden sm:block p-1 text-red-500 hover:bg-red-50 rounded"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

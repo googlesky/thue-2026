@@ -85,8 +85,8 @@ export default function MonthlyInputGrid({
         </button>
       </div>
 
-      {/* Grid 12 tháng (3 cột x 4 hàng) */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Grid 12 tháng (2 cột mobile, 3 cột desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {months.map((entry, index) => (
           <div key={entry.month} className="relative">
             <label className="text-xs text-gray-500 flex items-center gap-1">
