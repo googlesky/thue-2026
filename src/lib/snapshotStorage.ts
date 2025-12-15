@@ -188,6 +188,7 @@ export function saveNamedSave(
         },
         bonus: { ...snapshot.tabs.bonus },
         esop: { ...snapshot.tabs.esop },
+        pension: { ...snapshot.tabs.pension },
       },
       meta: {
         ...snapshot.meta,

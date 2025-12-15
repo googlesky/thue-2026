@@ -86,6 +86,19 @@ export interface ESOPTabState {
   selectedPeriodId: string | null;
 }
 
+// Pension Calculator tab state
+export interface PensionTabState {
+  gender: 'male' | 'female';
+  birthYear: number;
+  birthMonth: number;
+  contributionStartYear: number;
+  contributionYears: number;
+  contributionMonths: number;
+  currentMonthlySalary: number;
+  earlyRetirementYears: number;
+  isHazardousWork: boolean;
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -98,6 +111,7 @@ export interface TabStates {
   annualSettlement: AnnualSettlementTabState;
   bonus: BonusTabState;
   esop: ESOPTabState;
+  pension: PensionTabState;
 }
 
 /**
@@ -196,6 +210,18 @@ export const DEFAULT_ESOP_STATE: ESOPTabState = {
   selectedPeriodId: null,
 };
 
+export const DEFAULT_PENSION_STATE: PensionTabState = {
+  gender: 'male',
+  birthYear: 1970,
+  birthMonth: 1,
+  contributionStartYear: 2000,
+  contributionYears: 20,
+  contributionMonths: 0,
+  currentMonthlySalary: 0,
+  earlyRetirementYears: 0,
+  isHazardousWork: false,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
@@ -205,6 +231,7 @@ export const DEFAULT_TAB_STATES: TabStates = {
   annualSettlement: DEFAULT_ANNUAL_SETTLEMENT_STATE,
   bonus: DEFAULT_BONUS_STATE,
   esop: DEFAULT_ESOP_STATE,
+  pension: DEFAULT_PENSION_STATE,
 };
 
 /**
@@ -306,6 +333,10 @@ export function createSnapshot(
         ...DEFAULT_ESOP_STATE,
         ...(tabStates?.esop || {}),
       },
+      pension: {
+        ...DEFAULT_PENSION_STATE,
+        ...(tabStates?.pension || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -401,6 +432,10 @@ export function mergeSnapshotWithDefaults(
       esop: {
         ...DEFAULT_ESOP_STATE,
         ...(partial.tabs?.esop || {}),
+      },
+      pension: {
+        ...DEFAULT_PENSION_STATE,
+        ...(partial.tabs?.pension || {}),
       },
     },
     meta: {

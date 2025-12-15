@@ -59,6 +59,7 @@ const KEY_MAP: Record<string, string> = {
   overtime: 'ot',
   bonus: 'bn',
   esop: 'es',
+  pension: 'pn',
 
   // BonusTabState
   thirteenthMonthSalary: 'tm',
@@ -89,6 +90,17 @@ const KEY_MAP: Record<string, string> = {
   grossSalary: 'gs',
   bonusMonths: 'bm',
   otherBenefits: 'ob',
+
+  // PensionTabState
+  gender: 'gn',
+  birthYear: 'by',
+  birthMonth: 'bmo',
+  contributionStartYear: 'csy',
+  contributionYears: 'cy',
+  contributionMonths: 'cmo',
+  currentMonthlySalary: 'cms',
+  earlyRetirementYears: 'ery',
+  isHazardousWork: 'ihw',
 
   // YearlyComparisonTabState
   selectedPresetId: 'sp',
@@ -263,6 +275,24 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
       es.selectedPeriodId !== null
     ) {
       tabs.esop = es;
+    }
+  }
+
+  // Pension tab state
+  if (snapshot.tabs.pension) {
+    const pn = snapshot.tabs.pension;
+    if (
+      pn.gender !== 'male' ||
+      pn.birthYear !== 1970 ||
+      pn.birthMonth !== 1 ||
+      pn.contributionStartYear !== 2000 ||
+      pn.contributionYears !== 20 ||
+      pn.contributionMonths !== 0 ||
+      pn.currentMonthlySalary !== 0 ||
+      pn.earlyRetirementYears !== 0 ||
+      pn.isHazardousWork !== false
+    ) {
+      tabs.pension = pn;
     }
   }
 
