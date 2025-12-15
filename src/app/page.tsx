@@ -21,6 +21,7 @@ import LawInfoModal from '@/components/ui/LawInfoModal';
 import { TaxLawHistory } from '@/components/TaxLawHistory';
 import { BonusCalculator } from '@/components/BonusCalculator';
 import { ESOPCalculator } from '@/components/ESOPCalculator';
+import PensionCalculator from '@/components/PensionCalculator';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -45,10 +46,12 @@ import {
   AnnualSettlementTabState,
   BonusTabState,
   ESOPTabState,
+  PensionTabState,
   DEFAULT_OVERTIME_STATE,
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
   DEFAULT_BONUS_STATE,
   DEFAULT_ESOP_STATE,
+  DEFAULT_PENSION_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -67,7 +70,7 @@ const defaultSharedState: SharedTaxState = {
 // Valid tab types for hash navigation
 const VALID_TABS: TabType[] = [
   'calculator', 'gross-net', 'overtime', 'annual-settlement',
-  'bonus-calculator', 'esop-calculator', 'employer-cost', 'freelancer',
+  'bonus-calculator', 'esop-calculator', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history'
 ];
 
@@ -106,6 +109,7 @@ export default function Home() {
   const [annualSettlementState, setAnnualSettlementState] = useState<AnnualSettlementTabState>(DEFAULT_ANNUAL_SETTLEMENT_STATE);
   const [bonusState, setBonusState] = useState<BonusTabState>(DEFAULT_BONUS_STATE);
   const [esopState, setEsopState] = useState<ESOPTabState>(DEFAULT_ESOP_STATE);
+  const [pensionState, setPensionState] = useState<PensionTabState>(DEFAULT_PENSION_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -134,6 +138,9 @@ export default function Home() {
     }
     if (snapshot.tabs.esop) {
       setEsopState(snapshot.tabs.esop);
+    }
+    if (snapshot.tabs.pension) {
+      setPensionState(snapshot.tabs.pension);
     }
   }, []);
 
@@ -307,11 +314,12 @@ export default function Home() {
       annualSettlement: annualSettlementState,
       bonus: bonusState,
       esop: esopState,
+      pension: pensionState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState]);
 
   // Auto-update URL when state changes (debounced)
   useEffect(() => {
@@ -589,6 +597,15 @@ export default function Home() {
               onStateChange={updateSharedState}
               tabState={esopState}
               onTabStateChange={setEsopState}
+            />
+          </div>
+        )}
+
+        {activeTab === 'pension' && (
+          <div className="mb-8">
+            <PensionCalculator
+              tabState={pensionState}
+              onTabStateChange={setPensionState}
             />
           </div>
         )}

@@ -13,6 +13,7 @@ export type TabType =
   | 'freelancer'
   | 'salary-compare'
   | 'yearly'
+  | 'pension'
   | 'insurance'
   | 'other-income'
   | 'table'
@@ -43,6 +44,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋' },
       { id: 'bonus-calculator', label: 'Thưởng Tết', icon: '🎁' },
       { id: 'esop-calculator', label: 'ESOP', icon: '📈' },
+      { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️' },
     ],
   },
   {
