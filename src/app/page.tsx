@@ -52,6 +52,7 @@ import {
   DEFAULT_BONUS_STATE,
   DEFAULT_ESOP_STATE,
   DEFAULT_PENSION_STATE,
+  DEFAULT_YEARLY_COMPARISON_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -102,10 +103,7 @@ export default function Home() {
     ],
     useNewLaw: true,
   });
-  const [yearlyState, setYearlyState] = useState<YearlyComparisonTabState>({
-    selectedPresetId: 'normal',
-    bonusAmount: 30_000_000,
-  });
+  const [yearlyState, setYearlyState] = useState<YearlyComparisonTabState>(DEFAULT_YEARLY_COMPARISON_STATE);
   const [overtimeState, setOvertimeState] = useState<OvertimeTabState>(DEFAULT_OVERTIME_STATE);
   const [annualSettlementState, setAnnualSettlementState] = useState<AnnualSettlementTabState>(DEFAULT_ANNUAL_SETTLEMENT_STATE);
   const [bonusState, setBonusState] = useState<BonusTabState>(DEFAULT_BONUS_STATE);
@@ -397,11 +395,12 @@ export default function Home() {
       ],
       useNewLaw: true,
     });
-    setYearlyState({ selectedPresetId: 'normal', bonusAmount: 30_000_000 });
+    setYearlyState(DEFAULT_YEARLY_COMPARISON_STATE);
     setOvertimeState(DEFAULT_OVERTIME_STATE);
     setAnnualSettlementState(DEFAULT_ANNUAL_SETTLEMENT_STATE);
     setBonusState(DEFAULT_BONUS_STATE);
     setEsopState(DEFAULT_ESOP_STATE);
+    setPensionState(DEFAULT_PENSION_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
