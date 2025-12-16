@@ -222,17 +222,19 @@ export default function SalaryComparison({
               </div>
 
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Thưởng</label>
-                <select
-                  value={company.bonusMonths}
-                  onChange={(e) => updateCompany(company.id, { bonusMonths: parseInt(e.target.value) })}
+                <label className="block text-xs text-gray-500 mb-1">Thưởng (tháng)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={company.bonusMonths > 0 ? company.bonusMonths : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d.]/g, '');
+                    const num = parseFloat(value) || 0;
+                    updateCompany(company.id, { bonusMonths: Math.min(12, num) });
+                  }}
+                  placeholder="0"
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value={0}>Không có</option>
-                  <option value={1}>1 tháng (T13)</option>
-                  <option value={2}>2 tháng (T13+14)</option>
-                  <option value={3}>3 tháng</option>
-                </select>
+                />
               </div>
 
               <div>
