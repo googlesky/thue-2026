@@ -1,7 +1,7 @@
 # Thuế TNCN 2026
 
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fthue.1devops.io&style=flat-square)](https://thue.1devops.io)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
@@ -56,7 +56,7 @@ Công cụ tính thuế thu nhập cá nhân Việt Nam - So sánh luật thuế
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 15 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5.7 |
 | UI | React 19, Tailwind CSS 3.4 |
 | Charts | Recharts 2.15 |
