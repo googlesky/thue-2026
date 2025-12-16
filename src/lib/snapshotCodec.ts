@@ -3,7 +3,7 @@
  * Uses lz-string for compression and compact key mapping to minimize URL length
  */
 import * as LZString from 'lz-string';
-import { CalculatorSnapshot, isValidSnapshot, mergeSnapshotWithDefaults } from './snapshotTypes';
+import { CalculatorSnapshot, isValidSnapshot, mergeSnapshotWithDefaults, DEFAULT_YEARLY_COMPARISON_STATE } from './snapshotTypes';
 import { SharedTaxState, RegionType } from './taxCalculator';
 
 /**
@@ -229,8 +229,9 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     tabs.salaryComparison = snapshot.tabs.salaryComparison;
   }
 
-  // Check actual defaults: selectedPresetId='normal', bonusAmount=30_000_000
-  if (snapshot.tabs.yearlyComparison.selectedPresetId !== 'normal' || snapshot.tabs.yearlyComparison.bonusAmount !== 30_000_000) {
+  // Check against DEFAULT_YEARLY_COMPARISON_STATE
+  if (snapshot.tabs.yearlyComparison.selectedPresetId !== DEFAULT_YEARLY_COMPARISON_STATE.selectedPresetId ||
+      snapshot.tabs.yearlyComparison.bonusAmount !== DEFAULT_YEARLY_COMPARISON_STATE.bonusAmount) {
     tabs.yearlyComparison = snapshot.tabs.yearlyComparison;
   }
 

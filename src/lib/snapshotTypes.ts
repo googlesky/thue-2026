@@ -168,8 +168,8 @@ export const DEFAULT_SALARY_COMPARISON_STATE: SalaryComparisonTabState = {
 };
 
 export const DEFAULT_YEARLY_COMPARISON_STATE: YearlyComparisonTabState = {
-  selectedPresetId: null,
-  bonusAmount: 0,
+  selectedPresetId: 'normal',
+  bonusAmount: 30_000_000,
 };
 
 export const DEFAULT_OVERTIME_STATE: OvertimeTabState = {
