@@ -17,6 +17,63 @@ import {
 } from '@/lib/salaryComparisonCalculator';
 import { SalaryComparisonTabState } from '@/lib/snapshotTypes';
 
+// Component for decimal number input that allows typing "1.5", "2.5" etc.
+function DecimalInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+  max = 12,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  placeholder?: string;
+  className?: string;
+  max?: number;
+}) {
+  const [localValue, setLocalValue] = useState(value > 0 ? String(value) : '');
+
+  // Sync from parent when value changes externally
+  useEffect(() => {
+    const numLocal = parseFloat(localValue) || 0;
+    if (value !== numLocal) {
+      setLocalValue(value > 0 ? String(value) : '');
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    // Allow digits and one decimal point
+    const filtered = input.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    setLocalValue(filtered);
+
+    // Only update parent if it's a valid complete number
+    const num = parseFloat(filtered);
+    if (!isNaN(num) && !filtered.endsWith('.')) {
+      onChange(Math.min(max, num));
+    }
+  };
+
+  const handleBlur = () => {
+    const num = parseFloat(localValue) || 0;
+    const clamped = Math.min(max, num);
+    onChange(clamped);
+    setLocalValue(clamped > 0 ? String(clamped) : '');
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
 interface SalaryComparisonProps {
   sharedState?: SharedTaxState;
   onStateChange?: (updates: Partial<SharedTaxState>) => void;
@@ -223,15 +280,9 @@ export default function SalaryComparison({
 
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Thưởng (tháng)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={company.bonusMonths > 0 ? company.bonusMonths : ''}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^\d.]/g, '');
-                    const num = parseFloat(value) || 0;
-                    updateCompany(company.id, { bonusMonths: Math.min(12, num) });
-                  }}
+                <DecimalInput
+                  value={company.bonusMonths}
+                  onChange={(value) => updateCompany(company.id, { bonusMonths: value })}
                   placeholder="0"
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 />
