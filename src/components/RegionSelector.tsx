@@ -25,7 +25,7 @@ export default function RegionSelector({ value, onChange }: RegionSelectorProps)
             <button
               key={region}
               onClick={() => onChange(region)}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
+              className={`p-3 sm:p-2.5 rounded-lg border-2 text-left transition-all ${
                 isSelected
                   ? 'border-primary-500 bg-primary-50'
                   : 'border-gray-200 hover:border-gray-300'

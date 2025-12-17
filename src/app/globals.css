@@ -17,6 +17,7 @@ body {
     )
     rgb(var(--background-start-rgb));
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 @layer utilities {
