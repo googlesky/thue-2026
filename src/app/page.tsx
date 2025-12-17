@@ -416,7 +416,7 @@ export default function Home() {
     : null;
 
   return (
-    <main className="min-h-screen py-6 px-4">
+    <main className="min-h-screen py-6 px-4 overflow-x-hidden">
       <div className="max-w-6xl mx-auto">
         {/* Header - Compact */}
         <header className="mb-6">
