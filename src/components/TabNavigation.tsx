@@ -153,7 +153,7 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
                   onClick={() => toggleDropdown(group.id)}
                   aria-expanded={isOpen}
                   aria-haspopup="true"
-                  className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-all flex items-center gap-1.5 sm:gap-2 ${
+                  className={`px-3 sm:px-4 py-2.5 sm:py-2.5 min-h-[44px] rounded-lg font-medium transition-all flex items-center gap-1.5 sm:gap-2 ${
                     isGroupActive
                       ? 'bg-white text-primary-600 shadow-sm'
                       : 'text-gray-600 hover:bg-white/50'
@@ -185,10 +185,9 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
                 {/* Dropdown menu */}
                 {isOpen && (
                   <div
-                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[220px] z-50 dropdown-animate
-                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : 'left-0 sm:left-1/2'}
+                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate
+                      ${index === 0 ? 'left-0' : 'right-0'} sm:left-1/2 sm:right-auto sm:-translate-x-1/2
                     `}
-                    style={index !== TAB_GROUPS.length - 1 ? { marginLeft: 'calc(-110px)' } : undefined}
                     role="menu"
                   >
                     <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
