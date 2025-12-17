@@ -27,6 +27,7 @@ const TaxLawHistory = lazy(() => import('@/components/TaxLawHistory').then(m => 
 const BonusCalculator = lazy(() => import('@/components/BonusCalculator').then(m => ({ default: m.BonusCalculator })));
 const ESOPCalculator = lazy(() => import('@/components/ESOPCalculator').then(m => ({ default: m.ESOPCalculator })));
 const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
+const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
 import {
   calculateOldTax,
   calculateNewTax,
@@ -513,6 +514,25 @@ export default function Home() {
                   declaredSalary={sharedState.declaredSalary}
                 />
               </div>
+            </div>
+
+            {/* Tax Optimization Tips */}
+            <div className="mb-8">
+              <Suspense fallback={<TabLoadingSkeleton />}>
+                <TaxOptimizationTips
+                  input={{
+                    grossIncome: sharedState.grossIncome,
+                    dependents: sharedState.dependents,
+                    hasInsurance: sharedState.hasInsurance,
+                    insuranceOptions: sharedState.insuranceOptions,
+                    region: sharedState.region,
+                    otherDeductions: sharedState.otherDeductions,
+                    pensionContribution: sharedState.pensionContribution,
+                    allowances: sharedState.allowances,
+                    declaredSalary: sharedState.declaredSalary,
+                  }}
+                />
+              </Suspense>
             </div>
 
             {/* Chart - lazy loaded with chart-specific skeleton */}
