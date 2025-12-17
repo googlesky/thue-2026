@@ -253,9 +253,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                 {/* Dropdown menu */}
                 {isOpen && (
                   <div
-                    className={`absolute top-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate
-                      ${index === 0 ? 'left-0' : 'right-0'} sm:left-1/2 sm:right-auto sm:-translate-x-1/2
-                    `}
+                    className="absolute top-full left-1/2 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate"
                     role="menu"
                     aria-label={group.label}
                   >
