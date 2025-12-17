@@ -4,7 +4,7 @@ import {
   NEW_DEDUCTIONS,
   INSURANCE_RATES,
   MAX_SOCIAL_INSURANCE_SALARY,
-  MAX_UNEMPLOYMENT_INSURANCE_SALARY,
+  getMaxUnemploymentInsuranceSalary,
   OLD_TAX_BRACKETS,
   NEW_TAX_BRACKETS,
   RegionType,
@@ -36,7 +36,7 @@ export interface GrossNetResult {
   taxableIncome: number;
 }
 
-function calculateInsurance(gross: number, hasInsurance: boolean, region: RegionType = 1): number {
+function calculateInsurance(gross: number, hasInsurance: boolean, region: RegionType = 1, date: Date = new Date()): number {
   if (!hasInsurance) return 0;
 
   // BHXH và BHYT: tối đa 20 lần lương cơ sở
@@ -44,8 +44,9 @@ function calculateInsurance(gross: number, hasInsurance: boolean, region: Region
   const bhxh = bhxhBhytBase * INSURANCE_RATES.socialInsurance;
   const bhyt = bhxhBhytBase * INSURANCE_RATES.healthInsurance;
 
-  // BHTN: tối đa 20 lần lương tối thiểu vùng
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
+  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(date);
+  const maxBhtn = maxBhtnByRegion[region];
   const bhtnBase = Math.min(gross, maxBhtn);
   const bhtn = bhtnBase * INSURANCE_RATES.unemploymentInsurance;
 

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   SharedTaxState,
   RegionType,
-  REGIONAL_MINIMUM_WAGES,
+  getRegionalMinimumWages,
   formatNumber,
   parseCurrency,
   calculateOldTax,
@@ -30,6 +30,9 @@ export default function FreelancerComparison({
   tabState,
   onTabStateChange,
 }: FreelancerComparisonProps) {
+  // Get date-aware regional minimum wages
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+
   // Local state - simple and direct
   const [grossIncome, setGrossIncome] = useState(sharedState?.grossIncome || 30_000_000);
   const [frequency, setFrequency] = useState<IncomeFrequency>(tabState?.frequency ?? 'monthly');
@@ -177,7 +180,7 @@ export default function FreelancerComparison({
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             {([1, 2, 3, 4] as RegionType[]).map(r => (
-              <option key={r} value={r}>{REGIONAL_MINIMUM_WAGES[r].name}</option>
+              <option key={r} value={r}>{regionalMinimumWages[r].name}</option>
             ))}
           </select>
         </div>

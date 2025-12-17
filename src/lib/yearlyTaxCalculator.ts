@@ -6,7 +6,7 @@ import {
   NEW_DEDUCTIONS,
   INSURANCE_RATES,
   MAX_SOCIAL_INSURANCE_SALARY,
-  MAX_UNEMPLOYMENT_INSURANCE_SALARY,
+  getMaxUnemploymentInsuranceSalary,
   RegionType,
   formatCurrency,
   InsuranceDetail,
@@ -83,7 +83,9 @@ export interface StrategyComparison {
 function calculateInsuranceDetailed(
   grossIncome: number,
   hasInsurance: boolean,
-  region: RegionType = 1
+  region: RegionType = 1,
+  year: 2025 | 2026 = 2025,
+  month: number = 1
 ): InsuranceDetail {
   if (!hasInsurance) {
     return { bhxh: 0, bhyt: 0, bhtn: 0, total: 0 };
@@ -94,8 +96,11 @@ function calculateInsuranceDetailed(
   const bhxh = bhxhBhytBase * INSURANCE_RATES.socialInsurance;
   const bhyt = bhxhBhytBase * INSURANCE_RATES.healthInsurance;
 
-  // BHTN: tối đa 20 lần lương tối thiểu vùng
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
+  // Lương tối thiểu vùng 2026 có hiệu lực từ 01/01/2026
+  const effectiveDate = new Date(year, month - 1, 1); // month is 1-indexed
+  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(effectiveDate);
+  const maxBhtn = maxBhtnByRegion[region];
   const bhtnBase = Math.min(grossIncome, maxBhtn);
   const bhtn = bhtnBase * INSURANCE_RATES.unemploymentInsurance;
 
@@ -163,9 +168,11 @@ export function calculateMonthlyTax(
   const deductions = getDeductionsForLaw(law);
   const brackets = getBracketsForLaw(law);
 
-  // Tính bảo hiểm (dựa trên lương khai báo nếu có)
+  // Tính bảo hiểm (dựa trên lương khai báo nếu có, date-aware cho BHTN cap)
   const insuranceBase = declaredSalary ?? grossIncome;
-  const insuranceDetail = calculateInsuranceDetailed(insuranceBase, hasInsurance, region);
+  // Với tháng thưởng (month > 12), sử dụng tháng 12 để xác định date
+  const effectiveMonth = Math.min(month, 12);
+  const insuranceDetail = calculateInsuranceDetailed(insuranceBase, hasInsurance, region, year, effectiveMonth);
   const insurance = insuranceDetail.total;
 
   // Các khoản giảm trừ

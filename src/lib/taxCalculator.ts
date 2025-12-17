@@ -1,15 +1,44 @@
-// Mức lương tối thiểu vùng (2024)
-export const REGIONAL_MINIMUM_WAGES = {
+// ===== DATE-AWARE CONSTANTS =====
+
+// Ngày hiệu lực các quy định
+export const EFFECTIVE_DATES = {
+  // Lương tối thiểu vùng 2026 (Nghị định 293/2025)
+  REGIONAL_MINIMUM_WAGE_2026: new Date('2026-01-01'),
+  // Luật thuế TNCN mới (5 bậc, giảm trừ 15.5M)
+  NEW_TAX_LAW_2026: new Date('2026-07-01'),
+};
+
+// Mức lương tối thiểu vùng 2025 (đến 31/12/2025)
+export const REGIONAL_MINIMUM_WAGES_2025 = {
   1: { name: 'Vùng I', wage: 4_960_000, description: 'Hà Nội, TP.HCM, Hải Phòng, Đà Nẵng...' },
   2: { name: 'Vùng II', wage: 4_410_000, description: 'Các thành phố thuộc tỉnh, huyện ngoại thành...' },
   3: { name: 'Vùng III', wage: 3_860_000, description: 'Thị xã, các huyện thuộc các tỉnh...' },
   4: { name: 'Vùng IV', wage: 3_450_000, description: 'Các huyện miền núi, vùng sâu vùng xa...' },
 };
 
+// Mức lương tối thiểu vùng 2026 (từ 01/01/2026 - Nghị định 293/2025)
+export const REGIONAL_MINIMUM_WAGES_2026 = {
+  1: { name: 'Vùng I', wage: 5_310_000, description: 'Hà Nội, TP.HCM, Hải Phòng, Đà Nẵng...' },
+  2: { name: 'Vùng II', wage: 4_730_000, description: 'Các thành phố thuộc tỉnh, huyện ngoại thành...' },
+  3: { name: 'Vùng III', wage: 4_140_000, description: 'Thị xã, các huyện thuộc các tỉnh...' },
+  4: { name: 'Vùng IV', wage: 3_700_000, description: 'Các huyện miền núi, vùng sâu vùng xa...' },
+};
+
+// Legacy export for backward compatibility (default to 2025)
+export const REGIONAL_MINIMUM_WAGES = REGIONAL_MINIMUM_WAGES_2025;
+
 export type RegionType = 1 | 2 | 3 | 4;
 
+// Lấy lương tối thiểu vùng theo ngày
+export function getRegionalMinimumWages(date: Date = new Date()) {
+  if (date >= EFFECTIVE_DATES.REGIONAL_MINIMUM_WAGE_2026) {
+    return REGIONAL_MINIMUM_WAGES_2026;
+  }
+  return REGIONAL_MINIMUM_WAGES_2025;
+}
+
 // Lương cơ sở (dùng để tính mức đóng BHXH tối đa)
-export const BASE_SALARY = 2_340_000; // Lương cơ sở 2024
+export const BASE_SALARY = 2_340_000; // Lương cơ sở từ 01/07/2024
 
 // Biểu thuế HIỆN HÀNH (7 bậc)
 export const OLD_TAX_BRACKETS = [
@@ -62,15 +91,34 @@ export const EMPLOYER_INSURANCE_RATES = {
 };
 
 // Mức lương tối đa đóng BHXH, BHYT (20 lần lương cơ sở)
-export const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000; // 20 * 2.340.000 (lương cơ sở 2024)
+export const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000; // 20 * 2.340.000 (lương cơ sở từ 01/07/2024)
 
-// Mức lương tối đa đóng BHTN (20 lần lương tối thiểu vùng)
-export const MAX_UNEMPLOYMENT_INSURANCE_SALARY = {
+// Mức lương tối đa đóng BHTN 2025 (20 lần lương tối thiểu vùng)
+export const MAX_UNEMPLOYMENT_INSURANCE_SALARY_2025 = {
   1: 99_200_000, // Vùng I: 20 * 4.960.000
   2: 88_200_000, // Vùng II: 20 * 4.410.000
   3: 77_200_000, // Vùng III: 20 * 3.860.000
   4: 69_000_000, // Vùng IV: 20 * 3.450.000
 };
+
+// Mức lương tối đa đóng BHTN 2026 (từ 01/01/2026)
+export const MAX_UNEMPLOYMENT_INSURANCE_SALARY_2026 = {
+  1: 106_200_000, // Vùng I: 20 * 5.310.000
+  2: 94_600_000,  // Vùng II: 20 * 4.730.000
+  3: 82_800_000,  // Vùng III: 20 * 4.140.000
+  4: 74_000_000,  // Vùng IV: 20 * 3.700.000
+};
+
+// Legacy export for backward compatibility (default to 2025)
+export const MAX_UNEMPLOYMENT_INSURANCE_SALARY = MAX_UNEMPLOYMENT_INSURANCE_SALARY_2025;
+
+// Lấy mức BHTN cap theo ngày
+export function getMaxUnemploymentInsuranceSalary(date: Date = new Date()) {
+  if (date >= EFFECTIVE_DATES.REGIONAL_MINIMUM_WAGE_2026) {
+    return MAX_UNEMPLOYMENT_INSURANCE_SALARY_2026;
+  }
+  return MAX_UNEMPLOYMENT_INSURANCE_SALARY_2025;
+}
 
 export interface InsuranceOptions {
   bhxh: boolean; // BHXH 8%
@@ -266,15 +314,17 @@ export const DEFAULT_INSURANCE_OPTIONS: InsuranceOptions = {
 function calculateInsuranceDetailed(
   grossIncome: number,
   region: RegionType = 1,
-  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS
+  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS,
+  date: Date = new Date()
 ): InsuranceDetail {
   // BHXH và BHYT tính trên mức tối đa 20 lần lương cơ sở
   const bhxhBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
   const bhxh = options.bhxh ? bhxhBase * INSURANCE_RATES.socialInsurance : 0;
   const bhyt = options.bhyt ? bhxhBase * INSURANCE_RATES.healthInsurance : 0;
 
-  // BHTN tính trên mức tối đa 20 lần lương tối thiểu vùng
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  // BHTN tính trên mức tối đa 20 lần lương tối thiểu vùng (date-aware)
+  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(date);
+  const maxBhtn = maxBhtnByRegion[region];
   const bhtnBase = Math.min(grossIncome, maxBhtn);
   const bhtn = options.bhtn ? bhtnBase * INSURANCE_RATES.unemploymentInsurance : 0;
 
@@ -289,18 +339,20 @@ function calculateInsuranceDetailed(
 function calculateInsurance(
   grossIncome: number,
   region: RegionType = 1,
-  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS
+  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS,
+  date: Date = new Date()
 ): number {
-  return calculateInsuranceDetailed(grossIncome, region, options).total;
+  return calculateInsuranceDetailed(grossIncome, region, options, date).total;
 }
 
 // Export for use in components
 export function getInsuranceDetailed(
   grossIncome: number,
   region: RegionType = 1,
-  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS
+  options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS,
+  date: Date = new Date()
 ): InsuranceDetail {
-  return calculateInsuranceDetailed(grossIncome, region, options);
+  return calculateInsuranceDetailed(grossIncome, region, options, date);
 }
 
 function calculateTaxWithBrackets(
@@ -643,15 +695,17 @@ export function calculateEmployerInsurance(
   grossIncome: number,
   region: RegionType = 1,
   options: InsuranceOptions = DEFAULT_INSURANCE_OPTIONS,
-  includeUnionFee: boolean = false
+  includeUnionFee: boolean = false,
+  date: Date = new Date()
 ): EmployerInsuranceDetail {
   // BHXH và BHYT giới hạn ở 20 lần lương cơ sở
   const bhxhBhytBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
   const bhxh = options.bhxh ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.socialInsurance : 0;
   const bhyt = options.bhyt ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.healthInsurance : 0;
 
-  // BHTN giới hạn ở 20 lần lương tối thiểu vùng
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  // BHTN giới hạn ở 20 lần lương tối thiểu vùng (date-aware)
+  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(date);
+  const maxBhtn = maxBhtnByRegion[region];
   const bhtnBase = Math.min(grossIncome, maxBhtn);
   const bhtn = options.bhtn ? bhtnBase * EMPLOYER_INSURANCE_RATES.unemploymentInsurance : 0;
 

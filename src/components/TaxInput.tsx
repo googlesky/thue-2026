@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { formatNumber, RegionType, getRegionalMinimumWages, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface TaxInputProps {
@@ -56,6 +56,9 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
   const [allowances, setAllowances] = useState<AllowancesState>(
     initialValues?.allowances ?? { ...DEFAULT_ALLOWANCES }
   );
+
+  // Get date-aware regional minimum wages
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
 
   // Track if we're syncing from external changes
   const isExternalUpdate = useRef(false);
@@ -295,7 +298,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           </label>
           <div className="grid grid-cols-2 gap-2">
             {([1, 2, 3, 4] as RegionType[]).map((r) => {
-              const info = REGIONAL_MINIMUM_WAGES[r];
+              const info = regionalMinimumWages[r];
               const isSelected = region === r;
               return (
                 <button
@@ -316,7 +319,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
             })}
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {REGIONAL_MINIMUM_WAGES[region].description}
+            {regionalMinimumWages[region].description}
           </p>
         </div>
 
