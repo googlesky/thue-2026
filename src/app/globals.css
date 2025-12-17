@@ -8,6 +8,45 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+/* Enhanced focus indicators for accessibility (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline and use focus-visible instead */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for buttons and interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+/* Enhanced focus for form inputs */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+/* Checkbox and radio specific focus */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -30,6 +69,21 @@ body {
 
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors;
+  }
+
+  /* Touch-friendly interactive element sizes (WCAG 2.5.5 Target Size) */
+  .touch-target {
+    @apply min-w-[44px] min-h-[44px];
+  }
+
+  /* Icon button base style - ensures 44x44px minimum touch target */
+  .icon-btn {
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center;
+  }
+
+  /* Checkbox/Radio styling for better touch targets */
+  .checkbox-touch {
+    @apply w-5 h-5 cursor-pointer;
   }
 }
 

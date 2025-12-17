@@ -296,19 +296,22 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
         {/* Input */}
         <div className="space-y-4">
           {/* Loại lương */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+          <fieldset>
+            <legend className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               Loại lương đầu vào
+              <span className="text-red-500" aria-hidden="true">*</span>
               <Tooltip content="Chuyển đổi giữa tính từ lương GROSS sang NET hoặc ngược lại">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
-            </label>
-            <div className="flex gap-2">
+            </legend>
+            <div className="flex gap-2" role="radiogroup" aria-label="Chọn loại lương đầu vào">
               <button
                 onClick={() => handleTypeChange('gross')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                role="radio"
+                aria-checked={type === 'gross'}
+                className={`flex-1 py-2 px-4 min-h-[44px] rounded-lg font-medium transition-colors ${
                   type === 'gross'
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -318,7 +321,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               </button>
               <button
                 onClick={() => handleTypeChange('net')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                role="radio"
+                aria-checked={type === 'net'}
+                className={`flex-1 py-2 px-4 min-h-[44px] rounded-lg font-medium transition-colors ${
                   type === 'net'
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -327,31 +332,35 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                 NET (Thực nhận)
               </button>
             </div>
-          </div>
+          </fieldset>
 
           {/* Số tiền */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <label htmlFor="salary-amount" className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               {type === 'gross' ? 'Lương GROSS' : 'Lương NET'} (VNĐ/tháng)
+              <span className="text-red-500" aria-hidden="true">*</span>
               <Tooltip content="Số tiền cần chuyển đổi">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
             </label>
             <input
+              id="salary-amount"
               type="text"
               value={formatNumber(displayValue)}
               onChange={(e) => handleAmountChange(e.target.value)}
               className="input-field text-lg font-semibold"
+              aria-required="true"
             />
           </div>
 
           {/* Lương đóng bảo hiểm */}
           {hasInsurance && (
             <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label htmlFor="gn-use-declared-salary" className="flex items-center gap-3 cursor-pointer min-h-[44px]">
                 <input
+                  id="gn-use-declared-salary"
                   type="checkbox"
                   checked={useDeclaredSalary}
                   onChange={(e) => handleUseDeclaredSalaryChange(e.target.checked)}
@@ -360,7 +369,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                 <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   Lương đóng BH khác lương thực
                   <Tooltip content="Mức lương công ty đăng ký đóng bảo hiểm. Bảo hiểm tính trên mức này, thuế TNCN vẫn tính trên lương thực.">
-                    <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                    <span className="text-gray-500 hover:text-gray-700 cursor-help">
                       <InfoIcon />
                     </span>
                   </Tooltip>
@@ -368,18 +377,20 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               </label>
               {useDeclaredSalary && (
                 <div className="mt-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label htmlFor="gn-declared-salary" className="block text-xs font-medium text-gray-600 mb-1">
                     Lương đóng BHXH, BHYT, BHTN (VNĐ)
                   </label>
                   <input
+                    id="gn-declared-salary"
                     type="text"
                     value={formatNumber(declaredSalary)}
                     onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
                     className="input-field text-sm"
                     placeholder="Ví dụ: 5.000.000"
+                    aria-describedby="gn-declared-salary-hint"
                   />
-                  <p className="text-xs text-amber-600 mt-1">
-                    BH tính trên mức này • Thuế tính trên lương thực
+                  <p id="gn-declared-salary-hint" className="text-xs text-amber-600 mt-1">
+                    BH tính trên mức này - Thuế tính trên lương thực
                   </p>
                 </div>
               )}
@@ -388,25 +399,28 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
           {/* Người phụ thuộc */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <label id="gn-dependents-label" className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               Số người phụ thuộc
               <Tooltip content="Con cái, cha mẹ được giảm trừ theo quy định">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
             </label>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4" role="group" aria-labelledby="gn-dependents-label">
               <button
                 onClick={() => handleDependentsChange(Math.max(0, dependents - 1))}
-                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-lg font-bold"
+                aria-label="Giảm số người phụ thuộc"
+                disabled={dependents === 0}
+                className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold"
               >
                 -
               </button>
-              <span className="text-2xl font-bold w-12 text-center">{dependents}</span>
+              <span className="text-2xl font-bold w-12 text-center" aria-live="polite">{dependents}</span>
               <button
                 onClick={() => handleDependentsChange(dependents + 1)}
-                className="w-10 h-10 rounded-full bg-primary-100 hover:bg-primary-200 flex items-center justify-center text-lg font-bold text-primary-700"
+                aria-label="Tăng số người phụ thuộc"
+                className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-primary-100 hover:bg-primary-200 flex items-center justify-center text-lg font-bold text-primary-700"
               >
                 +
               </button>
@@ -414,8 +428,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
           </div>
 
           {/* Bảo hiểm */}
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label htmlFor="gn-has-insurance" className="flex items-center gap-3 cursor-pointer min-h-[44px]">
             <input
+              id="gn-has-insurance"
               type="checkbox"
               checked={hasInsurance}
               onChange={(e) => handleInsuranceChange(e.target.checked)}
@@ -424,7 +439,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
             <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
               Có đóng BHXH, BHYT, BHTN
               <Tooltip content="Các loại bảo hiểm bắt buộc: BHXH 8%, BHYT 1.5%, BHTN 1%">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
@@ -433,11 +448,11 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
           {/* Vùng lương */}
           {hasInsurance && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-700 mb-2">
                 Vùng lương tối thiểu
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+              </legend>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Chọn vùng lương tối thiểu">
                 {([1, 2, 3, 4] as RegionType[]).map((r) => {
                   const info = regionalMinimumWages[r];
                   const isSelected = region === r;
@@ -445,7 +460,10 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                     <button
                       key={r}
                       onClick={() => handleRegionChange(r)}
-                      className={`p-2 rounded-lg border-2 text-left transition-all ${
+                      role="radio"
+                      aria-checked={isSelected}
+                      aria-label={`${info.name}, mức lương ${formatCurrency(info.wage)}`}
+                      className={`p-2 min-h-[44px] rounded-lg border-2 text-left transition-all ${
                         isSelected
                           ? 'border-primary-500 bg-primary-50'
                           : 'border-gray-200 hover:border-gray-300'
@@ -459,7 +477,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
           )}
         </div>
 
@@ -471,7 +489,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               {savings > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="text-sm text-green-700 mb-1">Tiết kiệm với luật mới</div>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-green-600 font-mono tabular-nums">
                     {formatCurrency(savings)}/tháng
                   </div>
                   <div className="text-sm text-green-600">
@@ -507,7 +525,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                     </div>
                     <div className="border-t pt-2 flex justify-between">
                       <span className="font-medium">NET:</span>
-                      <span className="font-bold text-gray-800">{formatCurrency(oldResult.net)}</span>
+                      <span className="font-bold text-gray-800 font-mono tabular-nums">{formatCurrency(oldResult.net)}</span>
                     </div>
                   </div>
                 </div>
@@ -537,7 +555,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                     </div>
                     <div className="border-t pt-2 flex justify-between">
                       <span className="font-medium">NET:</span>
-                      <span className="font-bold text-gray-800">{formatCurrency(newResult.net)}</span>
+                      <span className="font-bold text-gray-800 font-mono tabular-nums">{formatCurrency(newResult.net)}</span>
                     </div>
                   </div>
                 </div>

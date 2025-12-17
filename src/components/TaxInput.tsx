@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { formatNumber, RegionType, getRegionalMinimumWages, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
 import Tooltip from '@/components/ui/Tooltip';
 
@@ -29,7 +29,7 @@ interface TaxInputProps {
   };
 }
 
-export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) {
+function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   const [grossIncome, setGrossIncome] = useState<string>(
     initialValues?.grossIncome?.toString() ?? '30000000'
   );
@@ -185,26 +185,32 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
       <div className="space-y-6">
         {/* Thu nhập thực tế */}
         <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="gross-income" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
             <span>Thu nhập thực tế hàng tháng (VNĐ)</span>
+            <span className="text-red-500" aria-hidden="true">*</span>
             <Tooltip content="Lương tổng trước khi trừ bảo hiểm và thuế">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <InfoIcon />
               </span>
             </Tooltip>
           </label>
           <input
+            id="gross-income"
             type="text"
             value={formatNumber(parseInt(grossIncome, 10) || 0)}
             onChange={(e) => handleIncomeChange(e.target.value)}
             className="input-field text-lg font-semibold"
             placeholder="Nhập thu nhập"
+            aria-required="true"
+            aria-describedby="gross-income-presets"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div id="gross-income-presets" className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Mức thu nhập mẫu">
             {presetIncomes.map((income) => (
               <button
                 key={income}
                 onClick={() => setGrossIncome(income.toString())}
+                aria-label={`Chọn mức thu nhập ${formatNumber(income)} VNĐ`}
+                aria-pressed={parseInt(grossIncome, 10) === income}
                 className={`px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm rounded-full transition-colors ${
                   parseInt(grossIncome, 10) === income
                     ? 'bg-primary-600 text-white'
@@ -219,8 +225,9 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
         {/* Lương đóng bảo hiểm */}
         <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-          <label className="flex items-center gap-3 cursor-pointer mb-3">
+          <label htmlFor="use-declared-salary" className="flex items-center gap-3 cursor-pointer mb-3">
             <input
+              id="use-declared-salary"
               type="checkbox"
               checked={useDeclaredSalary}
               onChange={(e) => setUseDeclaredSalary(e.target.checked)}
@@ -232,22 +239,24 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           </label>
           {useDeclaredSalary && (
             <div>
-              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="declared-salary" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
                 <span>Lương đóng BHXH, BHYT, BHTN (VNĐ)</span>
                 <Tooltip content="Mức lương công ty đăng ký đóng bảo hiểm. Bảo hiểm sẽ tính trên mức này, còn thuế TNCN vẫn tính trên lương thực nhận.">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
                 </Tooltip>
               </label>
               <input
+                id="declared-salary"
                 type="text"
                 value={declaredSalary ? formatNumber(parseInt(declaredSalary, 10) || 0) : ''}
                 onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
                 className="input-field"
                 placeholder="Ví dụ: lương thực 30tr, đóng BH trên 5tr"
+                aria-describedby="declared-salary-hint"
               />
-              <p className="text-xs text-amber-600 mt-1">
+              <p id="declared-salary-hint" className="text-xs text-amber-600 mt-1">
                 Bảo hiểm tính trên mức này • Thuế tính trên lương thực ({grossIncome ? formatNumber(parseInt(grossIncome, 10)) : '0'}đ)
               </p>
             </div>
@@ -256,32 +265,35 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
 
         {/* Số người phụ thuộc */}
         <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+          <label id="dependents-label" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
             <span>Số người phụ thuộc</span>
             <Tooltip content="Con cái dưới 18 tuổi, cha mẹ trên 60 tuổi không có thu nhập, v.v.">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <InfoIcon />
               </span>
             </Tooltip>
           </label>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4" role="group" aria-labelledby="dependents-label">
             <button
               onClick={() => setDependents(Math.max(0, dependents - 1))}
-              className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 transition-colors"
+              aria-label="Giảm số người phụ thuộc"
+              disabled={dependents === 0}
+              className="w-12 h-12 min-w-[44px] min-h-[44px] rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl font-bold text-gray-700 transition-colors"
             >
               -
             </button>
-            <span className="text-3xl font-bold text-gray-800 w-16 text-center">
+            <span className="text-3xl font-bold text-gray-800 w-16 text-center" aria-live="polite" aria-atomic="true">
               {dependents}
             </span>
             <button
               onClick={() => setDependents(dependents + 1)}
-              className="w-12 h-12 rounded-full bg-primary-100 hover:bg-primary-200 flex items-center justify-center text-xl font-bold text-primary-700 transition-colors"
+              aria-label="Tăng số người phụ thuộc"
+              className="w-12 h-12 min-w-[44px] min-h-[44px] rounded-full bg-primary-100 hover:bg-primary-200 flex items-center justify-center text-xl font-bold text-primary-700 transition-colors"
             >
               +
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
+          <p id="dependents-hint" className="text-sm text-gray-500 mt-2">
             Người phụ thuộc: con cái, cha mẹ không có thu nhập...
           </p>
         </div>
@@ -291,12 +303,12 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
           <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
             <span>Vùng lương tối thiểu</span>
             <Tooltip content="Vùng lương tối thiểu ảnh hưởng đến mức đóng BHTN">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <InfoIcon />
               </span>
             </Tooltip>
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Chọn vùng lương">
             {([1, 2, 3, 4] as RegionType[]).map((r) => {
               const info = regionalMinimumWages[r];
               const isSelected = region === r;
@@ -304,7 +316,8 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                 <button
                   key={r}
                   onClick={() => setRegion(r)}
-                  className={`p-2.5 rounded-lg border-2 text-left transition-all ${
+                  aria-pressed={isSelected}
+                  className={`p-2.5 min-h-[44px] rounded-lg border-2 text-left transition-all ${
                     isSelected
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 hover:border-gray-300'
@@ -324,19 +337,20 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         </div>
 
         {/* Bảo hiểm - Individual toggles */}
-        <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-3">
+        <fieldset>
+          <legend className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-3">
             <span>Các khoản bảo hiểm bắt buộc</span>
             <Tooltip content="Bảo hiểm xã hội, y tế, thất nghiệp theo quy định">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <InfoIcon />
               </span>
             </Tooltip>
-          </label>
+          </legend>
           <div className="space-y-2">
             {insuranceItems.map(item => (
-              <label key={item.key} className="flex items-center gap-3 cursor-pointer">
+              <label key={item.key} htmlFor={`insurance-${item.key}`} className="flex items-center gap-3 cursor-pointer min-h-[44px]">
                 <input
+                  id={`insurance-${item.key}`}
                   type="checkbox"
                   checked={insuranceOptions[item.key]}
                   onChange={() => handleInsuranceToggle(item.key)}
@@ -348,21 +362,23 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
               </label>
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 mt-2" aria-live="polite">
             Tổng: {((insuranceOptions.bhxh ? 8 : 0) + (insuranceOptions.bhyt ? 1.5 : 0) + (insuranceOptions.bhtn ? 1 : 0)).toFixed(1)}%
           </p>
-        </div>
+        </fieldset>
 
         {/* Toggle advanced options */}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+          aria-expanded={showAdvanced}
+          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1 min-h-[44px] py-2"
         >
           <svg
             className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -370,47 +386,51 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         </button>
 
         {showAdvanced && (
-          <div className="space-y-4 pl-4 border-l-2 border-primary-100">
+          <div className="space-y-4 pl-4 border-l-2 border-primary-100" role="region" aria-label="Các khoản giảm trừ khác">
             {/* Quỹ hưu trí tự nguyện */}
             <div>
-              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="pension-contribution" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
                 <span>Quỹ hưu trí tự nguyện (VNĐ/tháng)</span>
                 <Tooltip content="Tối đa 1 triệu/tháng được giảm trừ">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
                 </Tooltip>
               </label>
               <input
+                id="pension-contribution"
                 type="text"
                 value={formatNumber(parseInt(pensionContribution, 10) || 0)}
                 onChange={(e) => handlePensionChange(e.target.value)}
                 className="input-field"
                 placeholder="Tối đa 1.000.000"
+                aria-describedby="pension-contribution-hint"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p id="pension-contribution-hint" className="text-xs text-gray-500 mt-1">
                 Tối đa 1.000.000 VNĐ/tháng được giảm trừ
               </p>
             </div>
 
             {/* Đóng góp từ thiện */}
             <div>
-              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="other-deductions" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
                 <span>Đóng góp từ thiện, nhân đạo (VNĐ)</span>
                 <Tooltip content="Các khoản giảm trừ bổ sung như từ thiện, nhân đạo">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
                 </Tooltip>
               </label>
               <input
+                id="other-deductions"
                 type="text"
                 value={formatNumber(parseInt(otherDeductions, 10) || 0)}
                 onChange={(e) => handleOtherDeductionsChange(e.target.value)}
                 className="input-field"
                 placeholder="Đóng góp từ thiện..."
+                aria-describedby="other-deductions-hint"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p id="other-deductions-hint" className="text-xs text-gray-500 mt-1">
                 Đóng góp qua các tổ chức từ thiện được công nhận
               </p>
             </div>
@@ -420,13 +440,15 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         {/* Toggle allowances section */}
         <button
           onClick={() => setShowAllowances(!showAllowances)}
-          className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1"
+          aria-expanded={showAllowances}
+          className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 min-h-[44px] py-2"
         >
           <svg
             className={`w-4 h-4 transition-transform ${showAllowances ? 'rotate-90' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -449,7 +471,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Tiền ăn trưa/ăn ca</span>
                     <Tooltip content="Không giới hạn (từ 15/6/2025). Phải ghi trong HĐLĐ hoặc quy chế công ty.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -468,7 +490,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Phụ cấp điện thoại</span>
                     <Tooltip content="Không giới hạn. Phục vụ công việc, cần có hóa đơn.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -487,7 +509,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Xăng xe, đi lại</span>
                     <Tooltip content="Không giới hạn. Phục vụ công việc, cần chứng từ.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -506,7 +528,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Phụ cấp trang phục</span>
                     <Tooltip content={`Miễn thuế tối đa ${formatNumber(ALLOWANCE_LIMITS.clothingMonthlyMax)}đ/tháng (5tr/năm). Phần vượt chịu thuế.`}>
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -530,7 +552,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Phụ cấp độc hại, nguy hiểm</span>
                     <Tooltip content="Miễn thuế nếu thuộc danh mục nghề độc hại (TT 11/2020). Mức 5-15% lương cơ sở.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -563,7 +585,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Tiền thuê nhà</span>
                     <Tooltip content="Chịu thuế như lương. Cộng vào thu nhập tính thuế.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -582,7 +604,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Phụ cấp chức vụ/trách nhiệm</span>
                     <Tooltip content="Chịu thuế như lương. Cộng vào thu nhập tính thuế.">
-                      <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                      <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
                     </Tooltip>
@@ -624,3 +646,6 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
     </div>
   );
 }
+
+// Memoize TaxInput to prevent unnecessary re-renders when parent state changes
+export default memo(TaxInputComponent);

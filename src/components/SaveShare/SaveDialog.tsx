@@ -63,7 +63,7 @@ export default function SaveDialog({ snapshot, onSave, onClose }: SaveDialogProp
           <h3 className="text-xl font-bold text-gray-800">Lưu tính toán</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
             title="Đóng"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

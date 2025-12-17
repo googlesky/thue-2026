@@ -74,7 +74,7 @@ export default function YearlySummary({ result, isHighlighted = false }: YearlyS
           </span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-gray-400">Thuế suất thực tế</span>
+          <span className="text-gray-500">Thuế suất thực tế</span>
           <span className="text-gray-500">{effectiveRate.toFixed(2)}%</span>
         </div>
 

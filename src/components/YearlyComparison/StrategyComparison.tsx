@@ -51,7 +51,7 @@ export default function StrategyComparison({ comparison, strategyNames }: Strate
             </svg>
             <div>
               <div className="font-bold text-lg">{names[bestStrategy]} tiết kiệm được</div>
-              <div className="text-2xl font-bold">{formatCurrency(maxSavings)}</div>
+              <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(maxSavings)}</div>
               <div className="text-green-100 text-sm">so với {names[0]}</div>
             </div>
           </div>
@@ -112,7 +112,7 @@ function StrategyCard({ strategy, name, isOptimal, comparedTo }: StrategyCardPro
           </span>
         </div>
         <div className="flex justify-between text-xs">
-          <span className="text-gray-400">Thuế suất TB</span>
+          <span className="text-gray-500">Thuế suất TB</span>
           <span className="text-gray-500">{combinedEffectiveRate.toFixed(2)}%</span>
         </div>
 
