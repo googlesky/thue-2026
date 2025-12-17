@@ -356,7 +356,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         {/* Toggle advanced options */}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1 py-2"
+          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
         >
           <svg
             className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
@@ -420,7 +420,7 @@ export default function TaxInput({ onCalculate, initialValues }: TaxInputProps) 
         {/* Toggle allowances section */}
         <button
           onClick={() => setShowAllowances(!showAllowances)}
-          className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 py-2"
+          className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1"
         >
           <svg
             className={`w-4 h-4 transition-transform ${showAllowances ? 'rotate-90' : ''}`}

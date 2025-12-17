@@ -64,7 +64,7 @@ export default function ScenarioColumn({
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1 border-b"
+        className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1 border-b"
       >
         {isExpanded ? (
           <>

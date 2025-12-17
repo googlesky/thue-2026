@@ -185,9 +185,10 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
                 {/* Dropdown menu */}
                 {isOpen && (
                   <div
-                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[90vw] sm:w-auto sm:min-w-[220px] max-w-[320px] z-50 dropdown-animate
-                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : index === 0 ? 'left-0' : 'left-1/2 -translate-x-1/2'}
+                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[220px] z-50 dropdown-animate
+                      ${index === TAB_GROUPS.length - 1 ? 'right-0' : 'left-0 sm:left-1/2'}
                     `}
+                    style={index !== TAB_GROUPS.length - 1 ? { marginLeft: 'calc(-110px)' } : undefined}
                     role="menu"
                   >
                     <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
