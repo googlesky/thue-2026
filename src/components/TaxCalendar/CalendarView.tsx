@@ -66,7 +66,9 @@ function CalendarViewComponent({
     const monthDeadlines = getDeadlinesForMonth(year, month);
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
-      const dayDeadlines = monthDeadlines.filter(d => d.date.day === day || d.date.month === 0 && d.date.day === day);
+      // Filter deadlines for this specific day
+      // Note: monthDeadlines already includes monthly recurring deadlines (month === 0) from getDeadlinesForMonth
+      const dayDeadlines = monthDeadlines.filter(d => d.date.day === day);
 
       days.push({
         date,
