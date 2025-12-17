@@ -28,6 +28,8 @@ const BonusCalculator = lazy(() => import('@/components/BonusCalculator').then(m
 const ESOPCalculator = lazy(() => import('@/components/ESOPCalculator').then(m => ({ default: m.ESOPCalculator })));
 const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
 const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
+const SalarySlipGenerator = lazy(() => import('@/components/SalarySlip').then(m => ({ default: m.SalarySlipGenerator })));
+const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ default: m.TaxCalendar })));
 import {
   calculateOldTax,
   calculateNewTax,
@@ -78,7 +80,8 @@ const defaultSharedState: SharedTaxState = {
 const VALID_TABS: TabType[] = [
   'calculator', 'gross-net', 'overtime', 'annual-settlement',
   'bonus-calculator', 'esop-calculator', 'pension', 'employer-cost', 'freelancer',
-  'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history'
+  'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
+  'tax-calendar', 'salary-slip'
 ];
 
 export default function Home() {
@@ -706,6 +709,27 @@ export default function Home() {
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
               <TaxLawHistory />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'tax-calendar' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxCalendar />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'salary-slip' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <SalarySlipGenerator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                insuranceDetail={newResult.insuranceDetail}
+                taxAmount={newResult.taxAmount}
+              />
             </Suspense>
           </div>
         )}
