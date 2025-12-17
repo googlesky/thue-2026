@@ -116,7 +116,7 @@ function BracketComparison({ oldPeriod, newPeriod }: { oldPeriod: TaxLawPeriod; 
           <tr className="border-b border-gray-100 bg-red-50">
             <td className="py-2 px-3 font-medium text-red-600">15%</td>
             <td className="text-right py-2 px-3 text-red-600">10 - 18 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-400 italic">Đã bỏ</td>
+            <td className="text-right py-2 px-3 text-gray-500 italic">Đã bỏ</td>
           </tr>
           <tr className="border-b border-gray-100">
             <td className="py-2 px-3 font-medium">20%</td>
@@ -126,7 +126,7 @@ function BracketComparison({ oldPeriod, newPeriod }: { oldPeriod: TaxLawPeriod; 
           <tr className="border-b border-gray-100 bg-red-50">
             <td className="py-2 px-3 font-medium text-red-600">25%</td>
             <td className="text-right py-2 px-3 text-red-600">32 - 52 triệu</td>
-            <td className="text-right py-2 px-3 text-gray-400 italic">Đã bỏ</td>
+            <td className="text-right py-2 px-3 text-gray-500 italic">Đã bỏ</td>
           </tr>
           <tr className="border-b border-gray-100">
             <td className="py-2 px-3 font-medium">30%</td>
@@ -155,7 +155,7 @@ function DeductionHistory() {
               <div className="flex items-center justify-end gap-1">
                 Giảm trừ bản thân
                 <Tooltip content="Mức thu nhập được miễn thuế dành cho người nộp thuế">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -167,7 +167,7 @@ function DeductionHistory() {
               <div className="flex items-center justify-end gap-1">
                 Giảm trừ NPT
                 <Tooltip content="Mức giảm trừ cho mỗi người phụ thuộc được đăng ký">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -188,7 +188,7 @@ function DeductionHistory() {
                 {item.personalPercentChange !== null ? (
                   <span className="text-green-600">+{item.personalPercentChange.toFixed(1)}%</span>
                 ) : (
-                  <span className="text-gray-400">-</span>
+                  <span className="text-gray-500">-</span>
                 )}
               </td>
             </tr>
@@ -319,7 +319,7 @@ export default function TaxLawHistory() {
           <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-1">
             So sánh biểu thuế lũy tiến
             <Tooltip content="Thuế suất tăng dần theo mức thu nhập chịu thuế">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -329,7 +329,7 @@ export default function TaxLawHistory() {
           <p className="text-sm text-gray-600 mb-4 flex items-center gap-1">
             Thu nhập tính thuế = Thu nhập chịu thuế - Giảm trừ gia cảnh
             <Tooltip content="Thu nhập sau khi đã trừ các khoản giảm trừ">
-              <span className="text-gray-400 hover:text-gray-600 cursor-help">
+              <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>

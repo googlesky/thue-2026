@@ -35,7 +35,7 @@ export default function QRCodeModal({ url, onClose }: QRCodeModalProps) {
           <h3 className="text-xl font-bold text-gray-800">Mã QR</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
             title="Đóng"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@ export default function QRCodeModal({ url, onClose }: QRCodeModalProps) {
         {/* URL */}
         <div className="text-center">
           <p className="text-sm text-gray-600 mb-2">Quét mã để truy cập</p>
-          <p className="text-xs text-gray-400 break-all font-mono bg-gray-50 p-3 rounded-lg">
+          <p className="text-xs text-gray-500 break-all font-mono bg-gray-50 p-3 rounded-lg">
             {url}
           </p>
         </div>

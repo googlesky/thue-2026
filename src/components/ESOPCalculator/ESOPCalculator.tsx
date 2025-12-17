@@ -239,7 +239,7 @@ export default function ESOPCalculator({
             <label htmlFor="esop-grant-price" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Giá cấp quyền (Grant Price)
               <Tooltip content="Giá mua cổ phiếu được cấp khi tham gia ESOP">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -257,7 +257,7 @@ export default function ESOPCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                 đ
               </span>
             </div>
@@ -267,7 +267,7 @@ export default function ESOPCalculator({
             <label htmlFor="esop-exercise-price" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Giá thực hiện (Exercise Price)
               <Tooltip content="Giá thị trường tại thời điểm thực hiện quyền mua">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -285,7 +285,7 @@ export default function ESOPCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                 đ
               </span>
             </div>
@@ -295,7 +295,7 @@ export default function ESOPCalculator({
             <label htmlFor="esop-num-shares" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Số lượng cổ phiếu
               <Tooltip content="Số cổ phiếu bạn muốn thực hiện quyền mua">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -313,7 +313,7 @@ export default function ESOPCalculator({
                 className="input-field pr-16"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
                 CP
               </span>
             </div>

@@ -170,7 +170,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
               <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
                 <span>Năm sinh</span>
                 <Tooltip content="Năm sinh của bạn để tính tuổi nghỉ hưu">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
                 </Tooltip>
@@ -210,7 +210,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Năm bắt đầu đóng BHXH</span>
               <Tooltip content="Năm bạn bắt đầu tham gia bảo hiểm xã hội">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
@@ -230,7 +230,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Thời gian đã đóng BHXH</span>
               <Tooltip content="Tổng số năm và tháng đã đóng bảo hiểm xã hội">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
@@ -269,7 +269,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Lương đóng BHXH hiện tại (VNĐ/tháng)</span>
               <Tooltip content="Mức lương hiện tại bạn đang đóng bảo hiểm xã hội">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
@@ -288,7 +288,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Nghỉ hưu sớm (số năm)</span>
               <Tooltip content="Số năm bạn muốn nghỉ hưu sớm hơn tuổi quy định (0-5 năm). Lương hưu sẽ giảm 2% mỗi năm nghỉ sớm.">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
               </Tooltip>
@@ -324,7 +324,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
               <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 Làm nghề độc hại, nguy hiểm
                 <Tooltip content="Nghề độc hại được nghỉ hưu sớm hơn. Nam: 57 tuổi, Nữ: 55 tuổi.">
-                  <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
                 </Tooltip>

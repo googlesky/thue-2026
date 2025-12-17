@@ -234,7 +234,7 @@ export default function BonusCalculator({
             <label htmlFor="bonus-monthly-salary" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Lương tháng (GROSS)
               <Tooltip content="Mức lương hàng tháng trước thuế">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -252,7 +252,7 @@ export default function BonusCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">đ</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
             </div>
           </div>
 
@@ -260,7 +260,7 @@ export default function BonusCalculator({
             <label htmlFor="bonus-thirteenth-month" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Lương tháng 13
               <Tooltip content="Thường bằng 1 tháng lương cơ bản">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -278,7 +278,7 @@ export default function BonusCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">đ</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export default function BonusCalculator({
             <label htmlFor="bonus-tet" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Thưởng Tết
               <Tooltip content="Khoản thưởng dịp Tết Nguyên đán">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -304,7 +304,7 @@ export default function BonusCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">đ</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
             </div>
           </div>
 
@@ -312,7 +312,7 @@ export default function BonusCalculator({
             <label htmlFor="bonus-other" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Thưởng khác
               <Tooltip content="Thưởng dự án, thưởng hiệu suất, etc.">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -330,7 +330,7 @@ export default function BonusCalculator({
                 className="input-field pr-10"
                 placeholder="0"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">đ</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
             </div>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function BonusCalculator({
         <div className="mt-4 p-4 bg-gray-50 rounded-xl">
           <div className="flex justify-between items-center">
             <span className="font-medium text-gray-700">Tổng thưởng:</span>
-            <span className="text-xl font-bold text-gray-900">{formatMoney(totalBonus)} đ</span>
+            <span className="text-xl font-bold text-gray-900 font-mono tabular-nums">{formatMoney(totalBonus)} đ</span>
           </div>
         </div>
       </div>
@@ -370,7 +370,7 @@ export default function BonusCalculator({
                 </div>
                 <div>
                   <h4 className="font-semibold text-green-800">Tiết kiệm được</h4>
-                  <p className="text-2xl font-bold text-green-600 mt-1">
+                  <p className="text-2xl font-bold text-green-600 mt-1 font-mono tabular-nums">
                     {formatMoney(result.maxSavings)} đ
                   </p>
                   <p className="text-sm text-green-700 mt-1">{result.savingsDetails}</p>

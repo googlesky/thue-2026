@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 
 export type TabType =
   | 'calculator'
@@ -90,9 +90,26 @@ interface TabNavigationProps {
   onTabChange: (tab: TabType) => void;
 }
 
-export default function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Get current dropdown tabs
+  const getCurrentDropdownTabs = useCallback(() => {
+    if (!openDropdown) return [];
+    const group = TAB_GROUPS.find((g) => g.id === openDropdown);
+    return group?.tabs || [];
+  }, [openDropdown]);
+
+  // Reset focus index when dropdown changes
+  useEffect(() => {
+    if (openDropdown) {
+      setFocusedIndex(-1);
+      menuItemRefs.current = [];
+    }
+  }, [openDropdown]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -105,19 +122,70 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
       }
     }
 
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape' && openDropdown) {
-        setOpenDropdown(null);
-      }
-    }
-
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
     };
   }, [openDropdown]);
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!openDropdown) return;
+
+      const tabs = getCurrentDropdownTabs();
+      const tabCount = tabs.length;
+
+      switch (event.key) {
+        case 'Escape':
+          event.preventDefault();
+          setOpenDropdown(null);
+          setFocusedIndex(-1);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setFocusedIndex((prev) => {
+            const next = prev < tabCount - 1 ? prev + 1 : 0;
+            menuItemRefs.current[next]?.focus();
+            return next;
+          });
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setFocusedIndex((prev) => {
+            const next = prev > 0 ? prev - 1 : tabCount - 1;
+            menuItemRefs.current[next]?.focus();
+            return next;
+          });
+          break;
+        case 'Home':
+          event.preventDefault();
+          setFocusedIndex(0);
+          menuItemRefs.current[0]?.focus();
+          break;
+        case 'End':
+          event.preventDefault();
+          setFocusedIndex(tabCount - 1);
+          menuItemRefs.current[tabCount - 1]?.focus();
+          break;
+        case 'Enter':
+        case ' ':
+          if (focusedIndex >= 0 && focusedIndex < tabCount) {
+            event.preventDefault();
+            handleTabClick(tabs[focusedIndex].id);
+          }
+          break;
+      }
+    },
+    [openDropdown, focusedIndex, getCurrentDropdownTabs]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   const handleTabClick = (tabId: TabType) => {
     onTabChange(tabId);
@@ -185,20 +253,25 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
                 {/* Dropdown menu */}
                 {isOpen && (
                   <div
-                    className={`absolute top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate
+                    className={`absolute top-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate
                       ${index === 0 ? 'left-0' : 'right-0'} sm:left-1/2 sm:right-auto sm:-translate-x-1/2
                     `}
                     role="menu"
+                    aria-label={group.label}
                   >
-                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       {group.label}
                     </div>
-                    {group.tabs.map((tab) => (
+                    {group.tabs.map((tab, tabIndex) => (
                       <button
                         key={tab.id}
+                        ref={(el) => {
+                          menuItemRefs.current[tabIndex] = el;
+                        }}
                         onClick={() => handleTabClick(tab.id)}
                         role="menuitem"
-                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-all duration-150 ${
+                        tabIndex={isOpen ? 0 : -1}
+                        className={`w-full px-3 py-2.5 min-h-[44px] text-left flex items-center gap-3 transition-all duration-150 focus:bg-gray-100 focus:outline-none ${
                           activeTab === tab.id
                             ? 'bg-primary-50 text-primary-700'
                             : 'text-gray-700 hover:bg-gray-50'
@@ -245,5 +318,9 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
     </div>
   );
 }
+
+// Memoize TabNavigation to prevent re-renders when parent state changes
+const TabNavigation = memo(TabNavigationComponent);
+export default TabNavigation;
 
 export { TAB_GROUPS, getTabInfo, findTabGroup };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, memo, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -20,28 +20,29 @@ interface TaxChartProps {
   currentIncome: number;
 }
 
-export default function TaxChart({ dependents, currentIncome }: TaxChartProps) {
+// Memoized CustomTooltip component to prevent unnecessary re-renders
+const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-4 rounded-lg shadow-lg border">
+        <p className="font-semibold text-gray-800 mb-2">
+          Thu nhập: {formatCurrency(label)}
+        </p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} style={{ color: entry.color }} className="text-sm">
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+});
+
+function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
   const chartData = useMemo(() => {
     return calculateTaxRange(10_000_000, 150_000_000, 5_000_000, dependents);
   }, [dependents]);
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-4 rounded-lg shadow-lg border">
-          <p className="font-semibold text-gray-800 mb-2">
-            Thu nhập: {formatCurrency(label)}
-          </p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="card">
@@ -141,3 +142,6 @@ export default function TaxChart({ dependents, currentIncome }: TaxChartProps) {
     </div>
   );
 }
+
+// Export memoized TaxChart component
+export default memo(TaxChartComponent);

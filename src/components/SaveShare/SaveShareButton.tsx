@@ -31,10 +31,11 @@ export default function SaveShareButton({ snapshot, onLoadSnapshot }: SaveShareB
     <div ref={buttonRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
-        title="Lưu và Chia sẻ"
+        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
+        aria-label="Lưu và Chia sẻ"
+        aria-expanded={isOpen}
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -49,7 +49,7 @@ const FULL_MONTH_NAMES = [
 // Info icon component for tooltips
 function InfoIcon() {
   return (
-    <span className="text-gray-400 hover:text-gray-600 cursor-help">
+    <span className="text-gray-500 hover:text-gray-700 cursor-help">
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
@@ -807,7 +807,7 @@ export default function AnnualSettlement({
             </>
           ) : (
             <div className="card text-center py-12">
-              <div className="text-gray-400 mb-4">
+              <div className="text-gray-500 mb-4">
                 <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
