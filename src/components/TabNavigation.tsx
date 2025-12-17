@@ -17,7 +17,9 @@ export type TabType =
   | 'insurance'
   | 'other-income'
   | 'table'
-  | 'tax-history';
+  | 'tax-history'
+  | 'tax-calendar'
+  | 'salary-slip';
 
 interface TabItem {
   id: TabType;
@@ -67,6 +69,8 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'other-income', label: 'Thu nhập khác', icon: '💼' },
       { id: 'table', label: 'Biểu thuế suất', icon: '📈' },
       { id: 'tax-history', label: 'Lịch sử luật', icon: '📜' },
+      { id: 'tax-calendar', label: 'Lịch thuế', icon: '📅' },
+      { id: 'salary-slip', label: 'Phiếu lương', icon: '📋' },
     ],
   },
 ];
