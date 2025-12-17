@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from 'react';
 import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult, AllowancesBreakdown } from '@/lib/taxCalculator';
+import { PDFExportButton } from '@/components/PDFExport';
 
 interface TaxResultProps {
   oldResult: TaxResultType;
@@ -25,6 +26,16 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
 
   return (
     <div className="space-y-6">
+      {/* PDF Export Button */}
+      <div className="flex justify-end">
+        <PDFExportButton
+          oldResult={oldResult}
+          newResult={newResult}
+          otherIncomeTax={otherIncomeTax}
+          declaredSalary={declaredSalary}
+        />
+      </div>
+
       {/* Notice about declared salary */}
       {hasDeclaredSalary && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
