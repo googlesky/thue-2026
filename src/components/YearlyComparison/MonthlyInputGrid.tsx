@@ -79,7 +79,7 @@ export default function MonthlyInputGrid({
           type="button"
           onClick={handleFillAll}
           disabled={disabled}
-          className="text-xs text-primary-600 hover:text-primary-700 disabled:text-gray-400 py-2 px-2"
+          className="text-xs text-primary-600 hover:text-primary-700 disabled:text-gray-400"
         >
           Điền giống T1
         </button>
@@ -125,7 +125,7 @@ export default function MonthlyInputGrid({
             type="button"
             onClick={addBonus}
             disabled={disabled || bonusMonths.length >= 3}
-            className="text-xs text-primary-600 hover:text-primary-700 disabled:text-gray-400 flex items-center gap-1 py-2 px-2"
+            className="text-xs text-primary-600 hover:text-primary-700 disabled:text-gray-400 flex items-center gap-1"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
