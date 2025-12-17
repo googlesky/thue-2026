@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult, AllowancesBreakdown } from '@/lib/taxCalculator';
 
 interface TaxResultProps {
@@ -9,7 +10,7 @@ interface TaxResultProps {
   declaredSalary?: number;
 }
 
-export default function TaxResult({ oldResult, newResult, otherIncomeTax, declaredSalary }: TaxResultProps) {
+function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSalary }: TaxResultProps) {
   const savings = oldResult.taxAmount - newResult.taxAmount;
   const savingsPercent = oldResult.taxAmount > 0
     ? ((savings / oldResult.taxAmount) * 100).toFixed(1)
@@ -51,7 +52,7 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
             </svg>
             <h3 className="text-xl font-bold">Bạn tiết kiệm được</h3>
           </div>
-          <div className="text-4xl font-bold mb-2">
+          <div className="text-4xl font-bold mb-2 font-mono tabular-nums">
             {formatCurrency(savings)}/tháng
           </div>
           <div className="text-green-100">
@@ -72,15 +73,15 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-blue-100 text-sm">Tổng thu nhập</div>
-              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalIncome)}</div>
+              <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(otherIncomeTax.totalIncome)}</div>
             </div>
             <div>
               <div className="text-blue-100 text-sm">Thuế phải nộp</div>
-              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalTax)}</div>
+              <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(otherIncomeTax.totalTax)}</div>
             </div>
             <div>
               <div className="text-blue-100 text-sm">Thực nhận</div>
-              <div className="text-2xl font-bold">{formatCurrency(otherIncomeTax.totalNet)}</div>
+              <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(otherIncomeTax.totalNet)}</div>
             </div>
           </div>
         </div>
@@ -97,20 +98,20 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="text-gray-400 text-sm">Lương GROSS</div>
-              <div className="text-xl font-bold">{formatCurrency(newResult.grossIncome)}</div>
+              <div className="text-gray-300 text-sm">Lương GROSS</div>
+              <div className="text-xl font-bold font-mono tabular-nums">{formatCurrency(newResult.grossIncome)}</div>
             </div>
             <div>
-              <div className="text-gray-400 text-sm">Thu nhập khác</div>
-              <div className="text-xl font-bold">{formatCurrency(otherIncomeTax.totalIncome)}</div>
+              <div className="text-gray-300 text-sm">Thu nhập khác</div>
+              <div className="text-xl font-bold font-mono tabular-nums">{formatCurrency(otherIncomeTax.totalIncome)}</div>
             </div>
             <div>
-              <div className="text-gray-400 text-sm">Tổng thuế</div>
-              <div className="text-xl font-bold text-red-400">{formatCurrency(totalNewTax)}</div>
+              <div className="text-gray-300 text-sm">Tổng thuế</div>
+              <div className="text-xl font-bold text-red-400 font-mono tabular-nums">{formatCurrency(totalNewTax)}</div>
             </div>
             <div>
-              <div className="text-gray-400 text-sm">Tổng thực nhận</div>
-              <div className="text-xl font-bold text-green-400">
+              <div className="text-gray-300 text-sm">Tổng thực nhận</div>
+              <div className="text-xl font-bold text-green-400 font-mono tabular-nums">
                 {formatCurrency(newResult.netIncome + otherIncomeTax.totalNet)}
               </div>
             </div>
@@ -150,7 +151,8 @@ export default function TaxResult({ oldResult, newResult, otherIncomeTax, declar
   );
 }
 
-function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResultType; colorClass: string; declaredSalary?: number }) {
+// Memoize ResultDetails to prevent unnecessary re-renders
+const ResultDetails = memo(function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResultType; colorClass: string; declaredSalary?: number }) {
   const { insuranceDetail, allowancesBreakdown } = result;
   const hasInsurance = result.insuranceDeduction > 0;
   const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
@@ -240,7 +242,7 @@ function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResu
       <div className="bg-gray-50 rounded-lg p-4 mt-4">
         <div className="flex justify-between items-center">
           <span className="font-medium text-gray-700">Thuế TNCN phải nộp</span>
-          <span className={`text-2xl font-bold ${colorClass}`}>
+          <span className={`text-2xl font-bold font-mono tabular-nums ${colorClass}`}>
             {formatCurrency(result.taxAmount)}
           </span>
         </div>
@@ -253,16 +255,17 @@ function ResultDetails({ result, colorClass, declaredSalary }: { result: TaxResu
       <div className="border-t pt-3 mt-3">
         <div className="flex justify-between">
           <span className="font-medium text-gray-700">Thu nhập thực nhận</span>
-          <span className="text-xl font-bold text-green-600">
+          <span className="text-xl font-bold text-green-600 font-mono tabular-nums">
             {formatCurrency(result.netIncome)}
           </span>
         </div>
       </div>
     </div>
   );
-}
+});
 
-function TaxBreakdown({ result, title, colorClass }: { result: TaxResultType; title: string; colorClass: string }) {
+// Memoize TaxBreakdown to prevent unnecessary re-renders
+const TaxBreakdown = memo(function TaxBreakdown({ result, title, colorClass }: { result: TaxResultType; title: string; colorClass: string }) {
   if (result.taxBreakdown.length === 0) {
     return (
       <div className="card">
@@ -286,7 +289,7 @@ function TaxBreakdown({ result, title, colorClass }: { result: TaxResultType; ti
                 </span>
                 <span className="font-medium">{formatCurrency(item.taxAmount)}</span>
               </div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-gray-500">
                 {formatCurrency(item.taxableAmount)} × {(item.rate * 100).toFixed(0)}%
               </div>
             </div>
@@ -301,4 +304,7 @@ function TaxBreakdown({ result, title, colorClass }: { result: TaxResultType; ti
       </div>
     </div>
   );
-}
+});
+
+// Export memoized TaxResult component
+export default memo(TaxResultComponent);

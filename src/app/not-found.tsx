@@ -84,7 +84,7 @@ export default function NotFound() {
 
         {/* Quick Links */}
         <div className="border-t border-gray-200 pt-8">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-6">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-6">
             Công cụ phổ biến
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -98,14 +98,14 @@ export default function NotFound() {
                 <div className="font-medium text-gray-800 group-hover:text-primary-600 transition-colors">
                   {link.label}
                 </div>
-                <div className="text-xs text-gray-400">{link.desc}</div>
+                <div className="text-xs text-gray-500">{link.desc}</div>
               </Link>
             ))}
           </div>
         </div>
 
         {/* Footer */}
-        <p className="mt-12 text-sm text-gray-400">
+        <p className="mt-12 text-sm text-gray-500">
           Thuế TNCN 2026 · So sánh luật thuế cũ và mới từ 1/7/2026
         </p>
         </div>

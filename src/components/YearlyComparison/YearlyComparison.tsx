@@ -195,7 +195,7 @@ export default function YearlyComparison({
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
               Lương tháng (GROSS)
               <Tooltip content="Thu nhập gộp hàng tháng trước khi trừ BHXH và thuế">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -223,7 +223,7 @@ export default function YearlyComparison({
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
               Thưởng T13
               <Tooltip content="Tiền thưởng tháng 13 hoặc Tết (thường bằng 1 tháng lương)">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -248,7 +248,7 @@ export default function YearlyComparison({
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
               Người phụ thuộc
               <Tooltip content="Số người được đăng ký giảm trừ gia cảnh (con nhỏ, cha mẹ...)">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -275,7 +275,7 @@ export default function YearlyComparison({
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
               Bảo hiểm
               <Tooltip content="Đóng bảo hiểm xã hội bắt buộc 10.5% trên thu nhập GROSS">
-                <span className="text-gray-400 hover:text-gray-600 cursor-help">
+                <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>

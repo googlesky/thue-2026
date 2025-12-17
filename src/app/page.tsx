@@ -1,27 +1,32 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
+
+// Critical components - loaded immediately (used on default tab)
 import TaxInput from '@/components/TaxInput';
 import TaxResult from '@/components/TaxResult';
-import TaxChart from '@/components/TaxChart';
-import TaxBracketTable from '@/components/TaxBracketTable';
-import GrossNetConverter from '@/components/GrossNetConverter';
-import InsuranceBreakdown from '@/components/InsuranceBreakdown';
-import OtherIncomeInput from '@/components/OtherIncomeInput';
-import { YearlyComparison } from '@/components/YearlyComparison';
-import EmployerCostCalculator from '@/components/EmployerCostCalculator';
-import { FreelancerComparison } from '@/components/FreelancerComparison';
-import { SalaryComparison } from '@/components/SalaryComparison';
-import OvertimeCalculator from '@/components/OvertimeCalculator';
-import { AnnualSettlement } from '@/components/AnnualSettlement';
 import TabNavigation, { type TabType } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
 import LawInfoModal from '@/components/ui/LawInfoModal';
-import { TaxLawHistory } from '@/components/TaxLawHistory';
-import { BonusCalculator } from '@/components/BonusCalculator';
-import { ESOPCalculator } from '@/components/ESOPCalculator';
-import PensionCalculator from '@/components/PensionCalculator';
+import LoadingSpinner, { TabLoadingSkeleton, ChartLoadingSkeleton } from '@/components/ui/LoadingSpinner';
+
+// Lazy-loaded components for better code splitting
+const TaxChart = lazy(() => import('@/components/TaxChart'));
+const TaxBracketTable = lazy(() => import('@/components/TaxBracketTable'));
+const GrossNetConverter = lazy(() => import('@/components/GrossNetConverter'));
+const InsuranceBreakdown = lazy(() => import('@/components/InsuranceBreakdown'));
+const OtherIncomeInput = lazy(() => import('@/components/OtherIncomeInput'));
+const YearlyComparison = lazy(() => import('@/components/YearlyComparison').then(m => ({ default: m.YearlyComparison })));
+const EmployerCostCalculator = lazy(() => import('@/components/EmployerCostCalculator'));
+const FreelancerComparison = lazy(() => import('@/components/FreelancerComparison').then(m => ({ default: m.FreelancerComparison })));
+const SalaryComparison = lazy(() => import('@/components/SalaryComparison').then(m => ({ default: m.SalaryComparison })));
+const OvertimeCalculator = lazy(() => import('@/components/OvertimeCalculator'));
+const AnnualSettlement = lazy(() => import('@/components/AnnualSettlement').then(m => ({ default: m.AnnualSettlement })));
+const TaxLawHistory = lazy(() => import('@/components/TaxLawHistory').then(m => ({ default: m.TaxLawHistory })));
+const BonusCalculator = lazy(() => import('@/components/BonusCalculator').then(m => ({ default: m.BonusCalculator })));
+const ESOPCalculator = lazy(() => import('@/components/ESOPCalculator').then(m => ({ default: m.ESOPCalculator })));
+const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
 import {
   calculateOldTax,
   calculateNewTax,
@@ -416,8 +421,8 @@ export default function Home() {
     : null;
 
   return (
-    <main className="min-h-screen py-6 px-4">
-      <div className="max-w-6xl mx-auto">
+    <main id="main-content" className="min-h-screen py-6 px-4" tabIndex={-1}>
+      <div className="max-w-7xl mx-auto">
         {/* Header - Compact */}
         <header className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -449,19 +454,21 @@ export default function Home() {
               </div>
               <button
                 onClick={handleGoHome}
+                aria-label="Về trang chủ và đặt lại các giá trị mặc định"
                 className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Về trang chủ (reset)"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </button>
               <button
                 onClick={() => setIsLawInfoOpen(true)}
+                aria-label="Xem thông tin luật thuế 2026"
                 className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Thông tin luật thuế 2026"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
@@ -508,153 +515,183 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Chart */}
+            {/* Chart - lazy loaded with chart-specific skeleton */}
             <div className="mb-8">
-              <TaxChart dependents={sharedState.dependents} currentIncome={sharedState.grossIncome} />
+              <Suspense fallback={<ChartLoadingSkeleton />}>
+                <TaxChart dependents={sharedState.dependents} currentIncome={sharedState.grossIncome} />
+              </Suspense>
             </div>
           </>
         )}
 
         {activeTab === 'gross-net' && (
           <div className="mb-8">
-            <GrossNetConverter
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <GrossNetConverter
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'employer-cost' && (
           <div className="mb-8">
-            <EmployerCostCalculator
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={employerCostState}
-              onTabStateChange={setEmployerCostState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <EmployerCostCalculator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={employerCostState}
+                onTabStateChange={setEmployerCostState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'freelancer' && (
           <div className="mb-8">
-            <FreelancerComparison
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={freelancerState}
-              onTabStateChange={setFreelancerState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <FreelancerComparison
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={freelancerState}
+                onTabStateChange={setFreelancerState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'salary-compare' && (
           <div className="mb-8">
-            <SalaryComparison
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={salaryComparisonState}
-              onTabStateChange={setSalaryComparisonState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <SalaryComparison
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={salaryComparisonState}
+                onTabStateChange={setSalaryComparisonState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'yearly' && (
           <div className="mb-8">
-            <YearlyComparison
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={yearlyState}
-              onTabStateChange={setYearlyState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <YearlyComparison
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={yearlyState}
+                onTabStateChange={setYearlyState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'overtime' && (
           <div className="mb-8">
-            <OvertimeCalculator
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={overtimeState}
-              onTabStateChange={setOvertimeState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <OvertimeCalculator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={overtimeState}
+                onTabStateChange={setOvertimeState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'annual-settlement' && (
           <div className="mb-8">
-            <AnnualSettlement
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={annualSettlementState}
-              onTabStateChange={setAnnualSettlementState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <AnnualSettlement
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={annualSettlementState}
+                onTabStateChange={setAnnualSettlementState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'insurance' && (
           <div className="mb-8">
-            <InsuranceBreakdown
-              grossIncome={sharedState.grossIncome}
-              region={sharedState.region}
-              insuranceOptions={sharedState.insuranceOptions}
-              declaredSalary={sharedState.declaredSalary}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <InsuranceBreakdown
+                grossIncome={sharedState.grossIncome}
+                region={sharedState.region}
+                insuranceOptions={sharedState.insuranceOptions}
+                declaredSalary={sharedState.declaredSalary}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'other-income' && (
           <div className="mb-8">
-            <OtherIncomeInput
-              otherIncome={sharedState.otherIncome ?? DEFAULT_OTHER_INCOME}
-              onChange={handleOtherIncomeChange}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <OtherIncomeInput
+                otherIncome={sharedState.otherIncome ?? DEFAULT_OTHER_INCOME}
+                onChange={handleOtherIncomeChange}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'table' && (
           <div className="mb-8">
-            <TaxBracketTable />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxBracketTable />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'bonus-calculator' && (
           <div className="mb-8">
-            <BonusCalculator
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={bonusState}
-              onTabStateChange={setBonusState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <BonusCalculator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={bonusState}
+                onTabStateChange={setBonusState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'esop-calculator' && (
           <div className="mb-8">
-            <ESOPCalculator
-              sharedState={sharedState}
-              onStateChange={updateSharedState}
-              tabState={esopState}
-              onTabStateChange={setEsopState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <ESOPCalculator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={esopState}
+                onTabStateChange={setEsopState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'pension' && (
           <div className="mb-8">
-            <PensionCalculator
-              tabState={pensionState}
-              onTabStateChange={setPensionState}
-            />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <PensionCalculator
+                tabState={pensionState}
+                onTabStateChange={setPensionState}
+              />
+            </Suspense>
           </div>
         )}
 
         {activeTab === 'tax-history' && (
           <div className="mb-8">
-            <TaxLawHistory />
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxLawHistory />
+            </Suspense>
           </div>
         )}
 
         {/* Footer */}
-        <footer className="text-center text-xs text-gray-400 py-4 border-t border-gray-100">
+        <footer className="text-center text-xs text-gray-500 py-4 border-t border-gray-100">
           <p>
             Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025 ·{' '}
             <button
