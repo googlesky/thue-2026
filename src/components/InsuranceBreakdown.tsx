@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, MAX_SOCIAL_INSURANCE_SALARY, MAX_UNEMPLOYMENT_INSURANCE_SALARY, RegionType, REGIONAL_MINIMUM_WAGES, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, MAX_SOCIAL_INSURANCE_SALARY, getMaxUnemploymentInsuranceSalary, RegionType, getRegionalMinimumWages, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
 interface InsuranceBreakdownProps {
   grossIncome: number;
@@ -14,11 +14,16 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
   const insuranceBaseSalary = declaredSalary ?? grossIncome;
   const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== grossIncome;
 
+  // Lấy constants theo ngày hiện tại (date-aware)
+  const currentDate = new Date();
+  const regionalMinimumWages = getRegionalMinimumWages(currentDate);
+  const maxUnemploymentInsuranceSalary = getMaxUnemploymentInsuranceSalary(currentDate);
+
   // BHXH và BHYT: tối đa 20 lần lương cơ sở
   const bhxhBhytBase = Math.min(insuranceBaseSalary, MAX_SOCIAL_INSURANCE_SALARY);
 
-  // BHTN: tối đa 20 lần lương tối thiểu vùng
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
+  const maxBhtn = maxUnemploymentInsuranceSalary[region];
   const bhtnBase = Math.min(insuranceBaseSalary, maxBhtn);
 
   // Calculate based on enabled options
@@ -77,7 +82,7 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           </p>
         )}
         <div className="flex justify-between items-center">
-          <span className="text-gray-600">Mức lương đóng BHTN ({REGIONAL_MINIMUM_WAGES[region].name}):</span>
+          <span className="text-gray-600">Mức lương đóng BHTN ({regionalMinimumWages[region].name}):</span>
           <span className="font-semibold">{formatCurrency(bhtnBase)}</span>
         </div>
         {grossIncome > maxBhtn && (

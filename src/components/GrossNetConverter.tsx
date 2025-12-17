@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
-import { formatCurrency, formatNumber, RegionType, REGIONAL_MINIMUM_WAGES, SharedTaxState, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES } from '@/lib/taxCalculator';
+import { formatCurrency, formatNumber, RegionType, getRegionalMinimumWages, SharedTaxState, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES } from '@/lib/taxCalculator';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface GrossNetConverterProps {
@@ -20,6 +20,9 @@ function InfoIcon() {
 }
 
 export default function GrossNetConverter({ sharedState, onStateChange }: GrossNetConverterProps) {
+  // Get date-aware regional minimum wages
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+
   // Store both GROSS and NET values to avoid recalculation drift
   const [grossValue, setGrossValue] = useState<number>(sharedState?.grossIncome ?? 30000000);
   const [netValue, setNetValue] = useState<number>(0);
@@ -436,7 +439,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {([1, 2, 3, 4] as RegionType[]).map((r) => {
-                  const info = REGIONAL_MINIMUM_WAGES[r];
+                  const info = regionalMinimumWages[r];
                   const isSelected = region === r;
                   return (
                     <button

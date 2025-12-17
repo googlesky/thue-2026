@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   SharedTaxState,
   RegionType,
   InsuranceOptions,
   DEFAULT_INSURANCE_OPTIONS,
-  REGIONAL_MINIMUM_WAGES,
+  getRegionalMinimumWages,
+  getMaxUnemploymentInsuranceSalary,
   formatNumber,
   parseCurrency,
   AllowancesState,
@@ -16,12 +17,6 @@ import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
 // Constants - inline to avoid dependency issues
 const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000;
-const MAX_UNEMPLOYMENT_INSURANCE_SALARY: Record<RegionType, number> = {
-  1: 99_200_000,
-  2: 88_200_000,
-  3: 77_200_000,
-  4: 69_000_000,
-};
 
 const INSURANCE_RATES = {
   socialInsurance: 0.08,
@@ -114,12 +109,16 @@ export default function EmployerCostCalculator({
 
   // ========== INLINE CALCULATIONS - Recalculate on every render ==========
 
+  // Get date-aware constants (uses browser's current date)
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+  const maxUnemploymentInsuranceSalary = useMemo(() => getMaxUnemploymentInsuranceSalary(new Date()), []);
+
   // Base for insurance calculation
   const insuranceBase = (useDeclaredSalary && declaredSalary > 0) ? declaredSalary : grossSalary;
 
   // Employee insurance (deducted from salary)
   const bhxhBhytBase = Math.min(insuranceBase, MAX_SOCIAL_INSURANCE_SALARY);
-  const maxBhtn = MAX_UNEMPLOYMENT_INSURANCE_SALARY[region];
+  const maxBhtn = maxUnemploymentInsuranceSalary[region];
   const bhtnBase = Math.min(insuranceBase, maxBhtn);
 
   const employeeBhxh = insuranceOptions.bhxh ? bhxhBhytBase * INSURANCE_RATES.socialInsurance : 0;
@@ -277,7 +276,7 @@ export default function EmployerCostCalculator({
             >
               {([1, 2, 3, 4] as RegionType[]).map((r) => (
                 <option key={r} value={r}>
-                  {REGIONAL_MINIMUM_WAGES[r].name} - {formatNumber(REGIONAL_MINIMUM_WAGES[r].wage)} VND
+                  {regionalMinimumWages[r].name} - {formatNumber(regionalMinimumWages[r].wage)} VND
                 </option>
               ))}
             </select>

@@ -5,7 +5,7 @@ import {
   SharedTaxState,
   RegionType,
   DEFAULT_INSURANCE_OPTIONS,
-  REGIONAL_MINIMUM_WAGES,
+  getRegionalMinimumWages,
   formatNumber,
   parseCurrency,
 } from '@/lib/taxCalculator';
@@ -87,6 +87,9 @@ export default function SalaryComparison({
   tabState,
   onTabStateChange,
 }: SalaryComparisonProps) {
+  // Get date-aware regional minimum wages
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+
   const isLocalChange = useRef(false);
 
   const [companies, setCompanies] = useState<CompanyOffer[]>(
@@ -272,7 +275,7 @@ export default function SalaryComparison({
                   onChange={(e) => updateCompany(company.id, { region: parseInt(e.target.value) as RegionType })}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  {Object.entries(REGIONAL_MINIMUM_WAGES).map(([key, info]) => (
+                  {Object.entries(regionalMinimumWages).map(([key, info]) => (
                     <option key={key} value={Number(key)}>{info.name}</option>
                   ))}
                 </select>

@@ -1,6 +1,7 @@
 'use client';
 
-import { REGIONAL_MINIMUM_WAGES, RegionType, formatCurrency } from '@/lib/taxCalculator';
+import { useMemo } from 'react';
+import { getRegionalMinimumWages, RegionType, formatCurrency } from '@/lib/taxCalculator';
 
 interface RegionSelectorProps {
   value: RegionType;
@@ -8,6 +9,9 @@ interface RegionSelectorProps {
 }
 
 export default function RegionSelector({ value, onChange }: RegionSelectorProps) {
+  // Get date-aware regional minimum wages
+  const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -15,7 +19,7 @@ export default function RegionSelector({ value, onChange }: RegionSelectorProps)
       </label>
       <div className="grid grid-cols-2 gap-2">
         {([1, 2, 3, 4] as RegionType[]).map((region) => {
-          const info = REGIONAL_MINIMUM_WAGES[region];
+          const info = regionalMinimumWages[region];
           const isSelected = value === region;
           return (
             <button
@@ -36,7 +40,7 @@ export default function RegionSelector({ value, onChange }: RegionSelectorProps)
         })}
       </div>
       <p className="text-xs text-gray-500 mt-1">
-        {REGIONAL_MINIMUM_WAGES[value].description}
+        {regionalMinimumWages[value].description}
       </p>
     </div>
   );
