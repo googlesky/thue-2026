@@ -203,10 +203,10 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
   const activeTabInfo = getTabInfo(activeTab);
 
   return (
-    <div className="mb-6">
+    <nav className="mb-6" aria-label="Cong cu tinh thue">
       {/* Navigation bar */}
       <div className="flex justify-center">
-        <div className="inline-flex flex-wrap justify-center gap-1 sm:gap-2 bg-gray-100 p-1.5 sm:p-2 rounded-xl">
+        <div className="inline-flex flex-wrap justify-center gap-1 sm:gap-2 bg-gray-100 p-1.5 sm:p-2 rounded-xl" role="menubar">
           {TAB_GROUPS.map((group, index) => {
             const isGroupActive = group.tabs.some((t) => t.id === activeTab);
             const isOpen = openDropdown === group.id;
@@ -257,7 +257,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                 {/* Dropdown menu */}
                 {isOpen && (
                   <div
-                    className="absolute top-full left-1/2 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[200px] sm:min-w-[220px] z-50 dropdown-animate"
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[180px] sm:w-[220px] max-w-[calc(100vw-2rem)] z-50 dropdown-animate"
                     role="menu"
                     aria-label={group.label}
                   >
@@ -305,19 +305,19 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
       </div>
 
       {/* Breadcrumb - shows group > tab on mobile */}
-      <div className="flex justify-center mt-2 sm:hidden">
+      <div className="flex justify-center mt-2 sm:hidden" aria-label="Breadcrumb">
         {activeTabInfo && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span>{findTabGroup(activeTab)?.icon}</span>
+            <span aria-hidden="true">{findTabGroup(activeTab)?.icon}</span>
             <span>{findTabGroup(activeTab)?.label}</span>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-gray-700 font-medium">{activeTabInfo.label}</span>
+            <span className="text-gray-700 font-medium" aria-current="page">{activeTabInfo.label}</span>
           </div>
         )}
       </div>
-    </div>
+    </nav>
   );
 }
 

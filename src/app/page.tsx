@@ -1,764 +1,1113 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
-import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
 
-// Critical components - loaded immediately (used on default tab)
-import TaxInput from '@/components/TaxInput';
-import TaxResult from '@/components/TaxResult';
-import TabNavigation, { type TabType } from '@/components/TabNavigation';
-import { SaveShareButton } from '@/components/SaveShare';
-import LawInfoModal from '@/components/ui/LawInfoModal';
-import LoadingSpinner, { TabLoadingSkeleton, ChartLoadingSkeleton } from '@/components/ui/LoadingSpinner';
+// Type definitions
+interface FeatureItem {
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  href: string;
+  color: string;
+  bgColor: string;
+  highlight?: boolean;
+  badge?: string;
+}
 
-// Lazy-loaded components for better code splitting
-const TaxChart = lazy(() => import('@/components/TaxChart'));
-const TaxBracketTable = lazy(() => import('@/components/TaxBracketTable'));
-const GrossNetConverter = lazy(() => import('@/components/GrossNetConverter'));
-const InsuranceBreakdown = lazy(() => import('@/components/InsuranceBreakdown'));
-const OtherIncomeInput = lazy(() => import('@/components/OtherIncomeInput'));
-const YearlyComparison = lazy(() => import('@/components/YearlyComparison').then(m => ({ default: m.YearlyComparison })));
-const EmployerCostCalculator = lazy(() => import('@/components/EmployerCostCalculator'));
-const FreelancerComparison = lazy(() => import('@/components/FreelancerComparison').then(m => ({ default: m.FreelancerComparison })));
-const SalaryComparison = lazy(() => import('@/components/SalaryComparison').then(m => ({ default: m.SalaryComparison })));
-const OvertimeCalculator = lazy(() => import('@/components/OvertimeCalculator'));
-const AnnualSettlement = lazy(() => import('@/components/AnnualSettlement').then(m => ({ default: m.AnnualSettlement })));
-const TaxLawHistory = lazy(() => import('@/components/TaxLawHistory').then(m => ({ default: m.TaxLawHistory })));
-const BonusCalculator = lazy(() => import('@/components/BonusCalculator').then(m => ({ default: m.BonusCalculator })));
-const ESOPCalculator = lazy(() => import('@/components/ESOPCalculator').then(m => ({ default: m.ESOPCalculator })));
-const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
-const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
-const SalarySlipGenerator = lazy(() => import('@/components/SalarySlip').then(m => ({ default: m.SalarySlipGenerator })));
-const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ default: m.TaxCalendar })));
-import {
-  calculateOldTax,
-  calculateNewTax,
-  TaxResult as TaxResultType,
-  TaxInput as TaxInputType,
-  RegionType,
-  InsuranceOptions,
-  DEFAULT_INSURANCE_OPTIONS,
-  SharedTaxState,
-  OtherIncomeState,
-  DEFAULT_OTHER_INCOME,
-  calculateOtherIncomeTax,
-  AllowancesState,
-} from '@/lib/taxCalculator';
-import {
-  CalculatorSnapshot,
-  EmployerCostTabState,
-  FreelancerTabState,
-  SalaryComparisonTabState,
-  YearlyComparisonTabState,
-  OvertimeTabState,
-  AnnualSettlementTabState,
-  BonusTabState,
-  ESOPTabState,
-  PensionTabState,
-  DEFAULT_OVERTIME_STATE,
-  DEFAULT_ANNUAL_SETTLEMENT_STATE,
-  DEFAULT_BONUS_STATE,
-  DEFAULT_ESOP_STATE,
-  DEFAULT_PENSION_STATE,
-  DEFAULT_YEARLY_COMPARISON_STATE,
-} from '@/lib/snapshotTypes';
-import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
-import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
+interface FeatureCategory {
+  category: string;
+  description: string;
+  items: FeatureItem[];
+}
 
-const defaultSharedState: SharedTaxState = {
-  grossIncome: 30_000_000,
-  dependents: 0,
-  otherDeductions: 0,
-  hasInsurance: true,
-  insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-  region: 1,
-  pensionContribution: 0,
-  otherIncome: DEFAULT_OTHER_INCOME,
-};
+// Animated counter component
+function AnimatedCounter({
+  end,
+  duration = 2000,
+  suffix = '',
+  prefix = '',
+}: {
+  end: number;
+  duration?: number;
+  suffix?: string;
+  prefix?: string;
+}) {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-// Valid tab types for hash navigation
-const VALID_TABS: TabType[] = [
-  'calculator', 'gross-net', 'overtime', 'annual-settlement',
-  'bonus-calculator', 'esop-calculator', 'pension', 'employer-cost', 'freelancer',
-  'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
-  'tax-calendar', 'salary-slip'
-];
-
-export default function Home() {
-  // Next.js hook for navigation tracking
-  const pathname = usePathname();
-
-  const [activeTab, setActiveTab] = useState<TabType>('calculator');
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLawInfoOpen, setIsLawInfoOpen] = useState(false);
-  const [isLoadingFromURL, setIsLoadingFromURL] = useState(false);
-
-  // Shared state across all tabs
-  const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
-
-  // Tab-specific states (lifted from individual tab components)
-  const [employerCostState, setEmployerCostState] = useState<EmployerCostTabState>({
-    includeUnionFee: false,
-    useNewLaw: true,
-  });
-  const [freelancerState, setFreelancerState] = useState<FreelancerTabState>({
-    frequency: 'monthly',
-    useNewLaw: true,
-  });
-  const [salaryComparisonState, setSalaryComparisonState] = useState<SalaryComparisonTabState>({
-    companies: [
-      createDefaultCompanyOffer('company-1', 'Công ty A'),
-      createDefaultCompanyOffer('company-2', 'Công ty B'),
-    ],
-    useNewLaw: true,
-  });
-  const [yearlyState, setYearlyState] = useState<YearlyComparisonTabState>(DEFAULT_YEARLY_COMPARISON_STATE);
-  const [overtimeState, setOvertimeState] = useState<OvertimeTabState>(DEFAULT_OVERTIME_STATE);
-  const [annualSettlementState, setAnnualSettlementState] = useState<AnnualSettlementTabState>(DEFAULT_ANNUAL_SETTLEMENT_STATE);
-  const [bonusState, setBonusState] = useState<BonusTabState>(DEFAULT_BONUS_STATE);
-  const [esopState, setEsopState] = useState<ESOPTabState>(DEFAULT_ESOP_STATE);
-  const [pensionState, setPensionState] = useState<PensionTabState>(DEFAULT_PENSION_STATE);
-
-  // Tax calculation results
-  const [oldResult, setOldResult] = useState<TaxResultType>(() =>
-    calculateOldTax(sharedState)
-  );
-  const [newResult, setNewResult] = useState<TaxResultType>(() =>
-    calculateNewTax(sharedState)
-  );
-
-  // Handler for loading a snapshot (defined early to avoid hoisting issues)
-  const handleLoadSnapshot = useCallback((snapshot: CalculatorSnapshot) => {
-    setSharedState(snapshot.sharedState);
-    setActiveTab(snapshot.activeTab as TabType);
-    setEmployerCostState(snapshot.tabs.employerCost);
-    setFreelancerState(snapshot.tabs.freelancer);
-    setSalaryComparisonState(snapshot.tabs.salaryComparison);
-    setYearlyState(snapshot.tabs.yearlyComparison);
-    if (snapshot.tabs.overtime) {
-      setOvertimeState(snapshot.tabs.overtime);
-    }
-    if (snapshot.tabs.annualSettlement) {
-      setAnnualSettlementState(snapshot.tabs.annualSettlement);
-    }
-    if (snapshot.tabs.bonus) {
-      setBonusState(snapshot.tabs.bonus);
-    }
-    if (snapshot.tabs.esop) {
-      setEsopState(snapshot.tabs.esop);
-    }
-    if (snapshot.tabs.pension) {
-      setPensionState(snapshot.tabs.pension);
-    }
-  }, []);
-
-  // Helper function to handle hash navigation
-  // Supports formats: #<tab>, #<tab>~<encoded>, #s=<encoded> (legacy)
-  const handleHashNavigation = useCallback((hash: string) => {
-    if (!hash || hash === '#') return false;
-
-    const hashContent = hash.slice(1); // Remove '#'
-
-    // Legacy format: #s=<encoded>
-    if (hashContent.startsWith('s=')) {
-      const snapshot = decodeSnapshot(hashContent.slice(2));
-      if (snapshot) {
-        setIsLoadingFromURL(true);
-        handleLoadSnapshot(snapshot);
-        // Let auto-update effect handle URL update after state is loaded
-        setTimeout(() => setIsLoadingFromURL(false), 600);
-        return true;
-      }
-    }
-
-    // New format: #<tab>~<encoded> or #<tab>
-    const tildeIndex = hashContent.indexOf('~');
-    if (tildeIndex >= 0) {
-      // Has encoded state: #<tab>~<encoded> or #~<encoded>
-      const tabPart = tildeIndex > 0
-        ? hashContent.slice(0, tildeIndex) as TabType
-        : 'calculator';
-      const encodedPart = hashContent.slice(tildeIndex + 1);
-
-      if (VALID_TABS.includes(tabPart)) {
-        setActiveTab(tabPart);
-
-        if (encodedPart) {
-          const snapshot = decodeSnapshot(encodedPart);
-          if (snapshot) {
-            setIsLoadingFromURL(true);
-            // Load state but keep the tab from URL
-            handleLoadSnapshot({ ...snapshot, activeTab: tabPart });
-            setTimeout(() => setIsLoadingFromURL(false), 600);
-          }
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasStarted) {
+          setHasStarted(true);
         }
-        return true;
-      }
-    } else {
-      // Simple tab navigation: #<tab>
-      const tabId = hashContent as TabType;
-      if (VALID_TABS.includes(tabId)) {
-        setActiveTab(tabId);
-        return true;
-      }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
     }
 
-    return false;
-  }, [handleLoadSnapshot]);
+    return () => observer.disconnect();
+  }, [hasStarted]);
 
-  // Handler for tab change - updates both state and URL
-  // Don't preserve encoded state here - let auto-update effect handle it
-  const handleTabChange = useCallback((tab: TabType) => {
-    setActiveTab(tab);
-    // Update URL with just the tab - auto-update effect will add state if needed
-    if (typeof window !== 'undefined') {
-      const newURL = tab === 'calculator'
-        ? window.location.pathname
-        : `${window.location.pathname}#${tab}`;
-      window.history.replaceState(null, '', newURL);
-    }
-  }, []);
-
-  // Load state from URL on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && !isInitialized) {
-      const hash = window.location.hash;
+    if (!hasStarted) return;
 
-      // Try hash navigation first
-      if (handleHashNavigation(hash)) {
-        setIsInitialized(true);
-        return;
-      }
+    let startTime: number;
+    const startValue = 0;
 
-      // Fall back to legacy URL params for backward compatibility
-      const urlState = decodeLegacyURLParams(window.location.search);
-      if (urlState) {
-        const newState = { ...defaultSharedState, ...urlState };
-        setSharedState(newState);
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      setCount(Math.floor(easeOutQuart * (end - startValue) + startValue));
 
-        // Recalculate
-        const taxInput: TaxInputType = {
-          grossIncome: newState.grossIncome,
-          declaredSalary: newState.declaredSalary,
-          dependents: newState.dependents,
-          otherDeductions: newState.otherDeductions + newState.pensionContribution,
-          hasInsurance: newState.hasInsurance,
-          insuranceOptions: newState.insuranceOptions,
-          region: newState.region,
-          allowances: newState.allowances,
-        };
-        setOldResult(calculateOldTax(taxInput));
-        setNewResult(calculateNewTax(taxInput));
-
-        // Clear URL params after loading (cleaner URL)
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-      setIsInitialized(true);
-    }
-  }, [isInitialized, handleHashNavigation]);
-
-  // Listen for hash changes (for navigation from 404 page and other client-side navigation)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash) {
-        handleHashNavigation(hash);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
       }
     };
 
-    // Listen to hashchange events
-    window.addEventListener('hashchange', handleHashChange);
-
-    // Also check on mount after initialization (for client-side navigation)
-    if (isInitialized && window.location.hash) {
-      handleHashNavigation(window.location.hash);
-    }
-
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, [isInitialized, handleHashNavigation]);
-
-  // Handle Next.js client-side navigation (pathname changes)
-  // This catches navigation from 404 page when using Next.js Link component
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isInitialized) return;
-
-    // Check if there's a hash after navigation
-    const hash = window.location.hash;
-    if (hash && hash.length > 1) {
-      handleHashNavigation(hash);
-    }
-  }, [pathname, isInitialized, handleHashNavigation]);
-
-  // Update shared state and recalculate tax
-  const updateSharedState = useCallback((updates: Partial<SharedTaxState>) => {
-    setSharedState(prev => {
-      const newState = { ...prev, ...updates };
-
-      // Build tax input
-      const taxInput: TaxInputType = {
-        grossIncome: newState.grossIncome,
-        declaredSalary: newState.declaredSalary,
-        dependents: newState.dependents,
-        otherDeductions: newState.otherDeductions + newState.pensionContribution,
-        hasInsurance: newState.hasInsurance,
-        insuranceOptions: newState.insuranceOptions,
-        region: newState.region,
-        allowances: newState.allowances,
-      };
-
-      // Recalculate tax results
-      setOldResult(calculateOldTax(taxInput));
-      setNewResult(calculateNewTax(taxInput));
-
-      return newState;
-    });
-  }, []);
-
-  // Handler for TaxInput component (maintains backward compatibility)
-  const handleCalculate = useCallback(
-    (newInput: {
-      grossIncome: number;
-      declaredSalary?: number;
-      dependents: number;
-      otherDeductions: number;
-      hasInsurance: boolean;
-      insuranceOptions: InsuranceOptions;
-      region: RegionType;
-      pensionContribution: number;
-      allowances?: AllowancesState;
-    }) => {
-      updateSharedState(newInput);
-    },
-    [updateSharedState]
-  );
-
-  // Handler for other income changes
-  const handleOtherIncomeChange = useCallback((otherIncome: OtherIncomeState) => {
-    updateSharedState({ otherIncome });
-  }, [updateSharedState]);
-
-  // Build current snapshot for save/share
-  const currentSnapshot = useMemo<CalculatorSnapshot>(() => ({
-    version: 1,
-    sharedState,
-    activeTab,
-    tabs: {
-      employerCost: employerCostState,
-      freelancer: freelancerState,
-      salaryComparison: salaryComparisonState,
-      yearlyComparison: yearlyState,
-      overtime: overtimeState,
-      annualSettlement: annualSettlementState,
-      bonus: bonusState,
-      esop: esopState,
-      pension: pensionState,
-    },
-    meta: {
-      createdAt: Date.now(),
-    },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState]);
-
-  // Auto-update URL when state changes (debounced)
-  // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
-  useEffect(() => {
-    // Skip if not initialized, loading from URL, or not in browser
-    if (!isInitialized || isLoadingFromURL || typeof window === 'undefined') return;
-
-    const timeoutId = setTimeout(() => {
-      const encoded = encodeSnapshot(currentSnapshot);
-
-      // Check if state is basically default (encoded string is very short)
-      // Short encoded = mostly defaults, just use simple tab hash
-      if (encoded.length < 10) {
-        // Use simple tab hash or clean URL for default tab
-        const newURL = activeTab === 'calculator'
-          ? window.location.pathname
-          : `${window.location.pathname}#${activeTab}`;
-        window.history.replaceState(null, '', newURL);
-      } else {
-        // Include both tab and encoded state: #<tab>~<encoded>
-        const newURL = activeTab === 'calculator'
-          ? `${window.location.pathname}#calculator~${encoded}`
-          : `${window.location.pathname}#${activeTab}~${encoded}`;
-        window.history.replaceState(null, '', newURL);
-      }
-    }, 500); // Debounce 500ms
-
-    return () => clearTimeout(timeoutId);
-  }, [currentSnapshot, isInitialized, isLoadingFromURL, activeTab]);
-
-  // Reset to home (default state)
-  const handleGoHome = useCallback(() => {
-    setSharedState(defaultSharedState);
-    setActiveTab('calculator');
-    setEmployerCostState({ includeUnionFee: false, useNewLaw: true });
-    setFreelancerState({ frequency: 'monthly', useNewLaw: true });
-    setSalaryComparisonState({
-      companies: [
-        createDefaultCompanyOffer('company-1', 'Công ty A'),
-        createDefaultCompanyOffer('company-2', 'Công ty B'),
-      ],
-      useNewLaw: true,
-    });
-    setYearlyState(DEFAULT_YEARLY_COMPARISON_STATE);
-    setOvertimeState(DEFAULT_OVERTIME_STATE);
-    setAnnualSettlementState(DEFAULT_ANNUAL_SETTLEMENT_STATE);
-    setBonusState(DEFAULT_BONUS_STATE);
-    setEsopState(DEFAULT_ESOP_STATE);
-    setPensionState(DEFAULT_PENSION_STATE);
-
-    // Recalculate with default values
-    setOldResult(calculateOldTax(defaultSharedState));
-    setNewResult(calculateNewTax(defaultSharedState));
-
-    // Clear URL
-    window.history.replaceState(null, '', window.location.pathname);
-  }, []);
-
-  // Calculate other income tax
-  const otherIncomeTax = sharedState.otherIncome
-    ? calculateOtherIncomeTax(sharedState.otherIncome)
-    : null;
+    requestAnimationFrame(animate);
+  }, [hasStarted, end, duration]);
 
   return (
-    <main id="main-content" className="min-h-screen py-6 px-4" tabIndex={-1}>
-      <div className="max-w-7xl mx-auto">
-        {/* Header - Compact */}
-        <header className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20" role="img" aria-label="Calculator icon">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    <div ref={ref} className="counter">
+      {prefix}
+      {count}
+      {suffix}
+    </div>
+  );
+}
+
+// Feature categories with enhanced styling
+const features: FeatureCategory[] = [
+  {
+    category: 'Tính toán',
+    description: 'Công cụ tính thuế chính xác theo luật mới nhất',
+    items: [
+      {
+        name: 'Tính thuế TNCN',
+        description:
+          'So sánh thuế thu nhập cá nhân giữa luật cũ (7 bậc) và luật mới 2026 (5 bậc)',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#calculator',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50 group-hover:bg-blue-100',
+        highlight: true,
+      },
+      {
+        name: 'GROSS - NET',
+        description:
+          'Quy đổi nhanh giữa lương GROSS và lương NET thực nhận',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#gross-net',
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50 group-hover:bg-emerald-100',
+      },
+      {
+        name: 'Tính lương tăng ca',
+        description: 'Tính tiền lương làm thêm giờ theo quy định pháp luật',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#overtime',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50 group-hover:bg-orange-100',
+      },
+      {
+        name: 'Quyết toán thuế năm',
+        description:
+          'Tính thuế phải nộp hoặc hoàn lại khi quyết toán cuối năm',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#annual-settlement',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50 group-hover:bg-purple-100',
+      },
+      {
+        name: 'Thuế thưởng Tết',
+        description:
+          'Tính thuế thưởng Tết, lương tháng 13 và các khoản thưởng khác',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#bonus-calculator',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50 group-hover:bg-red-100',
+      },
+      {
+        name: 'Thuế ESOP/Cổ phiếu',
+        description:
+          'Tính thuế khi nhận cổ phiếu ưu đãi từ công ty (ESOP)',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#esop-calculator',
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-50 group-hover:bg-indigo-100',
+      },
+      {
+        name: 'Lương hưu',
+        description: 'Ước tính lương hưu dựa trên thời gian đóng BHXH',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#pension',
+        color: 'text-cyan-600',
+        bgColor: 'bg-cyan-50 group-hover:bg-cyan-100',
+      },
+    ],
+  },
+  {
+    category: 'So sánh',
+    description: 'Phân tích và so sánh thu nhập giữa các phương án',
+    items: [
+      {
+        name: 'Chi phí nhà tuyển dụng',
+        description:
+          'Tính tổng chi phí mà doanh nghiệp phải trả cho một nhân viên',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#employer-cost',
+        color: 'text-slate-600',
+        bgColor: 'bg-slate-50 group-hover:bg-slate-100',
+      },
+      {
+        name: 'Freelancer vs Hợp đồng',
+        description:
+          'So sánh thu nhập giữa làm việc tự do và ký hợp đồng lao động',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#freelancer',
+        color: 'text-teal-600',
+        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
+      },
+      {
+        name: 'So sánh offer lương',
+        description:
+          'So sánh thu nhập thực tế giữa nhiều công ty và offers',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#salary-compare',
+        color: 'text-pink-600',
+        bgColor: 'bg-pink-50 group-hover:bg-pink-100',
+      },
+      {
+        name: 'So sánh theo năm',
+        description: 'Xem biến động thuế và thu nhập qua các năm',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#yearly',
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50 group-hover:bg-amber-100',
+      },
+    ],
+  },
+  {
+    category: 'Tham khảo',
+    description: 'Tra cứu thông tin và biểu thuế chi tiết',
+    items: [
+      {
+        name: 'Biểu thuế lũy tiến',
+        description: 'Tra cứu bảng thuế suất theo từng bậc thu nhập',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#table',
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-50 group-hover:bg-gray-100',
+      },
+      {
+        name: 'Chi tiết bảo hiểm',
+        description:
+          'Xem chi tiết các khoản BHXH, BHYT, BHTN phải đóng',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#insurance',
+        color: 'text-green-600',
+        bgColor: 'bg-green-50 group-hover:bg-green-100',
+      },
+      {
+        name: 'Thu nhập khác',
+        description:
+          'Tính thuế cho thu nhập ngoài lương (đầu tư, cho thuê...)',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#other-income',
+        color: 'text-violet-600',
+        bgColor: 'bg-violet-50 group-hover:bg-violet-100',
+      },
+      {
+        name: 'Lịch sử Luật thuế',
+        description: 'Xem các mốc thay đổi của Luật thuế TNCN qua các năm',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#tax-history',
+        color: 'text-stone-600',
+        bgColor: 'bg-stone-50 group-hover:bg-stone-100',
+      },
+    ],
+  },
+  {
+    category: 'Công cụ mới',
+    description: 'Tính năng mới được cập nhật gần đây',
+    items: [
+      {
+        name: 'Mẹo tối ưu thuế',
+        description:
+          'Gợi ý cách giảm thuế hợp pháp dựa trên thu nhập của bạn',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#calculator',
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50 group-hover:bg-yellow-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Phiếu lương',
+        description:
+          'Tạo phiếu lương chi tiết với đầy đủ các khoản thu và khấu trừ',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#salary-slip',
+        color: 'text-rose-600',
+        bgColor: 'bg-rose-50 group-hover:bg-rose-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Lịch thuế',
+        description:
+          'Theo dõi các mốc thời gian nộp thuế quan trọng trong năm',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#tax-calendar',
+        color: 'text-sky-600',
+        bgColor: 'bg-sky-50 group-hover:bg-sky-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Xuất PDF',
+        description:
+          'Xuất báo cáo tính thuế chi tiết ra file PDF để lưu trữ',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#calculator',
+        color: 'text-fuchsia-600',
+        bgColor: 'bg-fuchsia-50 group-hover:bg-fuchsia-100',
+        badge: 'Mới',
+      },
+    ],
+  },
+];
+
+// Comparison data for hero section
+const comparisonData = {
+  old: {
+    brackets: 7,
+    personalDeduction: 11,
+    dependentDeduction: 4.4,
+    maxRate: 35,
+  },
+  new: {
+    brackets: 5,
+    personalDeduction: 15.5,
+    dependentDeduction: 6.2,
+    maxRate: 30,
+  },
+};
+
+export default function HomePage() {
+  const [mounted, setMounted] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <main className="min-h-screen overflow-hidden">
+      {/* Hero Section - Modern Gradient with Animated Blobs */}
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Gradient Orbs */}
+          <div
+            className="absolute top-0 -left-40 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-blob"
+            style={{ transform: `translateY(${scrollY * 0.1}px)` }}
+          />
+          <div
+            className="absolute top-1/4 -right-40 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-blob animation-delay-200"
+            style={{ transform: `translateY(${scrollY * 0.15}px)` }}
+          />
+          <div
+            className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-blob animation-delay-400"
+            style={{ transform: `translateY(${scrollY * -0.1}px)` }}
+          />
+
+          {/* Grid Pattern Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+          {/* Radial Gradient Overlay */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(15,23,42,0.5)_100%)]" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
+          <div className="text-center">
+            {/* Badge */}
+            <div
+              className={`inline-flex items-center gap-2.5 px-5 py-2.5 glass rounded-full text-sm text-white/90 mb-8 ${mounted ? 'animate-slide-up' : 'opacity-0'}`}
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+              </span>
+              <span className="font-medium">
+                Cập nhật Luật Thuế TNCN mới nhất - có hiệu lực từ 1/7/2026
+              </span>
+            </div>
+
+            {/* Main Title */}
+            <h1
+              className={`text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 ${mounted ? 'animate-slide-up animation-delay-100' : 'opacity-0'}`}
+            >
+              <span className="text-white">Tính Thuế TNCN </span>
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                2026
+              </span>
+            </h1>
+
+            {/* Subtitle with Animation */}
+            <p
+              className={`text-xl sm:text-2xl lg:text-3xl text-blue-200/80 font-light mb-4 ${mounted ? 'animate-slide-up animation-delay-200' : 'opacity-0'}`}
+            >
+              Miễn phí &middot; Chính xác &middot; Dễ sử dụng
+            </p>
+
+            {/* Description */}
+            <p
+              className={`text-lg text-blue-100/60 max-w-2xl mx-auto mb-12 leading-relaxed ${mounted ? 'animate-slide-up animation-delay-300' : 'opacity-0'}`}
+            >
+              Công cụ tính thuế thu nhập cá nhân toàn diện nhất Việt Nam. So
+              sánh luật cũ và luật mới 2026, quy đổi GROSS-NET, quyết toán thuế
+              năm, và nhiều hơn nữa.
+            </p>
+
+            {/* CTA Buttons */}
+            <div
+              className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 ${mounted ? 'animate-slide-up animation-delay-400' : 'opacity-0'}`}
+            >
+              <Link
+                href="/tinh-thue"
+                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-[1.02] min-h-[56px] overflow-hidden"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <svg
+                  className="w-5 h-5 relative z-10"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="relative z-10">Bắt đầu tính thuế</span>
+                <svg
+                  className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Link>
+
+              <a
+                href="#features"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 glass text-white font-medium rounded-2xl hover:bg-white/10 transition-all duration-300 min-h-[56px]"
+              >
+                Xem tất cả tính năng
+                <svg
+                  className="w-5 h-5 animate-bounce-subtle"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </a>
+            </div>
+
+            {/* Comparison Cards - Glass Morphism */}
+            <div
+              className={`grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto ${mounted ? 'animate-slide-up animation-delay-500' : 'opacity-0'}`}
+            >
+              {/* Old Law Card */}
+              <div className="group glass rounded-3xl p-6 text-left transition-all duration-300 hover:bg-white/[0.08] hover:scale-[1.02]">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                    <div className="w-3 h-3 bg-red-400 rounded-full" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Luật hiện hành</h3>
+                    <span className="text-xs text-red-300/80">7 bậc thuế</span>
+                  </div>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center py-2 border-b border-white/5">
+                    <span className="text-blue-100/60">Giảm trừ bản thân</span>
+                    <span className="font-semibold text-white">
+                      {comparisonData.old.personalDeduction} triệu
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-white/5">
+                    <span className="text-blue-100/60">Giảm trừ phụ thuộc</span>
+                    <span className="font-semibold text-white">
+                      {comparisonData.old.dependentDeduction} triệu
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-blue-100/60">Thuế suất cao nhất</span>
+                    <span className="font-semibold text-white">
+                      {comparisonData.old.maxRate}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* New Law Card */}
+              <div className="group relative glass rounded-3xl p-6 text-left transition-all duration-300 hover:bg-white/[0.08] hover:scale-[1.02] ring-1 ring-emerald-400/30">
+                {/* Highlight Gradient Border */}
+                <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-r from-emerald-400/20 via-cyan-400/20 to-blue-400/20 -z-10" />
+
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Luật mới 2026</h3>
+                    <span className="text-xs text-emerald-300/80">
+                      5 bậc thuế - Có lợi hơn
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center py-2 border-b border-white/5">
+                    <span className="text-blue-100/60">Giảm trừ bản thân</span>
+                    <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                      {comparisonData.new.personalDeduction} triệu
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 10l7-7m0 0l7 7m-7-7v18"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-white/5">
+                    <span className="text-blue-100/60">Giảm trừ phụ thuộc</span>
+                    <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                      {comparisonData.new.dependentDeduction} triệu
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 10l7-7m0 0l7 7m-7-7v18"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-blue-100/60">Thuế suất cao nhất</span>
+                    <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                      {comparisonData.new.maxRate}%
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Wave */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg
+            viewBox="0 0 1440 120"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
+              fill="#f8fafc"
+            />
+          </svg>
+        </div>
+      </section>
+
+      {/* Stats Section - Clean and Modern */}
+      <section className="py-16 sm:py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                value: 15,
+                suffix: '+',
+                label: 'Công cụ tính thuế',
+                color: 'text-blue-600',
+                bgColor: 'bg-blue-50',
+              },
+              {
+                value: 100,
+                suffix: '%',
+                label: 'Miễn phí',
+                color: 'text-emerald-600',
+                bgColor: 'bg-emerald-50',
+              },
+              {
+                value: 2026,
+                suffix: '',
+                label: 'Cập nhật luật mới',
+                color: 'text-purple-600',
+                bgColor: 'bg-purple-50',
+              },
+              {
+                prefix: '24/',
+                value: 7,
+                suffix: '',
+                label: 'Truy cập mọi lúc',
+                color: 'text-orange-600',
+                bgColor: 'bg-orange-50',
+              },
+            ].map((stat, index) => (
+              <div
+                key={index}
+                className={`text-center p-6 rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-105`}
+              >
+                <div className={`text-4xl sm:text-5xl font-bold ${stat.color} mb-2`}>
+                  <AnimatedCounter
+                    end={stat.value}
+                    suffix={stat.suffix}
+                    prefix={stat.prefix || ''}
+                    duration={1500}
+                  />
+                </div>
+                <div className="text-sm text-gray-600 font-medium">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - Card Grid */}
+      <section id="features" className="py-20 sm:py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full mb-4">
+              Tính năng
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              Tất cả công cụ bạn cần
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Từ tính thuế cơ bản đến các công cụ chuyên sâu cho doanh nghiệp
+              và cá nhân
+            </p>
+          </div>
+
+          {/* Feature Categories */}
+          {features.map((category, categoryIndex) => (
+            <div key={category.category} className="mb-16 last:mb-0">
+              {/* Category Header */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-8 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {category.category}
+                    </h3>
+                    <p className="text-sm text-gray-500">{category.description}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature Grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                {category.items.map((feature, featureIndex) => (
+                  <Link
+                    key={feature.name}
+                    href={feature.href}
+                    className={`group relative bg-white rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 border border-gray-100 hover:border-gray-200 card-hover ${
+                      feature.highlight
+                        ? 'ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/5'
+                        : ''
+                    }`}
+                    style={{
+                      animationDelay: `${(categoryIndex * 100 + featureIndex * 50)}ms`,
+                    }}
+                  >
+                    {/* Badge */}
+                    {feature.badge && (
+                      <span className="absolute top-4 right-4 text-xs font-semibold bg-gradient-to-r from-orange-500 to-rose-500 text-white px-2.5 py-1 rounded-full shadow-sm">
+                        {feature.badge}
+                      </span>
+                    )}
+
+                    {/* Icon */}
+                    <div
+                      className={`w-12 h-12 rounded-xl ${feature.bgColor} ${feature.color} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110`}
+                    >
+                      {feature.icon}
+                    </div>
+
+                    {/* Content */}
+                    <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                      {feature.name}
+                    </h4>
+                    <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                      {feature.description}
+                    </p>
+
+                    {/* Hover Arrow */}
+                    <div className="mt-4 flex items-center gap-1.5 text-blue-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-1">
+                      <span>Sử dụng ngay</span>
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 7l5 5m0 0l-5 5m5-5H6"
+                        />
+                      </svg>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Section - Gradient with Pattern */}
+      <section className="relative py-20 sm:py-28 overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700">
+          {/* Pattern Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
+          {/* Gradient Orbs */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-400/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+            Sẵn sàng tính thuế?
+          </h2>
+          <p className="text-lg sm:text-xl text-blue-100/80 mb-10 max-w-2xl mx-auto">
+            Chỉ cần nhập thu nhập, hệ thống sẽ tự động tính toán và so sánh thuế
+            TNCN theo cả luật cũ và luật mới cho bạn.
+          </p>
+          <Link
+            href="/tinh-thue"
+            className="group inline-flex items-center gap-3 px-10 py-5 bg-white text-blue-600 font-semibold rounded-2xl shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 hover:scale-[1.02]"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
+            </svg>
+            <span>Bắt đầu ngay - Miễn phí</span>
+            <svg
+              className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 8l4 4m0 0l-4 4m4-4H3"
+              />
+            </svg>
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer - Clean and Professional */}
+      <footer className="py-12 bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+            {/* Logo and Brand */}
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                <span className="font-semibold text-white text-lg">
                   Tính Thuế TNCN 2026
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/7/2026
+                </span>
+                <p className="text-sm text-gray-400">
+                  Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 mr-2">
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                  7 bậc
-                </span>
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-primary-50 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-primary-500"></span>
-                  5 bậc
-                </span>
-              </div>
-              <button
-                onClick={handleGoHome}
-                aria-label="Về trang chủ và đặt lại các giá trị mặc định"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Về trang chủ (reset)"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setIsLawInfoOpen(true)}
-                aria-label="Xem thông tin luật thuế 2026"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Thông tin luật thuế 2026"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              <SaveShareButton
-                snapshot={currentSnapshot}
-                onLoadSnapshot={handleLoadSnapshot}
-              />
-            </div>
-          </div>
-        </header>
 
-        {/* Tab Navigation */}
-        <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
-
-        {/* Tab Content */}
-        {activeTab === 'calculator' && (
-          <>
-            {/* Main content */}
-            <div className="grid lg:grid-cols-3 gap-6 mb-8">
-              <div className="lg:col-span-1">
-                {isInitialized ? (
-                  <TaxInput
-                    onCalculate={handleCalculate}
-                    initialValues={sharedState}
+            {/* Links */}
+            <div className="flex items-center gap-6">
+              <a
+                href="https://github.com/googlesky/thue-2026"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
                   />
-                ) : (
-                  <div className="card animate-pulse">
-                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-6"></div>
-                    <div className="space-y-4">
-                      <div className="h-10 bg-gray-200 rounded"></div>
-                      <div className="h-10 bg-gray-200 rounded"></div>
-                      <div className="h-10 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="lg:col-span-2">
-                <TaxResult
-                  oldResult={oldResult}
-                  newResult={newResult}
-                  otherIncomeTax={otherIncomeTax}
-                  declaredSalary={sharedState.declaredSalary}
-                />
-              </div>
+                </svg>
+                <span className="text-sm font-medium">GitHub</span>
+              </a>
             </div>
-
-            {/* Tax Optimization Tips */}
-            <div className="mb-8">
-              <Suspense fallback={<TabLoadingSkeleton />}>
-                <TaxOptimizationTips
-                  input={{
-                    grossIncome: sharedState.grossIncome,
-                    dependents: sharedState.dependents,
-                    hasInsurance: sharedState.hasInsurance,
-                    insuranceOptions: sharedState.insuranceOptions,
-                    region: sharedState.region,
-                    otherDeductions: sharedState.otherDeductions,
-                    pensionContribution: sharedState.pensionContribution,
-                    allowances: sharedState.allowances,
-                    declaredSalary: sharedState.declaredSalary,
-                  }}
-                />
-              </Suspense>
-            </div>
-
-            {/* Chart - lazy loaded with chart-specific skeleton */}
-            <div className="mb-8">
-              <Suspense fallback={<ChartLoadingSkeleton />}>
-                <TaxChart dependents={sharedState.dependents} currentIncome={sharedState.grossIncome} />
-              </Suspense>
-            </div>
-          </>
-        )}
-
-        {activeTab === 'gross-net' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <GrossNetConverter
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-              />
-            </Suspense>
           </div>
-        )}
 
-        {activeTab === 'employer-cost' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <EmployerCostCalculator
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={employerCostState}
-                onTabStateChange={setEmployerCostState}
-              />
-            </Suspense>
+          {/* Bottom Border */}
+          <div className="mt-8 pt-8 border-t border-gray-800">
+            <p className="text-center text-sm text-gray-500">
+              Phát triển bởi 1DevOps
+            </p>
           </div>
-        )}
-
-        {activeTab === 'freelancer' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <FreelancerComparison
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={freelancerState}
-                onTabStateChange={setFreelancerState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'salary-compare' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <SalaryComparison
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={salaryComparisonState}
-                onTabStateChange={setSalaryComparisonState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'yearly' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <YearlyComparison
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={yearlyState}
-                onTabStateChange={setYearlyState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'overtime' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <OvertimeCalculator
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={overtimeState}
-                onTabStateChange={setOvertimeState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'annual-settlement' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <AnnualSettlement
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={annualSettlementState}
-                onTabStateChange={setAnnualSettlementState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'insurance' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <InsuranceBreakdown
-                grossIncome={sharedState.grossIncome}
-                region={sharedState.region}
-                insuranceOptions={sharedState.insuranceOptions}
-                declaredSalary={sharedState.declaredSalary}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'other-income' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <OtherIncomeInput
-                otherIncome={sharedState.otherIncome ?? DEFAULT_OTHER_INCOME}
-                onChange={handleOtherIncomeChange}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'table' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <TaxBracketTable />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'bonus-calculator' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <BonusCalculator
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={bonusState}
-                onTabStateChange={setBonusState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'esop-calculator' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <ESOPCalculator
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                tabState={esopState}
-                onTabStateChange={setEsopState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'pension' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <PensionCalculator
-                tabState={pensionState}
-                onTabStateChange={setPensionState}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'tax-history' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <TaxLawHistory />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'tax-calendar' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <TaxCalendar />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'salary-slip' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <SalarySlipGenerator
-                sharedState={sharedState}
-                onStateChange={updateSharedState}
-                insuranceDetail={newResult.insuranceDetail}
-                taxAmount={newResult.taxAmount}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {/* Footer */}
-        <footer className="text-center text-xs text-gray-500 py-4 border-t border-gray-100">
-          <p>
-            Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025 ·{' '}
-            <button
-              onClick={() => setIsLawInfoOpen(true)}
-              className="text-primary-600 hover:underline"
-            >
-              Xem chi tiết
-            </button>
-            {' · '}
-            <a
-              href="https://github.com/googlesky/thue-2026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
-            >
-              GitHub
-            </a>
-          </p>
-        </footer>
-      </div>
-
-      {/* Law Info Modal */}
-      <LawInfoModal isOpen={isLawInfoOpen} onClose={() => setIsLawInfoOpen(false)} />
+        </div>
+      </footer>
     </main>
   );
 }
