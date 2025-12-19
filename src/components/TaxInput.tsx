@@ -225,14 +225,16 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
 
         {/* Lương đóng bảo hiểm */}
         <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-          <label htmlFor="use-declared-salary" className="flex items-center gap-3 cursor-pointer mb-3">
-            <input
-              id="use-declared-salary"
-              type="checkbox"
-              checked={useDeclaredSalary}
-              onChange={(e) => setUseDeclaredSalary(e.target.checked)}
-              className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500"
-            />
+          <label htmlFor="use-declared-salary" className="flex items-center gap-3 cursor-pointer mb-3 min-h-[44px] py-2">
+            <span className="relative flex items-center justify-center w-[44px] h-[44px] -m-2">
+              <input
+                id="use-declared-salary"
+                type="checkbox"
+                checked={useDeclaredSalary}
+                onChange={(e) => setUseDeclaredSalary(e.target.checked)}
+                className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500"
+              />
+            </span>
             <span className="text-sm font-medium text-gray-700">
               Lương đóng BH khác lương thực
             </span>
@@ -346,16 +348,18 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               </span>
             </Tooltip>
           </legend>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {insuranceItems.map(item => (
-              <label key={item.key} htmlFor={`insurance-${item.key}`} className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-                <input
-                  id={`insurance-${item.key}`}
-                  type="checkbox"
-                  checked={insuranceOptions[item.key]}
-                  onChange={() => handleInsuranceToggle(item.key)}
-                  className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
-                />
+              <label key={item.key} htmlFor={`insurance-${item.key}`} className="flex items-center gap-3 cursor-pointer min-h-[44px] py-1">
+                <span className="relative flex items-center justify-center w-[44px] h-[44px] -m-2">
+                  <input
+                    id={`insurance-${item.key}`}
+                    type="checkbox"
+                    checked={insuranceOptions[item.key]}
+                    onChange={() => handleInsuranceToggle(item.key)}
+                    className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                </span>
                 <span className="text-sm text-gray-700">
                   {item.label} <span className="text-gray-500">({item.rate})</span>
                 </span>
