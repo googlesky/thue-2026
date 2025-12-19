@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import Header from '@/components/Header';
 
 // Critical components - loaded immediately (used on default tab)
 import TaxInput from '@/components/TaxInput';
@@ -426,52 +426,48 @@ export default function Home() {
     : null;
 
   return (
-    <main id="main-content" className="min-h-screen py-6 px-4 overflow-x-hidden" tabIndex={-1}>
-      <div className="max-w-7xl mx-auto overflow-x-hidden">
-        {/* Header - Compact */}
-        <header className="mb-6">
+    <main id="main-content" className="min-h-screen overflow-x-hidden" tabIndex={-1}>
+      {/* Shared Header */}
+      <Header variant="solid" />
+
+      {/* Hero Banner - Visual connection to homepage */}
+      <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 -right-20 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20" role="img" aria-label="Calculator icon">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Tính Thuế TNCN 2026
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/7/2026
-                </p>
-              </div>
+            {/* Title Section */}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                Tính Thuế TNCN 2026
+              </h1>
+              <p className="text-blue-200/80 text-sm sm:text-base">
+                So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/7/2026
+              </p>
             </div>
+
+            {/* Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 mr-2">
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              <div className="hidden sm:flex items-center gap-3 text-xs mr-2">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-200 rounded-full border border-red-500/30">
+                  <span className="w-2 h-2 rounded-full bg-red-400"></span>
                   7 bậc
                 </span>
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-primary-50 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-primary-500"></span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                   5 bậc
                 </span>
               </div>
-              <Link
-                href="/"
-                aria-label="Về trang chủ"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Về trang chủ"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </Link>
               <button
                 onClick={handleGoHome}
                 aria-label="Đặt lại các giá trị mặc định"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Reset về mặc định"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                title="Đặt lại mặc định"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -479,9 +475,9 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setIsLawInfoOpen(true)}
-                aria-label="Xem thông tin luật thuế 2026"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Thông tin luật thuế 2026"
+                aria-label="Xem thong tin luat thue 2026"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                title="Thong tin luat thue 2026"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -493,10 +489,14 @@ export default function Home() {
               />
             </div>
           </div>
-        </header>
+        </div>
+      </div>
 
-        {/* Tab Navigation */}
-        <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      {/* Main Content Area */}
+      <div className="bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+          {/* Tab Navigation */}
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
         {/* Tab Content */}
         {activeTab === 'calculator' && (
@@ -745,8 +745,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer */}
-        <footer className="text-center text-xs text-gray-500 py-4 border-t border-gray-100">
+        {/* Footer - Inside content area */}
+        <footer className="text-center text-xs text-gray-500 py-6 mt-6 border-t border-gray-200">
           <p>
             Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025 ·{' '}
             <button
@@ -766,6 +766,7 @@ export default function Home() {
             </a>
           </p>
         </footer>
+        </div>
       </div>
 
       {/* Law Info Modal */}

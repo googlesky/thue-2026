@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
+import Header from '@/components/Header';
 
 // Type definitions
 interface FeatureItem {
@@ -35,44 +36,75 @@ function AnimatedCounter({
 }) {
   const [count, setCount] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Handle SSR - only run on client
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const element = ref.current;
+    if (!element) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !hasStarted) {
           setHasStarted(true);
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.3, rootMargin: '50px' }
     );
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
+    observer.observe(element);
 
-    return () => observer.disconnect();
-  }, [hasStarted]);
+    return () => {
+      observer.unobserve(element);
+      observer.disconnect();
+    };
+  }, [isMounted, hasStarted]);
 
   useEffect(() => {
-    if (!hasStarted) return;
+    if (!hasStarted || !isMounted) return;
 
-    let startTime: number;
+    let startTime: number | null = null;
+    let animationId: number;
     const startValue = 0;
 
     const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
+      if (startTime === null) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      setCount(Math.floor(easeOutQuart * (end - startValue) + startValue));
+      const newCount = Math.floor(easeOutQuart * (end - startValue) + startValue);
+      setCount(newCount);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        animationId = requestAnimationFrame(animate);
       }
     };
 
-    requestAnimationFrame(animate);
-  }, [hasStarted, end, duration]);
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [hasStarted, isMounted, end, duration]);
+
+  // Show final value during SSR and before animation starts
+  if (!isMounted) {
+    return (
+      <div className="counter">
+        {prefix}
+        {end}
+        {suffix}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="counter">
@@ -581,8 +613,11 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen overflow-hidden">
+      {/* Shared Header - Transparent variant for hero, no spacer needed */}
+      <Header variant="transparent" showSpacer={false} />
+
       {/* Hero Section - Modern Gradient with Animated Blobs */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           {/* Gradient Orbs */}
@@ -606,7 +641,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(15,23,42,0.5)_100%)]" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-32 pb-20 sm:pb-28 lg:pb-32">
           <div className="text-center">
             {/* Badge */}
             <div
@@ -1046,12 +1081,12 @@ export default function HomePage() {
       </section>
 
       {/* Footer - Clean and Professional */}
-      <footer className="py-12 bg-gray-900">
+      <footer className="py-12 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
             {/* Logo and Brand */}
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
                 <svg
                   className="w-5 h-5 text-white"
                   fill="none"
@@ -1067,8 +1102,8 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <span className="font-semibold text-white text-lg">
-                  Tính Thuế TNCN 2026
+                <span className="font-bold text-white text-lg">
+                  Thue<span className="text-primary-400">2026</span>
                 </span>
                 <p className="text-sm text-gray-400">
                   Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025
@@ -1078,6 +1113,12 @@ export default function HomePage() {
 
             {/* Links */}
             <div className="flex items-center gap-6">
+              <Link
+                href="/tinh-thue"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              >
+                Tính thuế
+              </Link>
               <a
                 href="https://github.com/googlesky/thue-2026"
                 target="_blank"
@@ -1101,7 +1142,7 @@ export default function HomePage() {
           </div>
 
           {/* Bottom Border */}
-          <div className="mt-8 pt-8 border-t border-gray-800">
+          <div className="mt-8 pt-8 border-t border-gray-700/50">
             <p className="text-center text-sm text-gray-500">
               Phát triển bởi 1DevOps
             </p>
