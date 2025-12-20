@@ -25,6 +25,7 @@ interface TabItem {
   id: TabType;
   label: string;
   icon: string;
+  description: string;
 }
 
 interface TabGroup {
@@ -32,45 +33,70 @@ interface TabGroup {
   label: string;
   icon: string;
   tabs: TabItem[];
+  gridCols?: 1 | 2;
 }
+
+// Tab descriptions for better UX - with proper Vietnamese diacritics
+const TAB_DESCRIPTIONS: Record<TabType, string> = {
+  calculator: 'Tính thuế nhanh chóng',
+  'gross-net': 'Quy đổi lương nhanh',
+  overtime: 'Tính thu nhập tăng ca',
+  'annual-settlement': 'Quyết toán cuối năm',
+  'bonus-calculator': 'Tính thuế thưởng',
+  'esop-calculator': 'Thuế cổ phiếu',
+  pension: 'Ước tính lương hưu',
+  'salary-compare': 'So sánh các offer',
+  yearly: 'Thuế qua các năm',
+  freelancer: 'So sánh hình thức',
+  'employer-cost': 'Chi phí thuê người',
+  insurance: 'Chi tiết các khoản',
+  'other-income': 'Các loại thu nhập',
+  table: 'Tra cứu thuế suất',
+  'tax-history': 'Thay đổi pháp luật',
+  'tax-calendar': 'Mốc thời gian quan trọng',
+  'salary-slip': 'Tạo phiếu lương',
+};
 
 const TAB_GROUPS: TabGroup[] = [
   {
     id: 'calculate',
     label: 'Tính toán',
     icon: '🧮',
+    gridCols: 2,
     tabs: [
-      { id: 'calculator', label: 'Tính thuế TNCN', icon: '🧮' },
-      { id: 'gross-net', label: 'GROSS ⇄ NET', icon: '💰' },
-      { id: 'overtime', label: 'Lương tăng ca', icon: '⏰' },
-      { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋' },
-      { id: 'bonus-calculator', label: 'Thưởng Tết', icon: '🎁' },
-      { id: 'esop-calculator', label: 'ESOP', icon: '📈' },
-      { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️' },
+      { id: 'calculator', label: 'Tính thuế TNCN', icon: '🧮', description: TAB_DESCRIPTIONS.calculator },
+      { id: 'gross-net', label: 'GROSS ⇄ NET', icon: '💰', description: TAB_DESCRIPTIONS['gross-net'] },
+      { id: 'overtime', label: 'Lương tăng ca', icon: '⏰', description: TAB_DESCRIPTIONS.overtime },
+      { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋', description: TAB_DESCRIPTIONS['annual-settlement'] },
+      { id: 'bonus-calculator', label: 'Thưởng Tết', icon: '🎁', description: TAB_DESCRIPTIONS['bonus-calculator'] },
+      { id: 'esop-calculator', label: 'ESOP', icon: '📈', description: TAB_DESCRIPTIONS['esop-calculator'] },
+      { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
     ],
   },
   {
     id: 'compare',
     label: 'So sánh',
     icon: '📊',
+    gridCols: 2,
     tabs: [
-      { id: 'salary-compare', label: 'So sánh offer', icon: '📊' },
-      { id: 'yearly', label: 'So sánh năm', icon: '📅' },
-      { id: 'freelancer', label: 'Freelancer vs Fulltime', icon: '👤' },
-      { id: 'employer-cost', label: 'Chi phí nhà tuyển dụng', icon: '🏢' },
+      { id: 'salary-compare', label: 'So sánh offer', icon: '📊', description: TAB_DESCRIPTIONS['salary-compare'] },
+      { id: 'yearly', label: 'So sánh năm', icon: '📅', description: TAB_DESCRIPTIONS.yearly },
+      { id: 'freelancer', label: 'Freelancer vs Fulltime', icon: '👤', description: TAB_DESCRIPTIONS.freelancer },
+      { id: 'employer-cost', label: 'Chi phí nhà tuyển dụng', icon: '🏢', description: TAB_DESCRIPTIONS['employer-cost'] },
     ],
   },
   {
     id: 'reference',
     label: 'Tham khảo',
     icon: '📚',
+    gridCols: 2,
     tabs: [
-      { id: 'insurance', label: 'Chi tiết bảo hiểm', icon: '🛡️' },
-      { id: 'other-income', label: 'Thu nhập khác', icon: '💼' },
-      { id: 'table', label: 'Biểu thuế suất', icon: '📈' },
-      { id: 'tax-history', label: 'Lịch sử luật', icon: '📜' },
-      { id: 'tax-calendar', label: 'Lịch thuế', icon: '📅' },
-      { id: 'salary-slip', label: 'Phiếu lương', icon: '📋' },
+      { id: 'insurance', label: 'Chi tiết bảo hiểm', icon: '🛡️', description: TAB_DESCRIPTIONS.insurance },
+      { id: 'other-income', label: 'Thu nhập khác', icon: '💼', description: TAB_DESCRIPTIONS['other-income'] },
+      { id: 'table', label: 'Biểu thuế suất', icon: '📈', description: TAB_DESCRIPTIONS.table },
+      { id: 'tax-history', label: 'Lịch sử luật', icon: '📜', description: TAB_DESCRIPTIONS['tax-history'] },
+      { id: 'tax-calendar', label: 'Lịch thuế', icon: '📅', description: TAB_DESCRIPTIONS['tax-calendar'] },
+      { id: 'salary-slip', label: 'Phiếu lương', icon: '📋', description: TAB_DESCRIPTIONS['salary-slip'] },
     ],
   },
 ];
@@ -99,6 +125,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Get current dropdown tabs
   const getCurrentDropdownTabs = useCallback(() => {
@@ -132,24 +159,28 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
     };
   }, [openDropdown]);
 
-  // Keyboard navigation handler
+  // Keyboard navigation handler with grid support
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!openDropdown) return;
 
       const tabs = getCurrentDropdownTabs();
       const tabCount = tabs.length;
+      const group = TAB_GROUPS.find((g) => g.id === openDropdown);
+      const gridCols = group?.gridCols || 1;
 
       switch (event.key) {
         case 'Escape':
           event.preventDefault();
           setOpenDropdown(null);
           setFocusedIndex(-1);
+          // Return focus to the button that opened the dropdown
+          buttonRefs.current[openDropdown]?.focus();
           break;
         case 'ArrowDown':
           event.preventDefault();
           setFocusedIndex((prev) => {
-            const next = prev < tabCount - 1 ? prev + 1 : 0;
+            const next = prev + gridCols < tabCount ? prev + gridCols : prev % gridCols;
             menuItemRefs.current[next]?.focus();
             return next;
           });
@@ -157,10 +188,31 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
         case 'ArrowUp':
           event.preventDefault();
           setFocusedIndex((prev) => {
-            const next = prev > 0 ? prev - 1 : tabCount - 1;
-            menuItemRefs.current[next]?.focus();
-            return next;
+            const next = prev - gridCols >= 0 ? prev - gridCols : tabCount - gridCols + (prev % gridCols);
+            const validNext = Math.min(next, tabCount - 1);
+            menuItemRefs.current[validNext]?.focus();
+            return validNext;
           });
+          break;
+        case 'ArrowRight':
+          if (gridCols > 1) {
+            event.preventDefault();
+            setFocusedIndex((prev) => {
+              const next = prev < tabCount - 1 ? prev + 1 : 0;
+              menuItemRefs.current[next]?.focus();
+              return next;
+            });
+          }
+          break;
+        case 'ArrowLeft':
+          if (gridCols > 1) {
+            event.preventDefault();
+            setFocusedIndex((prev) => {
+              const next = prev > 0 ? prev - 1 : tabCount - 1;
+              menuItemRefs.current[next]?.focus();
+              return next;
+            });
+          }
           break;
         case 'Home':
           event.preventDefault();
@@ -206,8 +258,11 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
     <nav className="mb-6" aria-label="Công cụ tính thuế">
       {/* Navigation bar */}
       <div className="flex justify-center">
-        <div className="inline-flex flex-wrap justify-center gap-1 sm:gap-2 bg-gray-100 p-1.5 sm:p-2 rounded-xl" role="menubar">
-          {TAB_GROUPS.map((group, index) => {
+        <div
+          className="inline-flex flex-wrap justify-center gap-1.5 sm:gap-3 bg-gradient-to-br from-gray-50 to-gray-100 p-2 sm:p-2.5 rounded-2xl shadow-sm border border-gray-200/50"
+          role="menubar"
+        >
+          {TAB_GROUPS.map((group) => {
             const isGroupActive = group.tabs.some((t) => t.id === activeTab);
             const isOpen = openDropdown === group.id;
             const activeTabInGroup = group.tabs.find((t) => t.id === activeTab);
@@ -220,19 +275,30 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                   dropdownRefs.current[group.id] = el;
                 }}
               >
-                {/* Group button */}
+                {/* Group button with gradient accent for active state */}
                 <button
+                  ref={(el) => {
+                    buttonRefs.current[group.id] = el;
+                  }}
                   onClick={() => toggleDropdown(group.id)}
                   aria-expanded={isOpen}
                   aria-haspopup="true"
-                  className={`px-3 sm:px-4 py-2.5 sm:py-2.5 min-h-[44px] rounded-lg font-medium transition-all flex items-center gap-1.5 sm:gap-2 ${
-                    isGroupActive
-                      ? 'bg-white text-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:bg-white/50'
-                  }`}
+                  aria-label={`${group.label}, ${isGroupActive ? 'đang chọn' : 'chưa chọn'}`}
+                  className={`
+                    group relative px-3 sm:px-5 py-2.5 sm:py-3 min-h-[48px] sm:min-h-[52px]
+                    rounded-xl font-medium transition-all duration-300 ease-out
+                    flex items-center gap-2 sm:gap-2.5
+                    ${isGroupActive
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
+                      : 'bg-white/80 text-gray-600 hover:bg-white hover:shadow-md hover:text-gray-900 border border-gray-200/50'
+                    }
+                    ${isOpen ? 'ring-2 ring-primary-400 ring-offset-2' : ''}
+                  `}
                 >
-                  <span className="text-base sm:text-lg">{group.icon}</span>
-                  <span className="text-sm sm:text-base">
+                  <span className={`text-lg sm:text-xl transition-transform duration-300 ${isOpen ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    {group.icon}
+                  </span>
+                  <span className="text-sm sm:text-base font-semibold">
                     {/* On mobile: show active tab label if in this group, otherwise group label */}
                     <span className="sm:hidden">
                       {activeTabInGroup ? activeTabInGroup.label.split(' ')[0] : group.label}
@@ -240,7 +306,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                     <span className="hidden sm:inline">{group.label}</span>
                   </span>
                   <svg
-                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 ease-out ${isOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -248,54 +314,111 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       d="M19 9l-7 7-7-7"
                     />
                   </svg>
                 </button>
 
-                {/* Dropdown menu */}
+                {/* Modern card-style dropdown menu */}
                 {isOpen && (
                   <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-[180px] sm:w-[220px] max-w-[calc(100vw-2rem)] z-50 dropdown-animate"
+                    className={`
+                      absolute top-full left-1/2 -translate-x-1/2 mt-3
+                      bg-white rounded-2xl shadow-2xl shadow-gray-200/50
+                      border border-gray-100
+                      py-3 px-3
+                      z-50
+                      ${group.gridCols === 2 ? 'w-[320px] sm:w-[420px]' : 'w-[200px] sm:w-[260px]'}
+                      max-w-[calc(100vw-1.5rem)]
+                      dropdown-modern-animate
+                    `}
                     role="menu"
                     aria-label={group.label}
                   >
-                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {group.label}
+                    {/* Dropdown header */}
+                    <div className="px-2 pb-2.5 mb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{group.icon}</span>
+                        <span className="text-sm font-bold text-gray-800 tracking-wide">
+                          {group.label}
+                        </span>
+                      </div>
                     </div>
-                    {group.tabs.map((tab, tabIndex) => (
-                      <button
-                        key={tab.id}
-                        ref={(el) => {
-                          menuItemRefs.current[tabIndex] = el;
-                        }}
-                        onClick={() => handleTabClick(tab.id)}
-                        role="menuitem"
-                        tabIndex={isOpen ? 0 : -1}
-                        className={`w-full px-3 py-2.5 min-h-[44px] text-left flex items-center gap-3 transition-all duration-150 focus:bg-gray-100 focus:outline-none ${
-                          activeTab === tab.id
-                            ? 'bg-primary-50 text-primary-700'
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="text-lg w-7 text-center">{tab.icon}</span>
-                        <span className="flex-1 font-medium">{tab.label}</span>
-                        {activeTab === tab.id && (
-                          <svg
-                            className="w-5 h-5 text-primary-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
+
+                    {/* Grid layout for menu items */}
+                    <div className={`
+                      ${group.gridCols === 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-1.5' : 'flex flex-col gap-1'}
+                    `}>
+                      {group.tabs.map((tab, tabIndex) => (
+                        <button
+                          key={tab.id}
+                          ref={(el) => {
+                            menuItemRefs.current[tabIndex] = el;
+                          }}
+                          onClick={() => handleTabClick(tab.id)}
+                          role="menuitem"
+                          tabIndex={isOpen ? 0 : -1}
+                          aria-current={activeTab === tab.id ? 'page' : undefined}
+                          className={`
+                            group/item relative w-full px-3 py-3 min-h-[60px]
+                            text-left flex items-start gap-3
+                            rounded-xl transition-all duration-200 ease-out
+                            focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-1
+                            ${activeTab === tab.id
+                              ? 'bg-gradient-to-br from-primary-50 to-primary-100/50 text-primary-700 shadow-sm border border-primary-200/50'
+                              : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm border border-transparent hover:border-gray-100'
+                            }
+                          `}
+                        >
+                          {/* Icon container with hover effect */}
+                          <span className={`
+                            flex-shrink-0 w-10 h-10 flex items-center justify-center
+                            rounded-lg text-xl
+                            transition-all duration-200
+                            ${activeTab === tab.id
+                              ? 'bg-primary-100 shadow-sm'
+                              : 'bg-gray-100 group-hover/item:bg-gray-200 group-hover/item:scale-105'
+                            }
+                          `}>
+                            {tab.icon}
+                          </span>
+
+                          {/* Label and description */}
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <span className={`
+                              block font-semibold text-sm leading-tight
+                              ${activeTab === tab.id ? 'text-primary-700' : 'text-gray-800'}
+                            `}>
+                              {tab.label}
+                            </span>
+                            <span className={`
+                              block text-xs mt-0.5 leading-tight
+                              ${activeTab === tab.id ? 'text-primary-600/70' : 'text-gray-500'}
+                            `}>
+                              {tab.description}
+                            </span>
+                          </div>
+
+                          {/* Active indicator */}
+                          {activeTab === tab.id && (
+                            <span className="flex-shrink-0 self-center">
+                              <svg
+                                className="w-5 h-5 text-primary-500"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -304,16 +427,29 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
         </div>
       </div>
 
-      {/* Breadcrumb - shows group > tab on mobile */}
-      <div className="flex justify-center mt-2 sm:hidden" aria-label="Breadcrumb">
+      {/* Enhanced breadcrumb - shows group > tab on mobile */}
+      <div className="flex justify-center mt-3 sm:hidden" aria-label="Breadcrumb">
         {activeTabInfo && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span aria-hidden="true">{findTabGroup(activeTab)?.icon}</span>
-            <span>{findTabGroup(activeTab)?.label}</span>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-100">
+            <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span className="text-base" aria-hidden="true">{findTabGroup(activeTab)?.icon}</span>
+              <span className="font-medium">{findTabGroup(activeTab)?.label}</span>
+            </span>
+            <svg
+              className="w-3.5 h-3.5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-gray-700 font-medium" aria-current="page">{activeTabInfo.label}</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-base" aria-hidden="true">{activeTabInfo.icon}</span>
+              <span className="text-xs text-gray-800 font-semibold" aria-current="page">
+                {activeTabInfo.label}
+              </span>
+            </span>
           </div>
         )}
       </div>
