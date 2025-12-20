@@ -31,6 +31,7 @@ const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
 const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
 const SalarySlipGenerator = lazy(() => import('@/components/SalarySlip').then(m => ({ default: m.SalarySlipGenerator })));
 const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ default: m.TaxCalendar })));
+import Footer from '@/components/Footer';
 import {
   calculateOldTax,
   calculateNewTax,
@@ -745,29 +746,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* Footer - Inside content area */}
-        <footer className="text-center text-xs text-gray-500 py-6 mt-6 border-t border-gray-200">
-          <p>
-            Công cụ tham khảo dựa trên Luật Thuế TNCN sửa đổi 10/12/2025 ·{' '}
-            <button
-              onClick={() => setIsLawInfoOpen(true)}
-              className="text-primary-600 hover:underline"
-            >
-              Xem chi tiết
-            </button>
-            {' · '}
-            <a
-              href="https://github.com/googlesky/thue-2026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
-            >
-              GitHub
-            </a>
-          </p>
-        </footer>
         </div>
       </div>
+
+      {/* Footer - Full width outside content area */}
+      <Footer />
 
       {/* Law Info Modal */}
       <LawInfoModal isOpen={isLawInfoOpen} onClose={() => setIsLawInfoOpen(false)} />
