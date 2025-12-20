@@ -253,11 +253,11 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
     >
       <button
         onClick={onToggle}
-        className="w-full p-4 text-left flex items-start gap-3"
+        className="w-full p-3 sm:p-4 text-left flex items-start gap-2 sm:gap-3"
         aria-expanded={isExpanded}
       >
         <div
-          className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+          className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
             tip.priority === 'high'
               ? 'bg-amber-100 text-amber-600'
               : tip.priority === 'medium'
@@ -265,7 +265,7 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
                 : 'bg-slate-100 text-slate-600'
           }`}
         >
-          <IconComponent className="w-5 h-5" />
+          <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -286,8 +286,8 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
       </button>
 
       {isExpanded && (
-        <div className="px-4 pb-4 pt-0 ml-13">
-          <div className="pl-[52px]">
+        <div className="px-3 sm:px-4 pb-4 pt-0">
+          <div className="pl-0 sm:pl-[52px]">
             <p className="text-sm text-gray-700 mb-3">{tip.description}</p>
 
             {(tip.potentialSavings || tip.potentialSavingsYearly) && (

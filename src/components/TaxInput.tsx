@@ -310,7 +310,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               </span>
             </Tooltip>
           </label>
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Chọn vùng lương">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2" role="group" aria-label="Chọn vùng lương">
             {([1, 2, 3, 4] as RegionType[]).map((r) => {
               const info = regionalMinimumWages[r];
               const isSelected = region === r;
@@ -469,7 +469,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 </svg>
                 Phụ cấp MIỄN THUẾ
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
                 {/* Meal allowance */}
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
@@ -583,7 +583,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 </svg>
                 Phụ cấp CHỊU THUẾ (như lương)
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
                 {/* Housing allowance */}
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">

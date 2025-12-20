@@ -877,9 +877,9 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section - Clean and Modern */}
-      <section className="py-16 sm:py-20 bg-slate-50">
+      <section className="py-12 sm:py-16 lg:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {[
               {
                 value: 15,
@@ -913,9 +913,9 @@ export default function HomePage() {
             ].map((stat, index) => (
               <div
                 key={index}
-                className={`text-center p-6 rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-105`}
+                className={`text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-105`}
               >
-                <div className={`text-4xl sm:text-5xl font-bold ${stat.color} mb-2`}>
+                <div className={`text-3xl xs:text-4xl sm:text-5xl font-bold ${stat.color} mb-1 sm:mb-2`}>
                   <AnimatedCounter
                     end={stat.value}
                     suffix={stat.suffix}
@@ -923,7 +923,7 @@ export default function HomePage() {
                     duration={1500}
                   />
                 </div>
-                <div className="text-sm text-gray-600 font-medium">
+                <div className="text-xs sm:text-sm text-gray-600 font-medium">
                   {stat.label}
                 </div>
               </div>
