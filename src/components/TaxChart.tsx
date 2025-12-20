@@ -71,7 +71,12 @@ function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
               dataKey="income"
               tickFormatter={(value) => `${value / 1_000_000}tr`}
               stroke="#9ca3af"
-              fontSize={12}
+              fontSize={11}
+              interval="preserveStartEnd"
+              tick={{ fontSize: 10 }}
+              angle={-45}
+              textAnchor="end"
+              height={50}
             />
             <YAxis
               tickFormatter={(value) => `${value / 1_000_000}tr`}

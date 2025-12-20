@@ -329,8 +329,8 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                       border border-gray-100
                       py-3 px-3
                       z-50
-                      ${group.gridCols === 2 ? 'w-[320px] sm:w-[420px]' : 'w-[200px] sm:w-[260px]'}
-                      max-w-[calc(100vw-1.5rem)]
+                      ${group.gridCols === 2 ? 'w-[calc(100vw-2rem)] sm:w-[420px]' : 'w-[200px] sm:w-[260px]'}
+                      max-w-[420px]
                       dropdown-modern-animate
                     `}
                     role="menu"

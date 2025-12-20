@@ -559,6 +559,7 @@ const config: Config = {
           '2xl': '4rem',
         },
         screens: {
+          'xs': '360px',
           sm: '640px',
           md: '768px',
           lg: '1024px',
