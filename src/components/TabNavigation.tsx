@@ -123,9 +123,19 @@ interface TabNavigationProps {
 function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [dropdownTop, setDropdownTop] = useState<number>(0);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const menuItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // Track mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Get current dropdown tabs
   const getCurrentDropdownTabs = useCallback(() => {
@@ -249,7 +259,17 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
   };
 
   const toggleDropdown = (groupId: string) => {
-    setOpenDropdown(openDropdown === groupId ? null : groupId);
+    if (openDropdown === groupId) {
+      setOpenDropdown(null);
+    } else {
+      // Calculate dropdown position on mobile
+      const button = buttonRefs.current[groupId];
+      if (button && isMobile) {
+        const rect = button.getBoundingClientRect();
+        setDropdownTop(rect.bottom + 12);
+      }
+      setOpenDropdown(groupId);
+    }
   };
 
   const activeTabInfo = getTabInfo(activeTab);
@@ -324,7 +344,8 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                 {isOpen && (
                   <div
                     className={`
-                      absolute top-full left-1/2 -translate-x-1/2 mt-3
+                      ${isMobile ? 'fixed' : 'absolute top-full mt-3'}
+                      left-1/2 -translate-x-1/2
                       bg-white rounded-2xl shadow-2xl shadow-gray-200/50
                       border border-gray-100
                       py-3 px-3
@@ -333,6 +354,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                       max-w-[420px]
                       dropdown-modern-animate
                     `}
+                    style={isMobile ? { top: dropdownTop } : undefined}
                     role="menu"
                     aria-label={group.label}
                   >
