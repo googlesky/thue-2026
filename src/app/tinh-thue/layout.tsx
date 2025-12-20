@@ -3,28 +3,28 @@ import type { Metadata } from 'next';
 const baseUrl = 'https://thue.1devops.io';
 
 export const metadata: Metadata = {
-  title: 'Cong cu Tinh Thue TNCN 2026 | Tinh Luong GROSS NET, Quyet Toan Thue',
+  title: 'Công cụ Tính Thuế TNCN 2026 | Tính Lương GROSS NET, Quyết Toán Thuế',
   description:
-    'Cong cu tinh thue thu nhap ca nhan truc tuyen mien phi. Tinh luong GROSS-NET, quyet toan thue nam, thue thuong Tet, ESOP, luong tang ca. So sanh luat cu 7 bac va luat moi 2026 voi 5 bac thue.',
+    'Công cụ tính thuế thu nhập cá nhân trực tuyến miễn phí. Tính lương GROSS-NET, quyết toán thuế năm, thuế thưởng Tết, ESOP, lương tăng ca. So sánh luật cũ 7 bậc và luật mới 2026 với 5 bậc thuế.',
   keywords: [
-    'tinh thue TNCN',
-    'tinh thue truc tuyen',
+    'tính thuế TNCN',
+    'tính thuế trực tuyến',
     'GROSS NET',
-    'quyet toan thue',
-    'thue thuong Tet',
-    'thue ESOP',
-    'luong tang ca',
-    'giam tru gia canh',
-    'bao hiem xa hoi',
-    'thue 2026',
+    'quyết toán thuế',
+    'thuế thưởng Tết',
+    'thuế ESOP',
+    'lương tăng ca',
+    'giảm trừ gia cảnh',
+    'bảo hiểm xã hội',
+    'thuế 2026',
   ],
   alternates: {
     canonical: `${baseUrl}/tinh-thue/`,
   },
   openGraph: {
-    title: 'Cong cu Tinh Thue TNCN 2026 | 15+ Tinh nang Mien phi',
+    title: 'Công cụ Tính Thuế TNCN 2026 | 15+ Tính năng Miễn phí',
     description:
-      'Tinh thue thu nhap ca nhan truc tuyen. Quy doi GROSS-NET, quyet toan thue, thue thuong, ESOP. So sanh luat cu va moi 2026.',
+      'Tính thuế thu nhập cá nhân trực tuyến. Quy đổi GROSS-NET, quyết toán thuế, thuế thưởng, ESOP. So sánh luật cũ và mới 2026.',
     url: `${baseUrl}/tinh-thue/`,
     type: 'website',
     locale: 'vi_VN',
@@ -33,15 +33,15 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Cong cu Tinh Thue TNCN 2026',
+        alt: 'Công cụ Tính Thuế TNCN 2026',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cong cu Tinh Thue TNCN 2026',
+    title: 'Công cụ Tính Thuế TNCN 2026',
     description:
-      'Tinh thue TNCN truc tuyen mien phi. GROSS-NET, quyet toan thue, thuong Tet, ESOP.',
+      'Tính thuế TNCN trực tuyến miễn phí. GROSS-NET, quyết toán thuế, thưởng Tết, ESOP.',
     images: ['/og-image.png'],
   },
 };
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
 const calculatorSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Cong cu Tinh Thue TNCN 2026',
+  name: 'Công cụ Tính Thuế TNCN 2026',
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Any',
   offers: {
@@ -66,14 +66,14 @@ const calculatorSchema = {
     worstRating: '1',
   },
   featureList: [
-    'Tinh thue TNCN theo luat cu va moi',
-    'Quy doi luong GROSS - NET',
-    'Tinh luong tang ca',
-    'Quyet toan thue nam',
-    'Tinh thue thuong Tet, luong thang 13',
-    'Tinh thue ESOP/co phieu',
-    'So sanh thue theo nam',
-    'Tra cuu bieu thue luy tien',
+    'Tính thuế TNCN theo luật cũ và mới',
+    'Quy đổi lương GROSS - NET',
+    'Tính lương tăng ca',
+    'Quyết toán thuế năm',
+    'Tính thuế thưởng Tết, lương tháng 13',
+    'Tính thuế ESOP/cổ phiếu',
+    'So sánh thuế theo năm',
+    'Tra cứu biểu thuế lũy tiến',
   ],
 };
 
@@ -85,13 +85,13 @@ const breadcrumbSchema = {
     {
       '@type': 'ListItem',
       position: 1,
-      name: 'Trang chu',
+      name: 'Trang chủ',
       item: baseUrl,
     },
     {
       '@type': 'ListItem',
       position: 2,
-      name: 'Tinh Thue TNCN',
+      name: 'Tính Thuế TNCN',
       item: `${baseUrl}/tinh-thue/`,
     },
   ],

@@ -203,7 +203,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
   const activeTabInfo = getTabInfo(activeTab);
 
   return (
-    <nav className="mb-6" aria-label="Cong cu tinh thue">
+    <nav className="mb-6" aria-label="Công cụ tính thuế">
       {/* Navigation bar */}
       <div className="flex justify-center">
         <div className="inline-flex flex-wrap justify-center gap-1 sm:gap-2 bg-gray-100 p-1.5 sm:p-2 rounded-xl" role="menubar">
