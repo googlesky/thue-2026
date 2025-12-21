@@ -47,7 +47,7 @@ export default function ScenarioColumn({
         <div>
           <h3 className="font-bold text-lg">{scenario.name}</h3>
           <div className="text-xs text-gray-500">
-            {scenario.year === 2025 ? 'Luật hiện hành' : 'T1-6: Luật cũ | T7-12: Luật mới'}
+            {scenario.year === 2025 ? 'Luật cũ (7 bậc)' : 'Luật mới từ 01/01/2026 (5 bậc)'}
           </div>
         </div>
         {isOptimal && (

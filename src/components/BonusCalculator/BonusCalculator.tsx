@@ -218,8 +218,8 @@ export default function BonusCalculator({
           <div className="flex items-start gap-2">
             <span className="text-amber-500">💡</span>
             <p className="text-sm text-amber-800">
-              Từ 01/07/2026, luật thuế mới với biểu thuế 5 bậc và mức giảm trừ cao hơn sẽ có hiệu lực.
-              Nếu có thể, trì hoãn trả thưởng sang nửa sau năm 2026 có thể giúp tiết kiệm thuế đáng kể.
+              Từ 01/01/2026, luật thuế mới với biểu thuế 5 bậc và mức giảm trừ cao hơn sẽ có hiệu lực.
+              So sánh các phương án trả thưởng trước và sau năm 2026 để tối ưu thuế TNCN.
             </p>
           </div>
         </div>

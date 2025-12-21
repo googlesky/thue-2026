@@ -89,26 +89,39 @@ export const TAX_LAW_MILESTONES: TaxLawMilestone[] = [
     ],
   },
   {
-    id: '2026-effective-temp',
-    date: '01/01/2026',
-    title: 'Luật mới có hiệu lực (tạm)',
-    description: 'Luật Thuế TNCN sửa đổi có hiệu lực nhưng vẫn áp dụng biểu thuế cũ đến 30/06/2026',
-    type: 'effective',
+    id: '2025-deduction',
+    date: '17/10/2025',
+    title: 'Nghị quyết 110/2025/UBTVQH15',
+    description: 'Điều chỉnh mức giảm trừ gia cảnh mới áp dụng từ kỳ tính thuế năm 2026',
+    type: 'enacted',
     changes: [
-      'Giai đoạn chuyển tiếp',
-      'Vẫn sử dụng biểu thuế 7 bậc và mức giảm trừ cũ',
+      'Tăng giảm trừ bản thân: 11 → 15.5 triệu đồng/tháng',
+      'Tăng giảm trừ người phụ thuộc: 4.4 → 6.2 triệu đồng/tháng',
+      'Có hiệu lực từ kỳ tính thuế năm 2026',
     ],
   },
   {
-    id: '2026-effective-full',
-    date: '01/07/2026',
+    id: '2026-effective',
+    date: '01/01/2026',
     title: 'Áp dụng đầy đủ luật mới',
-    description: 'Chính thức áp dụng biểu thuế 5 bậc và mức giảm trừ mới',
+    description: 'Chính thức áp dụng biểu thuế 5 bậc và mức giảm trừ mới cho thu nhập từ tiền lương, tiền công',
     type: 'effective',
     changes: [
-      'Biểu thuế 5 bậc mới có hiệu lực',
-      'Áp dụng mức giảm trừ mới: 15.5 triệu + 6.2 triệu/NPT',
-      'Người nộp thuế được hưởng lợi ngay từ kỳ tính thuế tháng 7/2026',
+      'Biểu thuế lũy tiến 5 bậc mới có hiệu lực (theo điều khoản chuyển tiếp)',
+      'Áp dụng mức giảm trừ mới: 15.5 triệu/tháng + 6.2 triệu/NPT',
+      'Lương tối thiểu vùng mới theo Nghị định 293/2025/NĐ-CP',
+      'Ngưỡng doanh thu không chịu thuế cho hộ kinh doanh: 500 triệu/năm',
+    ],
+  },
+  {
+    id: '2026-gold-tax',
+    date: '01/07/2026',
+    title: 'Thuế chuyển nhượng vàng miếng',
+    description: 'Áp dụng thuế 0.1% cho chuyển nhượng vàng miếng',
+    type: 'effective',
+    changes: [
+      'Thuế chuyển nhượng vàng miếng: 0.1% trên giá chuyển nhượng',
+      'Các quy định khác của Luật Thuế TNCN sửa đổi 2025 (không liên quan tiền lương)',
     ],
   },
 ];
@@ -150,10 +163,10 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
     ],
   },
   {
-    id: '2020-2026',
+    id: '2020-2025',
     name: 'Điều chỉnh 2020',
     effectiveFrom: '02/06/2020',
-    effectiveTo: '30/06/2026',
+    effectiveTo: '31/12/2025',
     personalDeduction: 11_000_000,
     dependentDeduction: 4_400_000,
     brackets: [
@@ -168,8 +181,8 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
   },
   {
     id: '2026-new',
-    name: 'Luật mới 2026',
-    effectiveFrom: '01/07/2026',
+    name: 'Luật Thuế TNCN 2025 (5 bậc)',
+    effectiveFrom: '01/01/2026',
     effectiveTo: null,
     personalDeduction: 15_500_000,
     dependentDeduction: 6_200_000,
@@ -208,14 +221,14 @@ export const DEDUCTION_COMPARISON: DeductionComparison[] = [
     dependentPercentChange: 125,
   },
   {
-    period: '2020-06/2026',
+    period: '2020-2025',
     personalDeduction: 11_000_000,
     dependentDeduction: 4_400_000,
     personalPercentChange: 22.2,
     dependentPercentChange: 22.2,
   },
   {
-    period: '07/2026-',
+    period: '01/2026-',
     personalDeduction: 15_500_000,
     dependentDeduction: 6_200_000,
     personalPercentChange: 40.9,
@@ -246,14 +259,21 @@ export const REFORM_2026_HIGHLIGHTS = {
   },
   effectiveDates: {
     enacted: '10/12/2025',
-    transitionStart: '01/01/2026',
-    fullEffective: '01/07/2026',
+    deductionResolution: '17/10/2025', // Nghị quyết 110/2025/UBTVQH15
+    salaryWageIncome: '01/01/2026', // Thu nhập tiền lương, tiền công
+    goldTransferTax: '01/07/2026', // Thuế chuyển nhượng vàng miếng
+  },
+  legalBasis: {
+    deductions: 'Nghị quyết 110/2025/UBTVQH15',
+    taxBrackets: 'Luật Thuế TNCN sửa đổi 2025 (điều khoản chuyển tiếp)',
+    minimumWage: 'Nghị định 293/2025/NĐ-CP',
   },
   benefits: [
-    'Giảm số bậc thuế giúp đơn giản hóa tính toán',
-    'Tăng mức giảm trừ theo kịp lạm phát',
+    'Giảm số bậc thuế từ 7 xuống 5, đơn giản hóa tính toán',
+    'Tăng mức giảm trừ gần 41% theo kịp lạm phát',
     'Người có thu nhập trung bình được hưởng lợi nhiều nhất',
     'Gánh nặng thuế giảm đáng kể cho người có phụ thuộc',
+    'Ngưỡng chịu thuế tăng lên: không phải đóng thuế nếu lương dưới 17 triệu/tháng (không có NPT)',
   ],
 };
 

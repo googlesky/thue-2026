@@ -405,9 +405,9 @@ export default function YearlyComparison({
           <div className="text-sm text-amber-800">
             <div className="font-medium mb-1">Lưu ý quan trọng về Luật 2026</div>
             <ul className="list-disc list-inside space-y-1 text-amber-700">
-              <li><strong>T1 - T6/2026:</strong> Áp dụng luật cũ (7 bậc, giảm trừ 11tr/4.4tr)</li>
-              <li><strong>T7 - T12/2026:</strong> Áp dụng luật mới (5 bậc, giảm trừ 15.5tr/6.2tr)</li>
+              <li><strong>Từ 01/01/2026:</strong> Áp dụng luật mới (5 bậc, giảm trừ 15.5tr/6.2tr)</li>
               <li>Nghĩa vụ thuế TNCN được quyết toán theo năm dương lịch</li>
+              <li>So sánh năm 2025 (luật cũ) với 2026 (luật mới) để thấy mức tiết kiệm</li>
             </ul>
           </div>
         </div>

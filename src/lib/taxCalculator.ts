@@ -2,10 +2,14 @@
 
 // Ngày hiệu lực các quy định
 export const EFFECTIVE_DATES = {
-  // Lương tối thiểu vùng 2026 (Nghị định 293/2025)
+  // Lương tối thiểu vùng 2026 (Nghị định 293/2025/NĐ-CP)
   REGIONAL_MINIMUM_WAGE_2026: new Date('2026-01-01'),
-  // Luật thuế TNCN mới (5 bậc, giảm trừ 15.5M)
-  NEW_TAX_LAW_2026: new Date('2026-07-01'),
+  // Luật thuế TNCN mới - Thu nhập từ tiền lương, tiền công
+  // (5 bậc, giảm trừ 15.5M) - áp dụng từ kỳ tính thuế năm 2026
+  // Theo điều khoản chuyển tiếp Luật Thuế TNCN sửa đổi 2025
+  NEW_TAX_LAW_2026: new Date('2026-01-01'),
+  // Thuế chuyển nhượng vàng miếng 0.1% (Luật Thuế TNCN sửa đổi 2025)
+  GOLD_TRANSFER_TAX_2026: new Date('2026-07-01'),
 };
 
 // Mức lương tối thiểu vùng 2025 (đến 31/12/2025)
@@ -70,6 +74,89 @@ export const NEW_DEDUCTIONS = {
   personal: 15_500_000, // Bản thân
   dependent: 6_200_000, // Mỗi người phụ thuộc
 };
+
+// ===== DATE-AWARE TAX CONFIG =====
+
+export interface TaxConfig {
+  brackets: typeof OLD_TAX_BRACKETS;
+  deductions: typeof OLD_DEDUCTIONS;
+  isNew2026: boolean;
+  lawName: string;
+  effectiveDate: Date;
+}
+
+/**
+ * Lấy cấu hình thuế dựa trên ngày hiện tại
+ * - Trước 01/01/2026: Luật Thuế TNCN 2007 (7 bậc, giảm trừ 11M/4.4M)
+ * - Từ 01/01/2026: Luật Thuế TNCN sửa đổi 2025 (5 bậc, giảm trừ 15.5M/6.2M)
+ */
+export function getTaxConfigForDate(date: Date = new Date()): TaxConfig {
+  const is2026OrLater = date >= EFFECTIVE_DATES.NEW_TAX_LAW_2026;
+
+  if (is2026OrLater) {
+    return {
+      brackets: NEW_TAX_BRACKETS,
+      deductions: NEW_DEDUCTIONS,
+      isNew2026: true,
+      lawName: 'Luật Thuế TNCN 2025 (5 bậc)',
+      effectiveDate: EFFECTIVE_DATES.NEW_TAX_LAW_2026,
+    };
+  }
+
+  return {
+    brackets: OLD_TAX_BRACKETS,
+    deductions: OLD_DEDUCTIONS,
+    isNew2026: false,
+    lawName: 'Luật Thuế TNCN 2007 (7 bậc)',
+    effectiveDate: new Date('2007-01-01'),
+  };
+}
+
+/**
+ * Kiểm tra xem ngày có sau milestone không
+ */
+export function isAfterMilestone(
+  date: Date,
+  milestone: keyof typeof EFFECTIVE_DATES
+): boolean {
+  return date >= EFFECTIVE_DATES[milestone];
+}
+
+/**
+ * Lấy thông tin về các mốc thay đổi sắp tới
+ */
+export function getUpcomingMilestones(fromDate: Date = new Date()): {
+  key: keyof typeof EFFECTIVE_DATES;
+  date: Date;
+  description: string;
+}[] {
+  const milestones: {
+    key: keyof typeof EFFECTIVE_DATES;
+    description: string;
+  }[] = [
+    {
+      key: 'NEW_TAX_LAW_2026',
+      description: 'Luật Thuế TNCN sửa đổi 2025 (5 bậc, giảm trừ 15.5M)',
+    },
+    {
+      key: 'REGIONAL_MINIMUM_WAGE_2026',
+      description: 'Lương tối thiểu vùng 2026 (Nghị định 293/2025)',
+    },
+    {
+      key: 'GOLD_TRANSFER_TAX_2026',
+      description: 'Thuế chuyển nhượng vàng miếng 0.1%',
+    },
+  ];
+
+  return milestones
+    .filter((m) => EFFECTIVE_DATES[m.key] > fromDate)
+    .map((m) => ({
+      key: m.key,
+      date: EFFECTIVE_DATES[m.key],
+      description: m.description,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+}
 
 // Tỷ lệ bảo hiểm bắt buộc (người lao động đóng)
 export const INSURANCE_RATES = {
@@ -557,6 +644,55 @@ export function calculateTaxRange(
     });
   }
   return results;
+}
+
+// ===== DATE-AWARE TAX CALCULATION =====
+
+export interface TaxInputWithDate extends TaxInput {
+  calculationDate?: Date; // Ngày tính thuế (mặc định = ngày hiện tại)
+}
+
+export interface TaxResultWithConfig extends TaxResult {
+  taxConfig: TaxConfig; // Cấu hình thuế đang áp dụng
+}
+
+/**
+ * Tính thuế tự động dựa trên ngày
+ * - Tự động chọn biểu thuế và mức giảm trừ phù hợp
+ * - Hỗ trợ tính thuế cho ngày trong quá khứ hoặc tương lai
+ */
+export function calculateTaxForDate(input: TaxInputWithDate): TaxResultWithConfig {
+  const calculationDate = input.calculationDate ?? new Date();
+  const taxConfig = getTaxConfigForDate(calculationDate);
+
+  // Sử dụng hàm tính thuế tương ứng
+  const result = taxConfig.isNew2026
+    ? calculateNewTax(input)
+    : calculateOldTax(input);
+
+  return {
+    ...result,
+    taxConfig,
+  };
+}
+
+/**
+ * Kiểm tra ngày hiện tại có đang trong năm 2026 không
+ */
+export function isCurrentlyIn2026(): boolean {
+  const now = new Date();
+  return now >= EFFECTIVE_DATES.NEW_TAX_LAW_2026;
+}
+
+/**
+ * Format ngày thành chuỗi dd/mm/yyyy
+ */
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 // ===== THUẾ THU NHẬP TỪ NGUỒN KHÁC =====

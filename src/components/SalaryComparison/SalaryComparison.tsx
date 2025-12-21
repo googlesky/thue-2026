@@ -8,6 +8,7 @@ import {
   getRegionalMinimumWages,
   formatNumber,
   parseCurrency,
+  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import {
   CompanyOffer,
@@ -99,7 +100,8 @@ export default function SalaryComparison({
     ]
   );
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
-  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
+  // Auto-detect based on current date (if in 2026, default to new law)
+  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
 
   // Sync từ shared state - chỉ lấy dependents
   useEffect(() => {

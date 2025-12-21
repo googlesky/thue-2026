@@ -184,11 +184,13 @@ export function generateDependentId(): string {
 
 /**
  * Determine which law applies for a given month in a given year
+ * Note: Luật mới (5 bậc) áp dụng từ 01/01/2026 cho thu nhập từ tiền lương, tiền công
+ * theo điều khoản chuyển tiếp của Luật Thuế TNCN sửa đổi 2025
  */
 export function getLawForMonth(year: SettlementYear, month: number): 'old' | 'new' {
   if (year === 2025) return 'old';
-  // 2026: T1-T6 old law, T7-T12 new law
-  return month <= 6 ? 'old' : 'new';
+  // 2026: Luật mới áp dụng từ tháng 1 (không phải tháng 7)
+  return 'new';
 }
 
 /**
@@ -301,7 +303,9 @@ export function calculateAnnualSettlement(
     manualTaxPaid,
   } = input;
 
-  const isTransitionYear = year === 2026;
+  // Note: Từ 01/01/2026, luật mới áp dụng cho cả năm 2026
+  // Không còn năm chuyển tiếp - 2025 dùng luật cũ, 2026 dùng luật mới
+  const isTransitionYear = false;
 
   // Calculate insurance (same for all months, based on average or first month salary)
   const avgSalary =
@@ -378,10 +382,12 @@ export function calculateAnnualSettlement(
     annualTaxDue = firstHalf.taxDue + secondHalf.taxDue;
   } else {
     // 2025: Single calculation with old law
+    // 2026: Single calculation with new law (từ 01/01/2026)
     const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const law = year === 2026 ? 'new' : 'old';
     const yearResult = calculatePeriodResult(
       'Cả năm',
-      'old',
+      law,
       allMonths,
       monthlyIncome,
       dependents,
@@ -395,28 +401,17 @@ export function calculateAnnualSettlement(
   }
 
   // Calculate deduction totals
-  const totalPersonalDeduction = isTransitionYear
-    ? 6 * OLD_DEDUCTIONS.personal + 6 * NEW_DEDUCTIONS.personal
-    : 12 * OLD_DEDUCTIONS.personal;
+  // Note: 2025 = old law, 2026 = new law (từ 01/01/2026, không có năm chuyển tiếp)
+  const deductions = year === 2026 ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
+  const totalPersonalDeduction = 12 * deductions.personal;
 
   const totalDependentMonths = dependents.reduce(
     (sum, dep) => sum + calculateDependentMonths(dep),
     0
   );
 
-  // For transition year, need to split dependent deduction by period
-  let totalDependentDeduction = 0;
-  if (isTransitionYear) {
-    // Calculate dependent deduction for each half
-    for (let month = 1; month <= 12; month++) {
-      const law = getLawForMonth(year, month);
-      const deductions = getDeductions(law);
-      const count = getDependentCountForMonth(dependents, month);
-      totalDependentDeduction += count * deductions.dependent;
-    }
-  } else {
-    totalDependentDeduction = totalDependentMonths * OLD_DEDUCTIONS.dependent;
-  }
+  // Calculate dependent deduction based on year
+  const totalDependentDeduction = totalDependentMonths * deductions.dependent;
 
   const totalInsuranceDeduction = monthlyInsurance.total * 12;
   const totalOtherDeduction = cappedPension + charitableContributions;
@@ -471,9 +466,7 @@ export function calculateAnnualSettlement(
     dependentSummary: {
       count: dependents.length,
       totalMonths: totalDependentMonths,
-      deductionPerMonth: isTransitionYear
-        ? 0 // varies by period
-        : OLD_DEDUCTIONS.dependent,
+      deductionPerMonth: deductions.dependent,
       totalDeduction: totalDependentDeduction,
     },
   };
