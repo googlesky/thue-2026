@@ -1,6 +1,6 @@
 {
   "name": "thue-tncn-2026",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Tool tính thuế thu nhập cá nhân Việt Nam - So sánh luật cũ và mới 2026",
   "private": true,
   "scripts": {
