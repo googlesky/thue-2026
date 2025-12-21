@@ -577,6 +577,174 @@ const features: FeatureCategory[] = [
         bgColor: 'bg-fuchsia-50 group-hover:bg-fuchsia-100',
         badge: 'Mới',
       },
+      {
+        name: 'Thuế người nước ngoài',
+        description:
+          'Tính thuế TNCN cho người nước ngoài (Expatriate Tax), quy chế cư trú 183 ngày, hiệp định tránh đánh thuế hai lần',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#foreigner-tax',
+        color: 'text-teal-600',
+        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Thuế chứng khoán',
+        description:
+          'Tính thuế chuyển nhượng CK niêm yết (0.1%), cổ tức (5%), lãi trái phiếu, quỹ đầu tư',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#securities',
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-50 group-hover:bg-indigo-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Thuế cho thuê nhà',
+        description:
+          'Tính thuế TNCN từ cho thuê bất động sản: 5% PIT + 5% VAT (nếu > 100 triệu/năm), so sánh chi phí thực tế và khoán',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#rental',
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50 group-hover:bg-amber-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Thuế vàng miếng',
+        description:
+          'Tính thuế chuyển nhượng vàng miếng 0.1% theo Luật sửa đổi 2025, có hiệu lực từ 1/7/2026',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#gold-transfer',
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50 group-hover:bg-yellow-100',
+        badge: '2026',
+      },
+      {
+        name: 'Thuế hộ kinh doanh',
+        description:
+          'Tính thuế hộ kinh doanh cá thể, ngưỡng doanh thu 200 triệu/năm (mới 2026), thuế suất 0.5% - 5% theo ngành nghề',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#household-business',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50 group-hover:bg-orange-100',
+        badge: '2026',
+      },
+      {
+        name: 'Thuế chuyển nhượng BĐS',
+        description:
+          'Tính thuế chuyển nhượng bất động sản: 2% TNCN + 0.5% lệ phí trước bạ, kiểm tra miễn thuế gia đình',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#real-estate',
+        color: 'text-teal-600',
+        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
+        badge: 'Mới',
+      },
+      {
+        name: 'Kiểm tra miễn thuế',
+        description:
+          'Kiểm tra 21 khoản thu nhập được miễn thuế TNCN, bao gồm 5 khoản mới theo Luật sửa đổi 2025',
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+        href: '/tinh-thue#exemption-checker',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50 group-hover:bg-purple-100',
+        badge: '2026',
+      },
     ],
   },
 ];
@@ -882,7 +1050,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {[
               {
-                value: 15,
+                value: 20,
                 suffix: '+',
                 label: 'Công cụ tính thuế',
                 color: 'text-blue-600',

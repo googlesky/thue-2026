@@ -99,6 +99,25 @@ export interface PensionTabState {
   isHazardousWork: boolean;
 }
 
+// Foreigner Tax Calculator tab state
+export interface ForeignerTaxTabState {
+  nationality: string;
+  daysInVietnam: number;
+  hasPermanentResidence: boolean;
+  foreignIncome: number;
+  allowances: {
+    housing: number;
+    schoolFees: number;
+    homeLeaveFare: number;
+    relocation: number;
+    languageTraining: number;
+    other: number;
+  };
+  hasVietnameseInsurance: boolean;
+  taxYear: 2025 | 2026;
+  isSecondHalf2026: boolean;
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -112,6 +131,7 @@ export interface TabStates {
   bonus: BonusTabState;
   esop: ESOPTabState;
   pension: PensionTabState;
+  foreignerTax: ForeignerTaxTabState;
 }
 
 /**
@@ -222,6 +242,24 @@ export const DEFAULT_PENSION_STATE: PensionTabState = {
   isHazardousWork: false,
 };
 
+export const DEFAULT_FOREIGNER_TAX_STATE: ForeignerTaxTabState = {
+  nationality: '',
+  daysInVietnam: 0,
+  hasPermanentResidence: false,
+  foreignIncome: 0,
+  allowances: {
+    housing: 0,
+    schoolFees: 0,
+    homeLeaveFare: 0,
+    relocation: 0,
+    languageTraining: 0,
+    other: 0,
+  },
+  hasVietnameseInsurance: false,
+  taxYear: 2026,
+  isSecondHalf2026: true,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
@@ -232,6 +270,7 @@ export const DEFAULT_TAB_STATES: TabStates = {
   bonus: DEFAULT_BONUS_STATE,
   esop: DEFAULT_ESOP_STATE,
   pension: DEFAULT_PENSION_STATE,
+  foreignerTax: DEFAULT_FOREIGNER_TAX_STATE,
 };
 
 /**
@@ -337,6 +376,14 @@ export function createSnapshot(
         ...DEFAULT_PENSION_STATE,
         ...(tabStates?.pension || {}),
       },
+      foreignerTax: {
+        ...DEFAULT_FOREIGNER_TAX_STATE,
+        ...(tabStates?.foreignerTax || {}),
+        allowances: {
+          ...DEFAULT_FOREIGNER_TAX_STATE.allowances,
+          ...(tabStates?.foreignerTax?.allowances || {}),
+        },
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -436,6 +483,14 @@ export function mergeSnapshotWithDefaults(
       pension: {
         ...DEFAULT_PENSION_STATE,
         ...(partial.tabs?.pension || {}),
+      },
+      foreignerTax: {
+        ...DEFAULT_FOREIGNER_TAX_STATE,
+        ...(partial.tabs?.foreignerTax || {}),
+        allowances: {
+          ...DEFAULT_FOREIGNER_TAX_STATE.allowances,
+          ...(partial.tabs?.foreignerTax?.allowances || {}),
+        },
       },
     },
     meta: {

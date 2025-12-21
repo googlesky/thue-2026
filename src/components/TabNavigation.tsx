@@ -9,6 +9,12 @@ export type TabType =
   | 'annual-settlement'
   | 'bonus-calculator'
   | 'esop-calculator'
+  | 'foreigner-tax'
+  | 'securities'
+  | 'rental'
+  | 'gold-transfer'
+  | 'household-business'
+  | 'real-estate'
   | 'employer-cost'
   | 'freelancer'
   | 'salary-compare'
@@ -19,7 +25,8 @@ export type TabType =
   | 'table'
   | 'tax-history'
   | 'tax-calendar'
-  | 'salary-slip';
+  | 'salary-slip'
+  | 'exemption-checker';
 
 interface TabItem {
   id: TabType;
@@ -43,7 +50,13 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   overtime: 'Tính thu nhập tăng ca',
   'annual-settlement': 'Quyết toán cuối năm',
   'bonus-calculator': 'Tính thuế thưởng',
-  'esop-calculator': 'Thuế cổ phiếu',
+  'esop-calculator': 'Thuế cổ phiếu ESOP',
+  'foreigner-tax': 'Expatriate tax VN',
+  securities: 'Thuế CK, cổ tức, TP',
+  rental: 'Thuế cho thuê bất động sản',
+  'gold-transfer': 'Thuế vàng miếng 0.1%',
+  'household-business': 'Thuế hộ kinh doanh',
+  'real-estate': 'Thuế chuyển nhượng BĐS',
   pension: 'Ước tính lương hưu',
   'salary-compare': 'So sánh các offer',
   yearly: 'Thuế qua các năm',
@@ -55,6 +68,7 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'tax-history': 'Thay đổi pháp luật',
   'tax-calendar': 'Mốc thời gian quan trọng',
   'salary-slip': 'Tạo phiếu lương',
+  'exemption-checker': '21 khoản miễn thuế',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -70,6 +84,12 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'annual-settlement', label: 'Quyết toán thuế', icon: '📋', description: TAB_DESCRIPTIONS['annual-settlement'] },
       { id: 'bonus-calculator', label: 'Thưởng Tết', icon: '🎁', description: TAB_DESCRIPTIONS['bonus-calculator'] },
       { id: 'esop-calculator', label: 'ESOP', icon: '📈', description: TAB_DESCRIPTIONS['esop-calculator'] },
+      { id: 'foreigner-tax', label: 'Người nước ngoài', icon: '🌏', description: TAB_DESCRIPTIONS['foreigner-tax'] },
+      { id: 'securities', label: 'Chứng khoán', icon: '📊', description: TAB_DESCRIPTIONS.securities },
+      { id: 'rental', label: 'Cho thuê nhà', icon: '🏠', description: TAB_DESCRIPTIONS.rental },
+      { id: 'gold-transfer', label: 'Vàng miếng', icon: '🥇', description: TAB_DESCRIPTIONS['gold-transfer'] },
+      { id: 'household-business', label: 'Hộ kinh doanh', icon: '🏪', description: TAB_DESCRIPTIONS['household-business'] },
+      { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
     ],
   },
@@ -97,6 +117,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'tax-history', label: 'Lịch sử luật', icon: '📜', description: TAB_DESCRIPTIONS['tax-history'] },
       { id: 'tax-calendar', label: 'Lịch thuế', icon: '📅', description: TAB_DESCRIPTIONS['tax-calendar'] },
       { id: 'salary-slip', label: 'Phiếu lương', icon: '📋', description: TAB_DESCRIPTIONS['salary-slip'] },
+      { id: 'exemption-checker', label: 'Miễn thuế TNCN', icon: '✅', description: TAB_DESCRIPTIONS['exemption-checker'] },
     ],
   },
 ];
