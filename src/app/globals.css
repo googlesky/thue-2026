@@ -338,8 +338,32 @@ body {
   animation: scale-in 0.5s ease-out forwards;
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+@keyframes bottom-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-slide-up {
-  animation: slide-up 0.6s ease-out forwards;
+  animation: bottom-sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
 .animate-slide-in-left {
