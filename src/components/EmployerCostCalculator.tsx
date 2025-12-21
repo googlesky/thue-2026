@@ -12,6 +12,8 @@ import {
   parseCurrency,
   AllowancesState,
   DEFAULT_ALLOWANCES,
+  EFFECTIVE_DATES,
+  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
@@ -75,7 +77,8 @@ export default function EmployerCostCalculator({
     sharedState?.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS
   );
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
-  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? false);
+  // Auto-detect based on current date (if in 2026, default to new law)
+  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
 
   // Sync from shared state
   useEffect(() => {

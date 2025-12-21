@@ -260,7 +260,7 @@ export default function AnnualSettlement({
           </div>
           {/* Year selector */}
           <div className="flex items-center gap-2">
-            <Tooltip content="Năm 2025 áp dụng luật cũ, năm 2026 là năm chuyển tiếp (T1-T6 luật cũ, T7-T12 luật mới)">
+            <Tooltip content="Năm 2025 áp dụng luật cũ (7 bậc), năm 2026 áp dụng luật mới (5 bậc) từ 01/01/2026">
               <InfoIcon />
             </Tooltip>
             <div className="flex gap-2">
@@ -290,12 +290,12 @@ export default function AnnualSettlement({
 
         {/* Year info */}
         {year === 2026 && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
             <div className="flex items-start gap-2">
-              <span className="text-amber-600">&#9888;</span>
-              <div className="text-amber-800">
-                <strong>Năm chuyển tiếp:</strong> T1-T6/2026 áp dụng luật cũ (giảm trừ 11tr/4.4tr),
-                T7-T12/2026 áp dụng luật mới (giảm trừ 15.5tr/6.2tr)
+              <span className="text-green-600">&#10003;</span>
+              <div className="text-green-800">
+                <strong>Năm 2026:</strong> Áp dụng luật mới từ 01/01/2026 với giảm trừ bản thân 15,5 triệu/tháng,
+                giảm trừ người phụ thuộc 6,2 triệu/tháng và biểu thuế 5 bậc.
               </div>
             </div>
           </div>

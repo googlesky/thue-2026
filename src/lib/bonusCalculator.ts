@@ -51,27 +51,28 @@ export interface BonusComparisonResult {
 }
 
 // Available scenarios for bonus payment
+// Note: Luật mới (5 bậc) áp dụng từ 01/01/2026 cho thu nhập từ tiền lương, tiền công
 export const BONUS_SCENARIOS: BonusScenario[] = [
   {
     id: 'dec-2025',
     name: 'Tháng 12/2025',
-    description: 'Trả thưởng trong tháng 12/2025',
+    description: 'Trả thưởng trong tháng 12/2025 (luật cũ 7 bậc)',
     period: '12/2025',
     taxLaw: 'old',
     timing: 'dec-2025',
   },
   {
     id: 'h1-2026',
-    name: 'Tháng 1-6/2026',
-    description: 'Trả thưởng trong nửa đầu năm 2026 (luật cũ còn hiệu lực)',
+    name: 'Nửa đầu 2026',
+    description: 'Trả thưởng tháng 1-6/2026 (luật mới 5 bậc)',
     period: '01-06/2026',
-    taxLaw: 'old',
+    taxLaw: 'new',
     timing: 'h1-2026',
   },
   {
     id: 'h2-2026',
-    name: 'Tháng 7-12/2026',
-    description: 'Trả thưởng khi luật mới có hiệu lực',
+    name: 'Nửa cuối 2026',
+    description: 'Trả thưởng tháng 7-12/2026 (luật mới 5 bậc)',
     period: '07-12/2026',
     taxLaw: 'new',
     timing: 'h2-2026',

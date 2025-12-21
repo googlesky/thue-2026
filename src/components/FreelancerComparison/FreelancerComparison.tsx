@@ -10,6 +10,7 @@ import {
   calculateOldTax,
   calculateNewTax,
   getInsuranceDetailed,
+  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import { FreelancerTabState } from '@/lib/snapshotTypes';
 
@@ -39,7 +40,8 @@ export default function FreelancerComparison({
   const [dependents, setDependents] = useState(sharedState?.dependents ?? 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
-  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? false);
+  // Auto-detect based on current date (if in 2026, default to new law)
+  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
 
   // Sync from shared state (one-way, only on mount or when sharedState changes externally)
   useEffect(() => {

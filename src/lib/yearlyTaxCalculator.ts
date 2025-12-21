@@ -135,12 +135,14 @@ function calculateTaxWithBrackets(
 /**
  * Xác định luật áp dụng cho từng tháng
  * - 2025: Luật cũ (7 bậc)
- * - 2026 T1-T6: Luật cũ (7 bậc)
- * - 2026 T7-T12: Luật mới (5 bậc)
+ * - 2026: Luật mới (5 bậc) - áp dụng từ 01/01/2026 cho thu nhập từ tiền lương, tiền công
+ *
+ * Note: Theo điều khoản chuyển tiếp của Luật Thuế TNCN sửa đổi 2025,
+ * quy định liên quan đến thu nhập từ tiền lương, tiền công áp dụng từ kỳ tính thuế năm 2026
  */
 function getLawForMonth(year: 2025 | 2026, month: number): 'old' | 'new' {
   if (year === 2025) return 'old';
-  if (year === 2026 && month <= 6) return 'old';
+  // 2026: Luật mới áp dụng từ tháng 1 (không phải tháng 7)
   return 'new';
 }
 

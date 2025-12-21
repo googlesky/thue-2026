@@ -113,7 +113,7 @@ export default function MonthlyInputGrid({
       {year === 2026 && (
         <div className="text-[10px] text-gray-500 flex items-center gap-1">
           <span className="text-green-600">*</span>
-          <span>T7-T12: Áp dụng luật mới (giảm trừ 15.5tr, 5 bậc thuế)</span>
+          <span>Áp dụng luật mới từ 01/01/2026 (giảm trừ 15.5tr, 5 bậc thuế)</span>
         </div>
       )}
 

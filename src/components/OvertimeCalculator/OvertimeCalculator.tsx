@@ -7,6 +7,7 @@ import {
   formatCurrency,
   parseCurrency,
   DEFAULT_INSURANCE_OPTIONS,
+  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import {
   calculateOvertime,
@@ -54,7 +55,8 @@ export default function OvertimeCalculator({
   const [includeHolidayBasePay, setIncludeHolidayBasePay] = useState(
     tabState?.includeHolidayBasePay ?? true
   );
-  const [useNewLaw, setUseNewLaw] = useState(tabState?.useNewLaw ?? true);
+  // Auto-detect based on current date (if in 2026, default to new law)
+  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
 
   // Sync from shared state (grossIncome)
   useEffect(() => {

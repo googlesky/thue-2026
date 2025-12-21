@@ -256,8 +256,8 @@ export default function TaxLawHistory() {
               <div className="text-sm text-gray-600">Giảm trừ NPT</div>
             </div>
             <div className="bg-white/80 rounded-lg p-3">
-              <div className="text-2xl font-bold text-blue-600">01/07/2026</div>
-              <div className="text-sm text-gray-600">Ngày áp dụng</div>
+              <div className="text-2xl font-bold text-blue-600">01/01/2026</div>
+              <div className="text-sm text-gray-600">Áp dụng tiền lương</div>
             </div>
           </div>
         </div>

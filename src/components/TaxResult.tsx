@@ -1,7 +1,15 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult, AllowancesBreakdown } from '@/lib/taxCalculator';
+import {
+  TaxResult as TaxResultType,
+  formatCurrency,
+  OtherIncomeTaxResult,
+  AllowancesBreakdown,
+  getTaxConfigForDate,
+  formatDate,
+  EFFECTIVE_DATES,
+} from '@/lib/taxCalculator';
 import { PDFExportButton } from '@/components/PDFExport';
 
 interface TaxResultProps {
@@ -10,6 +18,62 @@ interface TaxResultProps {
   otherIncomeTax?: OtherIncomeTaxResult | null;
   declaredSalary?: number;
 }
+
+// Component hiển thị luật đang áp dụng dựa trên ngày hiện tại
+const DateAwareIndicator = memo(function DateAwareIndicator() {
+  const today = new Date();
+  const taxConfig = getTaxConfigForDate(today);
+  const isNew2026 = taxConfig.isNew2026;
+
+  // Tính số ngày còn lại đến mốc tiếp theo (nếu chưa đến 2026)
+  const daysUntil2026 = !isNew2026
+    ? Math.ceil((EFFECTIVE_DATES.NEW_TAX_LAW_2026.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  return (
+    <div className={`rounded-xl p-4 mb-4 ${
+      isNew2026
+        ? 'bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200'
+        : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200'
+    }`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${isNew2026 ? 'bg-primary-500' : 'bg-amber-500'}`}>
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <div className={`text-sm font-medium ${isNew2026 ? 'text-primary-800' : 'text-amber-800'}`}>
+              Ngày tính thuế: {formatDate(today)}
+            </div>
+            <div className={`text-xs ${isNew2026 ? 'text-primary-600' : 'text-amber-600'}`}>
+              {taxConfig.lawName}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isNew2026 ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-500 text-white">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Luật mới có hiệu lực
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500 text-white">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              Còn {daysUntil2026} ngày đến luật mới
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSalary }: TaxResultProps) {
   const savings = oldResult.taxAmount - newResult.taxAmount;
@@ -26,6 +90,9 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
 
   return (
     <div className="space-y-6">
+      {/* Date-aware indicator */}
+      <DateAwareIndicator />
+
       {/* Notice about declared salary */}
       {hasDeclaredSalary && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
