@@ -361,21 +361,114 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                   </svg>
                 </button>
 
-                {/* Modern card-style dropdown menu */}
-                {isOpen && (
+                {/* Mobile: Bottom sheet style dropdown */}
+                {isOpen && isMobile && (
+                  <>
+                    {/* Backdrop overlay */}
+                    <div
+                      className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 animate-fade-in"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-hidden="true"
+                    />
+                    {/* Bottom sheet */}
+                    <div
+                      className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl animate-slide-up"
+                      style={{ maxHeight: '85vh' }}
+                      role="menu"
+                      aria-label={group.label}
+                    >
+                      {/* Handle bar */}
+                      <div className="flex justify-center pt-3 pb-2">
+                        <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                      </div>
+
+                      {/* Header with close button */}
+                      <div className="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-2xl">{group.icon}</span>
+                          <span className="text-lg font-bold text-gray-800">
+                            {group.label}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setOpenDropdown(null)}
+                          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                          aria-label="Đóng menu"
+                        >
+                          <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Scrollable content */}
+                      <div
+                        className="overflow-y-auto overscroll-contain px-4 py-3"
+                        style={{ maxHeight: 'calc(85vh - 100px)' }}
+                      >
+                        <div className="grid grid-cols-2 gap-2">
+                          {group.tabs.map((tab, tabIndex) => (
+                            <button
+                              key={tab.id}
+                              ref={(el) => {
+                                menuItemRefs.current[tabIndex] = el;
+                              }}
+                              onClick={() => handleTabClick(tab.id)}
+                              role="menuitem"
+                              tabIndex={isOpen ? 0 : -1}
+                              aria-current={activeTab === tab.id ? 'page' : undefined}
+                              className={`
+                                relative w-full p-3 min-h-[80px]
+                                text-left flex flex-col items-center justify-center gap-2
+                                rounded-2xl transition-all duration-200 ease-out
+                                focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400
+                                ${activeTab === tab.id
+                                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg'
+                                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 active:bg-gray-200'
+                                }
+                              `}
+                            >
+                              <span className={`
+                                w-12 h-12 flex items-center justify-center
+                                rounded-xl text-2xl
+                                ${activeTab === tab.id
+                                  ? 'bg-white/20'
+                                  : 'bg-white shadow-sm'
+                                }
+                              `}>
+                                {tab.icon}
+                              </span>
+                              <span className={`
+                                text-xs font-semibold text-center leading-tight
+                                ${activeTab === tab.id ? 'text-white' : 'text-gray-800'}
+                              `}>
+                                {tab.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Safe area padding for devices with home indicator */}
+                      <div className="h-6" />
+                    </div>
+                  </>
+                )}
+
+                {/* Desktop: Card-style dropdown menu */}
+                {isOpen && !isMobile && (
                   <div
                     className={`
-                      ${isMobile ? 'fixed' : 'absolute top-full mt-3'}
+                      absolute top-full mt-3
                       left-1/2 -translate-x-1/2
                       bg-white rounded-2xl shadow-2xl shadow-gray-200/50
                       border border-gray-100
                       py-3 px-3
                       z-50
-                      ${group.gridCols === 2 ? 'w-[calc(100vw-2rem)] sm:w-[420px]' : 'w-[200px] sm:w-[260px]'}
+                      ${group.gridCols === 2 ? 'w-[420px]' : 'w-[260px]'}
                       max-w-[420px]
                       dropdown-modern-animate
                     `}
-                    style={isMobile ? { top: dropdownTop } : undefined}
                     role="menu"
                     aria-label={group.label}
                   >
@@ -391,7 +484,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
 
                     {/* Grid layout for menu items */}
                     <div className={`
-                      ${group.gridCols === 2 ? 'grid grid-cols-1 sm:grid-cols-2 gap-1.5' : 'flex flex-col gap-1'}
+                      ${group.gridCols === 2 ? 'grid grid-cols-2 gap-1.5' : 'flex flex-col gap-1'}
                     `}>
                       {group.tabs.map((tab, tabIndex) => (
                         <button
