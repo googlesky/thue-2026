@@ -189,6 +189,10 @@ export function saveNamedSave(
         bonus: { ...snapshot.tabs.bonus },
         esop: { ...snapshot.tabs.esop },
         pension: { ...snapshot.tabs.pension },
+        foreignerTax: {
+          ...snapshot.tabs.foreignerTax,
+          allowances: { ...snapshot.tabs.foreignerTax.allowances },
+        },
       },
       meta: {
         ...snapshot.meta,
