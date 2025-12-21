@@ -31,6 +31,13 @@ const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
 const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
 const SalarySlipGenerator = lazy(() => import('@/components/SalarySlip').then(m => ({ default: m.SalarySlipGenerator })));
 const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ default: m.TaxCalendar })));
+const ForeignerTaxCalculator = lazy(() => import('@/components/ForeignerTaxCalculator').then(m => ({ default: m.ForeignerTaxCalculator })));
+const SecuritiesTaxCalculator = lazy(() => import('@/components/SecuritiesTaxCalculator').then(m => ({ default: m.SecuritiesTaxCalculator })));
+const RentalIncomeTaxCalculator = lazy(() => import('@/components/RentalIncomeTaxCalculator').then(m => ({ default: m.RentalIncomeTaxCalculator })));
+const GoldTransferTaxCalculator = lazy(() => import('@/components/GoldTransferTaxCalculator').then(m => ({ default: m.GoldTransferTaxCalculator })));
+const HouseholdBusinessTaxCalculator = lazy(() => import('@/components/HouseholdBusinessTaxCalculator').then(m => ({ default: m.HouseholdBusinessTaxCalculator })));
+const RealEstateTransferTaxCalculator = lazy(() => import('@/components/RealEstateTransferTaxCalculator').then(m => ({ default: m.RealEstateTransferTaxCalculator })));
+const TaxExemptionChecker = lazy(() => import('@/components/TaxExemptionChecker').then(m => ({ default: m.TaxExemptionChecker })));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -57,12 +64,14 @@ import {
   BonusTabState,
   ESOPTabState,
   PensionTabState,
+  ForeignerTaxTabState,
   DEFAULT_OVERTIME_STATE,
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
   DEFAULT_BONUS_STATE,
   DEFAULT_ESOP_STATE,
   DEFAULT_PENSION_STATE,
   DEFAULT_YEARLY_COMPARISON_STATE,
+  DEFAULT_FOREIGNER_TAX_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -81,9 +90,11 @@ const defaultSharedState: SharedTaxState = {
 // Valid tab types for hash navigation
 const VALID_TABS: TabType[] = [
   'calculator', 'gross-net', 'overtime', 'annual-settlement',
-  'bonus-calculator', 'esop-calculator', 'pension', 'employer-cost', 'freelancer',
+  'bonus-calculator', 'esop-calculator', 'foreigner-tax', 'securities', 'rental',
+  'gold-transfer', 'household-business', 'real-estate',
+  'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
-  'tax-calendar', 'salary-slip'
+  'tax-calendar', 'salary-slip', 'exemption-checker'
 ];
 
 export default function Home() {
@@ -120,6 +131,7 @@ export default function Home() {
   const [bonusState, setBonusState] = useState<BonusTabState>(DEFAULT_BONUS_STATE);
   const [esopState, setEsopState] = useState<ESOPTabState>(DEFAULT_ESOP_STATE);
   const [pensionState, setPensionState] = useState<PensionTabState>(DEFAULT_PENSION_STATE);
+  const [foreignerTaxState, setForeignerTaxState] = useState<ForeignerTaxTabState>(DEFAULT_FOREIGNER_TAX_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -151,6 +163,9 @@ export default function Home() {
     }
     if (snapshot.tabs.pension) {
       setPensionState(snapshot.tabs.pension);
+    }
+    if (snapshot.tabs.foreignerTax) {
+      setForeignerTaxState(snapshot.tabs.foreignerTax);
     }
   }, []);
 
@@ -358,11 +373,12 @@ export default function Home() {
       bonus: bonusState,
       esop: esopState,
       pension: pensionState,
+      foreignerTax: foreignerTaxState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -412,6 +428,7 @@ export default function Home() {
     setBonusState(DEFAULT_BONUS_STATE);
     setEsopState(DEFAULT_ESOP_STATE);
     setPensionState(DEFAULT_PENSION_STATE);
+    setForeignerTaxState(DEFAULT_FOREIGNER_TAX_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -713,6 +730,67 @@ export default function Home() {
                 tabState={pensionState}
                 onTabStateChange={setPensionState}
               />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'foreigner-tax' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <ForeignerTaxCalculator
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={foreignerTaxState}
+                onTabStateChange={setForeignerTaxState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'securities' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <SecuritiesTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'rental' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <RentalIncomeTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'gold-transfer' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <GoldTransferTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'household-business' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <HouseholdBusinessTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'real-estate' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <RealEstateTransferTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'exemption-checker' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxExemptionChecker />
             </Suspense>
           </div>
         )}
