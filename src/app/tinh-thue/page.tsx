@@ -34,7 +34,6 @@ const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ d
 const ForeignerTaxCalculator = lazy(() => import('@/components/ForeignerTaxCalculator').then(m => ({ default: m.ForeignerTaxCalculator })));
 const SecuritiesTaxCalculator = lazy(() => import('@/components/SecuritiesTaxCalculator').then(m => ({ default: m.SecuritiesTaxCalculator })));
 const RentalIncomeTaxCalculator = lazy(() => import('@/components/RentalIncomeTaxCalculator').then(m => ({ default: m.RentalIncomeTaxCalculator })));
-const GoldTransferTaxCalculator = lazy(() => import('@/components/GoldTransferTaxCalculator').then(m => ({ default: m.GoldTransferTaxCalculator })));
 const HouseholdBusinessTaxCalculator = lazy(() => import('@/components/HouseholdBusinessTaxCalculator').then(m => ({ default: m.HouseholdBusinessTaxCalculator })));
 const RealEstateTransferTaxCalculator = lazy(() => import('@/components/RealEstateTransferTaxCalculator').then(m => ({ default: m.RealEstateTransferTaxCalculator })));
 const TaxExemptionChecker = lazy(() => import('@/components/TaxExemptionChecker').then(m => ({ default: m.TaxExemptionChecker })));
@@ -91,7 +90,7 @@ const defaultSharedState: SharedTaxState = {
 const VALID_TABS: TabType[] = [
   'calculator', 'gross-net', 'overtime', 'annual-settlement',
   'bonus-calculator', 'esop-calculator', 'foreigner-tax', 'securities', 'rental',
-  'gold-transfer', 'household-business', 'real-estate',
+  'household-business', 'real-estate',
   'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker'
@@ -759,14 +758,6 @@ export default function Home() {
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
               <RentalIncomeTaxCalculator />
-            </Suspense>
-          </div>
-        )}
-
-        {activeTab === 'gold-transfer' && (
-          <div className="mb-8">
-            <Suspense fallback={<TabLoadingSkeleton />}>
-              <GoldTransferTaxCalculator />
             </Suspense>
           </div>
         )}

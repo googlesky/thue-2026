@@ -12,7 +12,6 @@ export type TabType =
   | 'foreigner-tax'
   | 'securities'
   | 'rental'
-  | 'gold-transfer'
   | 'household-business'
   | 'real-estate'
   | 'employer-cost'
@@ -54,7 +53,6 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'foreigner-tax': 'Expatriate tax VN',
   securities: 'Thuế CK, cổ tức, TP',
   rental: 'Thuế cho thuê bất động sản',
-  'gold-transfer': 'Thuế vàng miếng 0.1%',
   'household-business': 'Thuế hộ kinh doanh',
   'real-estate': 'Thuế chuyển nhượng BĐS',
   pension: 'Ước tính lương hưu',
@@ -87,7 +85,6 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'foreigner-tax', label: 'Người nước ngoài', icon: '🌏', description: TAB_DESCRIPTIONS['foreigner-tax'] },
       { id: 'securities', label: 'Chứng khoán', icon: '📊', description: TAB_DESCRIPTIONS.securities },
       { id: 'rental', label: 'Cho thuê nhà', icon: '🏠', description: TAB_DESCRIPTIONS.rental },
-      { id: 'gold-transfer', label: 'Vàng miếng', icon: '🥇', description: TAB_DESCRIPTIONS['gold-transfer'] },
       { id: 'household-business', label: 'Hộ kinh doanh', icon: '🏪', description: TAB_DESCRIPTIONS['household-business'] },
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },

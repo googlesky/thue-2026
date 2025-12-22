@@ -650,30 +650,6 @@ const features: FeatureCategory[] = [
         badge: 'Mới',
       },
       {
-        name: 'Thuế vàng miếng',
-        description:
-          'Tính thuế chuyển nhượng vàng miếng 0.1% theo Luật sửa đổi 2025, có hiệu lực từ 1/7/2026',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#gold-transfer',
-        color: 'text-yellow-600',
-        bgColor: 'bg-yellow-50 group-hover:bg-yellow-100',
-        badge: '2026',
-      },
-      {
         name: 'Thuế hộ kinh doanh',
         description:
           'Tính thuế hộ kinh doanh cá thể, ngưỡng doanh thu 200 triệu/năm (mới 2026), thuế suất 0.5% - 5% theo ngành nghề',
