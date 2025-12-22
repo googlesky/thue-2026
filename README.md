@@ -69,7 +69,6 @@
 
 | Công cụ | Mô tả | Hiệu lực |
 |---------|-------|----------|
-| **Thuế vàng miếng** | Thuế suất 0.1% trên giá trị chuyển nhượng | 01/07/2026 |
 | **Thuế hộ kinh doanh** | Ngưỡng doanh thu mới 200 triệu/năm | 01/07/2026 |
 | **Thuế chuyển nhượng BĐS** | 2% TNCN + 0.5% lệ phí trước bạ | Hiện hành |
 | **Kiểm tra miễn thuế** | 21 khoản miễn thuế (16 gốc + 5 mới) | 01/07/2026 |
@@ -227,7 +226,6 @@ src/
 │   ├── BonusCalculator/        # Tính thuế thưởng Tết
 │   ├── ESOPCalculator/         # Tính thuế ESOP
 │   ├── ForeignerTaxCalculator/ # Thuế người nước ngoài
-│   ├── GoldTransferTaxCalculator/     # Thuế vàng miếng
 │   ├── HouseholdBusinessTaxCalculator/# Thuế hộ kinh doanh
 │   ├── RealEstateTransferTaxCalculator/ # Thuế BĐS
 │   ├── RentalIncomeTaxCalculator/     # Thuế cho thuê
@@ -250,7 +248,6 @@ src/
     ├── bonusCalculator.ts      # Tính thuế thưởng
     ├── esopCalculator.ts       # Tính thuế ESOP
     ├── foreignerTaxCalculator.ts
-    ├── goldTransferTaxCalculator.ts
     ├── householdBusinessTaxCalculator.ts
     ├── realEstateTransferTaxCalculator.ts
     ├── rentalIncomeTaxCalculator.ts
