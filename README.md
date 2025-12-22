@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js">
   </a>
   <a href="https://www.typescriptlang.org/">
-    <img src="https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript" alt="TypeScript">
+    <img src="https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript" alt="TypeScript">
   </a>
   <a href="https://react.dev/">
     <img src="https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react" alt="React">
@@ -200,7 +200,7 @@ Mở trình duyệt tại [http://localhost:3000](http://localhost:3000)
 | Thành phần | Công nghệ |
 |------------|-----------|
 | Framework | Next.js 16 (App Router, Turbopack) |
-| Ngôn ngữ | TypeScript 5.7 |
+| Ngôn ngữ | TypeScript 5.9 |
 | UI Library | React 19 |
 | Styling | Tailwind CSS 3.4 |
 | Biểu đồ | Recharts 2.15 |

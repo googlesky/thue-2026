@@ -11,6 +11,19 @@ dist/
 
 # Testing
 coverage/
+tests/
+test-results/
+test-results.json/
+playwright-report/
+playwright.config.ts
+*.log
+
+# Bug reports (local only)
+BUG*.md
+*_REPORT.*
+*_SUMMARY.md
+*BUGS*.md
+*_AUDIT.md
 
 # Misc
 .DS_Store
