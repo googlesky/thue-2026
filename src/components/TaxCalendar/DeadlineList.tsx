@@ -67,7 +67,7 @@ function DeadlineCard({ deadline, hasReminder, onToggleReminder, showDaysUntil }
 
   return (
     <div
-      className={`border rounded-xl overflow-hidden ${categoryColors.border} ${categoryColors.bg} transition-all`}
+      className={`border rounded-xl ${categoryColors.border} ${categoryColors.bg} transition-all`}
     >
       {/* Header */}
       <div className="p-4">
@@ -161,7 +161,7 @@ function DeadlineCard({ deadline, hasReminder, onToggleReminder, showDaysUntil }
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-white/50 border-t border-gray-200/50">
+      <div className="flex items-center gap-2 px-4 py-3 bg-white/50 border-t border-gray-200/50 rounded-b-xl">
         {/* Reminder Toggle */}
         <button
           onClick={onToggleReminder}
