@@ -186,7 +186,7 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   {
     id: 'new-law-2026',
     title: 'Luật thuế TNCN mới có hiệu lực',
-    description: 'Luật thuế thu nhập cá nhân sửa đổi chính thức có hiệu lực. Giảm từ 7 bậc xuống 5 bậc thuế, tăng mức giảm trừ gia cảnh lên 11 triệu VND/tháng cho bản thân và 4.4 triệu VND/tháng cho người phụ thuộc.',
+    description: 'Luật thuế thu nhập cá nhân sửa đổi chính thức có hiệu lực. Giảm từ 7 bậc xuống 5 bậc thuế, tăng mức giảm trừ gia cảnh lên 15.5 triệu VND/tháng cho bản thân và 6.2 triệu VND/tháng cho người phụ thuộc.',
     date: { month: 7, day: 1 },
     category: 'special',
     priority: 'critical',
@@ -296,10 +296,14 @@ export function getNextOccurrence(deadline: TaxDeadline, fromDate: Date = new Da
     return specialDate >= fromDate ? specialDate : null;
   }
 
-  // For monthly recurring (month: 0), find the next 20th
+  // For monthly recurring (month: 0), find the next occurrence
   if (deadline.date.month === 0) {
     let targetDate = new Date(currentYear, fromDate.getMonth(), deadline.date.day);
-    if (targetDate <= fromDate) {
+    targetDate.setHours(0, 0, 0, 0);
+    const compareDate = new Date(fromDate);
+    compareDate.setHours(0, 0, 0, 0);
+    // Use < instead of <= to include today's deadline
+    if (targetDate < compareDate) {
       targetDate.setMonth(targetDate.getMonth() + 1);
     }
     return targetDate;
@@ -308,9 +312,13 @@ export function getNextOccurrence(deadline: TaxDeadline, fromDate: Date = new Da
   // For regular recurring deadlines
   let targetYear = currentYear;
   let targetDate = new Date(targetYear, deadline.date.month - 1, deadline.date.day);
+  targetDate.setHours(0, 0, 0, 0);
+  const compareDate = new Date(fromDate);
+  compareDate.setHours(0, 0, 0, 0);
 
   // If the deadline has already passed this year, get next year's
-  if (targetDate < fromDate) {
+  // Use < instead of <= to include today's deadline
+  if (targetDate < compareDate) {
     targetYear++;
     targetDate = new Date(targetYear, deadline.date.month - 1, deadline.date.day);
   }
@@ -369,6 +377,18 @@ export function generateICSContent(deadline: TaxDeadline, year?: number): string
   const now = new Date();
   const createdDate = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
+  // Add RRULE for recurring events
+  let rrule = '';
+  if (deadline.recurring) {
+    if (deadline.date.month === 0) {
+      // Monthly recurring (e.g., 20th of every month)
+      rrule = `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`;
+    } else {
+      // Yearly recurring (same date every year)
+      rrule = `RRULE:FREQ=YEARLY;BYMONTH=${deadline.date.month};BYMONTHDAY=${day}`;
+    }
+  }
+
   return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Tinh Thue TNCN 2026//Tax Calendar//VI
@@ -378,13 +398,13 @@ BEGIN:VEVENT
 DTSTART;VALUE=DATE:${dateStr}
 DTEND;VALUE=DATE:${nextDayStr}
 DTSTAMP:${createdDate}
-UID:${deadline.id}-${targetYear}@thue.1devops.io
+UID:${deadline.id}-${deadline.recurring ? 'recurring' : targetYear}@thue.1devops.io
 SUMMARY:${deadline.title}
 DESCRIPTION:${deadline.description.replace(/\n/g, '\\n')}
 CATEGORIES:${CATEGORY_LABELS[deadline.category]}
 PRIORITY:${deadline.priority === 'critical' ? 1 : deadline.priority === 'important' ? 5 : 9}
 STATUS:CONFIRMED
-TRANSP:TRANSPARENT
+TRANSP:TRANSPARENT${rrule ? '\n' + rrule : ''}
 BEGIN:VALARM
 ACTION:DISPLAY
 DESCRIPTION:${deadline.title}
@@ -409,10 +429,14 @@ export function generateGoogleCalendarUrl(deadline: TaxDeadline, year?: number):
 
   const dateStr = `${targetYear}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
 
+  // Google Calendar needs end date to be exclusive (next day for all-day events)
+  const nextDay = new Date(targetYear, month - 1, day + 1);
+  const nextDayStr = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
+
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: deadline.title,
-    dates: `${dateStr}/${dateStr}`,
+    dates: `${dateStr}/${nextDayStr}`,
     details: deadline.description,
     ctz: 'Asia/Ho_Chi_Minh',
   });

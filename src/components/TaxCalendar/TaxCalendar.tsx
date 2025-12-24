@@ -218,13 +218,17 @@ export default function TaxCalendar() {
             )}
           </button>
 
-          {/* Filter (only show in list view) */}
-          {viewMode === 'list' && (
+          {/* Filter (show in calendar and list views) */}
+          {(viewMode === 'calendar' || viewMode === 'list') && (
             <div className="flex items-center gap-2 ml-auto">
-              <span className="text-sm text-gray-500">Lọc:</span>
+              <label htmlFor="deadline-filter" className="text-sm text-gray-500">
+                Lọc:
+              </label>
               <select
+                id="deadline-filter"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as ApplicableTo)}
+                aria-label="Lọc theo đối tượng áp dụng"
                 className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 {Object.entries(APPLICABLE_TO_LABELS).map(([value, label]) => (
@@ -270,6 +274,7 @@ export default function TaxCalendar() {
               onMonthChange={handleMonthChange}
               onDateSelect={handleDateSelect}
               selectedDate={selectedDate}
+              filter={filter}
             />
           </div>
 

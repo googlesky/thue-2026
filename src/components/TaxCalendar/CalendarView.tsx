@@ -3,6 +3,7 @@
 import { memo, useMemo } from 'react';
 import {
   TaxDeadline,
+  ApplicableTo,
   getDeadlinesForMonth,
   getDeadlinesForDate,
   PRIORITY_COLORS,
@@ -15,6 +16,13 @@ interface CalendarViewProps {
   onMonthChange: (year: number, month: number) => void;
   onDateSelect?: (date: Date, deadlines: TaxDeadline[]) => void;
   selectedDate?: Date | null;
+  filter?: ApplicableTo;
+}
+
+// Helper function to filter deadlines by applicableTo
+function filterDeadlines(deadlines: TaxDeadline[], filter?: ApplicableTo): TaxDeadline[] {
+  if (!filter || filter === 'all') return deadlines;
+  return deadlines.filter(d => d.applicableTo === 'all' || d.applicableTo === filter);
 }
 
 // Vietnamese day names
@@ -37,6 +45,7 @@ function CalendarViewComponent({
   onMonthChange,
   onDateSelect,
   selectedDate,
+  filter,
 }: CalendarViewProps) {
   // Generate calendar days
   const calendarDays = useMemo((): CalendarDay[] => {
@@ -54,11 +63,12 @@ function CalendarViewComponent({
     const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
       const date = new Date(year, month - 2, prevMonthLastDay - i);
+      const rawDeadlines = getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
       days.push({
         date,
         isCurrentMonth: false,
         isToday: date.getTime() === today.getTime(),
-        deadlines: getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate()),
+        deadlines: filterDeadlines(rawDeadlines, filter),
       });
     }
 
@@ -74,7 +84,7 @@ function CalendarViewComponent({
         date,
         isCurrentMonth: true,
         isToday: date.getTime() === today.getTime(),
-        deadlines: dayDeadlines,
+        deadlines: filterDeadlines(dayDeadlines, filter),
       });
     }
 
@@ -82,16 +92,17 @@ function CalendarViewComponent({
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const date = new Date(year, month, i);
+      const rawDeadlines = getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
       days.push({
         date,
         isCurrentMonth: false,
         isToday: date.getTime() === today.getTime(),
-        deadlines: getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate()),
+        deadlines: filterDeadlines(rawDeadlines, filter),
       });
     }
 
     return days;
-  }, [year, month]);
+  }, [year, month, filter]);
 
   const handlePrevMonth = () => {
     if (month === 1) {
