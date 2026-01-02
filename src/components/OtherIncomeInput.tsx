@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   OtherIncomeState,
   DEFAULT_OTHER_INCOME,
@@ -9,6 +9,78 @@ import {
   formatNumber,
   OtherIncomeTaxResult,
 } from '@/lib/taxCalculator';
+
+// Component để xử lý input số trên iOS không bị bug buffer
+// iOS keyboard buffer bị lỗi khi controlled input format value ngay lập tức
+// Giải pháp: dùng uncontrolled input với ref, chỉ sync value khi cần
+
+function NumericInputField({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [displayValue, setDisplayValue] = useState(value > 0 ? formatNumber(value) : '');
+
+  // Sync from parent when value changes externally (e.g., loading from history, reset)
+  useEffect(() => {
+    // Chỉ update display nếu value thay đổi từ bên ngoài
+    const currentNumeric = parseInt(displayValue.replace(/\D/g, ''), 10) || 0;
+    if (value !== currentNumeric) {
+      setDisplayValue(value > 0 ? formatNumber(value) : '');
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    // Chỉ cho phép số
+    const filtered = input.replace(/\D/g, '');
+
+    // Update display với số thuần (không format khi đang nhập)
+    setDisplayValue(filtered);
+
+    // Update parent
+    const numericValue = parseInt(filtered, 10) || 0;
+    onChange(numericValue);
+  }, [onChange]);
+
+  const handleBlur = useCallback(() => {
+    // Format lại khi blur
+    const numericValue = parseInt(displayValue.replace(/\D/g, ''), 10) || 0;
+    setDisplayValue(numericValue > 0 ? formatNumber(numericValue) : '');
+  }, [displayValue]);
+
+  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    // Khi focus, chuyển sang số thuần để dễ edit
+    const numericValue = parseInt(displayValue.replace(/\D/g, ''), 10) || 0;
+    const rawValue = numericValue > 0 ? String(numericValue) : '';
+    setDisplayValue(rawValue);
+    // Select all sau khi React update DOM
+    requestAnimationFrame(() => {
+      e.target.select();
+    });
+  }, [displayValue]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      value={displayValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
 
 interface OtherIncomeInputProps {
   otherIncome: OtherIncomeState;
@@ -84,13 +156,13 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
   const taxResult = calculateOtherIncomeTax(otherIncome);
   const hasAnyIncome = taxResult.totalIncome > 0;
 
-  const handleValueChange = (key: keyof OtherIncomeState, value: string) => {
-    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+  // Simplified handler - receives numeric value directly from NumericInputField
+  const handleFieldChange = useCallback((key: keyof OtherIncomeState, value: number) => {
     onChange({
       ...otherIncome,
-      [key]: numericValue,
+      [key]: value,
     });
-  };
+  }, [otherIncome, onChange]);
 
   const toggleField = (key: keyof OtherIncomeState) => {
     const newActiveFields = new Set(activeFields);
@@ -194,10 +266,9 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
                         </svg>
                       </button>
                     </div>
-                    <input
-                      type="text"
-                      value={formatNumber(otherIncome[field.key])}
-                      onChange={(e) => handleValueChange(field.key, e.target.value)}
+                    <NumericInputField
+                      value={otherIncome[field.key]}
+                      onChange={(value) => handleFieldChange(field.key, value)}
                       className="input-field"
                       placeholder={field.placeholder}
                     />

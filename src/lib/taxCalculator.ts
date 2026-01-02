@@ -743,9 +743,10 @@ export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherInc
   const freelanceTax = otherIncome.freelance * OTHER_INCOME_TAX_RATES.freelance;
 
   // 2. Thu nhập từ cho thuê tài sản
-  // Thuế TNCN: 5%, VAT: 5% (nếu > 100 triệu/năm)
+  // Thuế TNCN: 5%, VAT: 5% (chỉ áp dụng khi >= 100 triệu/năm theo Thông tư 40/2021/TT-BTC)
   const rentalPIT = otherIncome.rental * OTHER_INCOME_TAX_RATES.rental;
-  const rentalVAT = otherIncome.rental * OTHER_INCOME_TAX_RATES.rentalVAT;
+  const isRentalVATApplicable = otherIncome.rental >= OTHER_INCOME_THRESHOLDS.rental;
+  const rentalVAT = isRentalVATApplicable ? otherIncome.rental * OTHER_INCOME_TAX_RATES.rentalVAT : 0;
 
   // 3. Thu nhập từ đầu tư (cổ tức, lãi tiền gửi)
   // Thuế suất: 5%
@@ -776,8 +777,12 @@ export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherInc
       taxPIT: rentalPIT,
       taxVAT: rentalVAT,
       totalTax: rentalPIT + rentalVAT,
-      rate: (OTHER_INCOME_TAX_RATES.rental + OTHER_INCOME_TAX_RATES.rentalVAT) * 100,
-      note: '5% TNCN + 5% VAT',
+      rate: isRentalVATApplicable
+        ? (OTHER_INCOME_TAX_RATES.rental + OTHER_INCOME_TAX_RATES.rentalVAT) * 100
+        : OTHER_INCOME_TAX_RATES.rental * 100,
+      note: isRentalVATApplicable
+        ? '5% TNCN + 5% VAT (doanh thu >= 100tr/năm)'
+        : '5% TNCN (miễn VAT dưới 100tr/năm)',
     },
     investment: {
       income: otherIncome.investment,
