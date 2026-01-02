@@ -65,9 +65,10 @@ export default function MonthlyInputGrid({
     onChange(months, newBonusMonths);
   };
 
-  // Xác định tháng nào áp dụng luật mới (T7-T12/2026)
-  const isNewLawMonth = (monthIndex: number) => {
-    return year === 2026 && monthIndex >= 6; // index 6 = T7
+  // Xác định tháng nào áp dụng luật mới
+  // Note: Luật mới áp dụng từ 01/01/2026 cho toàn bộ năm đối với thu nhập tiền lương
+  const isNewLawMonth = (_monthIndex: number) => {
+    return year === 2026; // All months in 2026 use new law
   };
 
   return (

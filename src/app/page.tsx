@@ -652,7 +652,7 @@ const features: FeatureCategory[] = [
       {
         name: 'Thuế hộ kinh doanh',
         description:
-          'Tính thuế hộ kinh doanh cá thể, ngưỡng doanh thu 200 triệu/năm (mới 2026), thuế suất 0.5% - 5% theo ngành nghề',
+          'Tính thuế hộ kinh doanh cá thể, ngưỡng doanh thu 500 triệu/năm (từ 2026), thuế suất 0.5% - 5% theo ngành nghề',
         icon: (
           <svg
             className="w-6 h-6"
@@ -797,7 +797,7 @@ export default function HomePage() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
               </span>
               <span className="font-medium">
-                Cập nhật Luật Thuế TNCN mới nhất - có hiệu lực từ 1/7/2026
+                Cập nhật Luật Thuế TNCN mới nhất - có hiệu lực từ 1/1/2026
               </span>
             </div>
 

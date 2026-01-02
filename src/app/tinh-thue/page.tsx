@@ -464,7 +464,7 @@ export default function Home() {
                 Tính Thuế TNCN 2026
               </h1>
               <p className="text-blue-200/80 text-sm sm:text-base">
-                So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/7/2026
+                So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/1/2026
               </p>
             </div>
 

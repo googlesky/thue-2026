@@ -66,10 +66,11 @@ export interface HouseholdBusinessTaxResult {
   };
 }
 
-// Revenue thresholds by year
+// Revenue thresholds by year (ngưỡng doanh thu miễn thuế)
+// Reference: Luật Thuế TNCN sửa đổi 2025, Nghị quyết 198/2025/QH15
 export const REVENUE_THRESHOLDS = {
   2025: 100_000_000,  // 100 triệu/năm
-  2026: 200_000_000,  // 200 triệu/năm (cập nhật theo quy định mới)
+  2026: 500_000_000,  // 500 triệu/năm (từ 01/01/2026)
 };
 
 // Tax rates by business category (PIT)
@@ -139,8 +140,19 @@ export function calculateBusinessTax(
   if (isAboveThreshold) {
     pitRate = PIT_RATES[business.category];
     vatRate = VAT_RATES[business.category];
-    pitAmount = Math.round(annualRevenue * pitRate);
-    vatAmount = Math.round(annualRevenue * vatRate);
+
+    // Từ 2026: Thuế tính trên phần doanh thu TRÊN ngưỡng miễn thuế
+    // Công thức: Thuế = (Doanh thu - Ngưỡng) × Thuế suất
+    // Reference: Luật Thuế TNCN sửa đổi 2025
+    if (year === 2026) {
+      const taxableRevenue = annualRevenue - threshold;
+      pitAmount = Math.round(taxableRevenue * pitRate);
+      vatAmount = Math.round(taxableRevenue * vatRate);
+    } else {
+      // Trước 2026: Thuế = Doanh thu × Thuế suất (trên toàn bộ doanh thu)
+      pitAmount = Math.round(annualRevenue * pitRate);
+      vatAmount = Math.round(annualRevenue * vatRate);
+    }
 
     if (!business.hasBusinessLicense) {
       recommendation = 'Cần đăng ký kinh doanh và kê khai thuế định kỳ';

@@ -57,8 +57,9 @@ const HIGH_INCOME_THRESHOLD = 100_000_000; // 100M/month
 // Threshold for dependent registration reminder
 const INCOME_THRESHOLD_FOR_DEPENDENT_TIP = 20_000_000; // 20M/month
 
-// New tax law effective date
-const NEW_TAX_LAW_EFFECTIVE_DATE = new Date('2026-07-01');
+// New tax law effective date for salary/wage income (thu nhập từ tiền lương, tiền công)
+// Note: Theo điều khoản chuyển tiếp Luật Thuế TNCN sửa đổi 2025, áp dụng từ kỳ tính thuế năm 2026
+const NEW_TAX_LAW_EFFECTIVE_DATE = new Date('2026-01-01');
 
 // ===== HELPER FUNCTIONS =====
 
@@ -98,13 +99,7 @@ function isYear2025(): boolean {
   return getCurrentYear() === 2025;
 }
 
-/**
- * Check if we're in first half of 2026 (before July 1st)
- */
-function isFirstHalf2026(): boolean {
-  const now = getCurrentDate();
-  return now.getFullYear() === 2026 && now.getMonth() < 6; // 0-5 is Jan-Jun
-}
+// Note: isFirstHalf2026 removed - no longer needed since new law applies from 01/01/2026 for salary income
 
 /**
  * Calculate tax savings from adding dependents
@@ -316,13 +311,15 @@ function generatePensionTip(input: TaxOptimizationInput): TaxTip | null {
 }
 
 /**
- * Generate tip for bonus timing (relevant for 2025-2026 transition)
+ * Generate tip for bonus timing (relevant for 2025 only)
+ * Note: Từ 01/01/2026, luật mới đã áp dụng cho toàn bộ thu nhập tiền lương, tiền công
  */
 function generateBonusTimingTip(input: TaxOptimizationInput): TaxTip | null {
   const { grossIncome, dependents, otherDeductions } = input;
 
-  // Only show in 2025 or first half of 2026
-  if (!isYear2025() && !isFirstHalf2026()) {
+  // Only show in 2025 (before new law takes effect)
+  // From 2026, new law applies to all salary/wage income for the entire year
+  if (!isYear2025()) {
     return null;
   }
 
@@ -358,33 +355,16 @@ function generateBonusTimingTip(input: TaxOptimizationInput): TaxTip | null {
     return null;
   }
 
-  if (isYear2025()) {
-    return {
-      id: 'bonus-timing-2025',
-      title: 'Cân nhắc thời điểm nhận thưởng',
-      description: `Luật thuế mới (5 bậc) có hiệu lực từ 1/7/2026 với biểu thuế ưu đãi hơn. Nếu có thể, bạn có thể trao đổi với công ty về việc nhận thưởng sau thời điểm này để tiết kiệm thuế.`,
-      potentialSavings: bonusSavings,
-      priority: 'high',
-      category: 'timing',
-      icon: 'calendar',
-      actionable: true,
-    };
-  }
-
-  if (isFirstHalf2026()) {
-    return {
-      id: 'bonus-timing-2026-h1',
-      title: 'Hoãn nhận thưởng đến tháng 7/2026',
-      description: `Luật thuế mới có hiệu lực từ 1/7/2026. Các khoản thưởng nhận sau thời điểm này sẽ được áp dụng biểu thuế mới ưu đãi hơn. Ước tính tiết kiệm với thưởng 1 tháng lương:`,
-      potentialSavings: bonusSavings,
-      priority: 'high',
-      category: 'timing',
-      icon: 'calendar',
-      actionable: true,
-    };
-  }
-
-  return null;
+  return {
+    id: 'bonus-timing-2025',
+    title: 'Cân nhắc thời điểm nhận thưởng',
+    description: `Luật thuế mới (5 bậc) có hiệu lực từ 01/01/2026 với biểu thuế ưu đãi hơn. Nếu có thể, bạn có thể trao đổi với công ty về việc nhận thưởng sau thời điểm này để tiết kiệm thuế.`,
+    potentialSavings: bonusSavings,
+    priority: 'high',
+    category: 'timing',
+    icon: 'calendar',
+    actionable: true,
+  };
 }
 
 /**
@@ -555,7 +535,7 @@ function generateNewLawComparisonTip(input: TaxOptimizationInput): TaxTip | null
     return {
       id: 'new-law-preview',
       title: 'Luật thuế mới có lợi cho bạn',
-      description: `Từ 1/7/2026, luật thuế mới sẽ giúp bạn tiết kiệm ${formatNumber(savings)} VNĐ/tháng (${formatNumber(savings * 12)} VNĐ/năm). Giảm trừ bản thân tăng từ 11tr lên 15.5tr, người phụ thuộc từ 4.4tr lên 6.2tr.`,
+      description: `Từ 01/01/2026, luật thuế mới sẽ giúp bạn tiết kiệm ${formatNumber(savings)} VNĐ/tháng (${formatNumber(savings * 12)} VNĐ/năm). Giảm trừ bản thân tăng từ 11tr lên 15.5tr, người phụ thuộc từ 4.4tr lên 6.2tr.`,
       potentialSavings: savings,
       potentialSavingsYearly: savings * 12,
       priority: 'low',

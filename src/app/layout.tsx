@@ -261,7 +261,7 @@ export default function RootLayout({
                   name: 'Khi nào luật thuế TNCN mới có hiệu lực?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Luật thuế TNCN mới có hiệu lực từ ngày 1/7/2026 theo Luật Thuế TNCN sửa đổi được thông qua ngày 10/12/2025.',
+                    text: 'Luật Thuế TNCN sửa đổi được Quốc hội thông qua ngày 10/12/2025, có hiệu lực từ 1/7/2026. Tuy nhiên, đối với thu nhập từ tiền lương, tiền công, biểu thuế mới (5 bậc, giảm trừ 15.5 triệu) áp dụng từ kỳ tính thuế năm 2026 (tức từ 1/1/2026) theo điều khoản chuyển tiếp.',
                   },
                 },
                 {

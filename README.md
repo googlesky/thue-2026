@@ -39,7 +39,7 @@
 
 ## Giới thiệu
 
-**Thuế TNCN 2026** là ứng dụng web giúp người lao động Việt Nam tính toán, so sánh và tối ưu thuế thu nhập cá nhân. Hỗ trợ đầy đủ các quy định mới của Luật thuế TNCN sửa đổi có hiệu lực từ **01/07/2026**.
+**Thuế TNCN 2026** là ứng dụng web giúp người lao động Việt Nam tính toán, so sánh và tối ưu thuế thu nhập cá nhân. Hỗ trợ đầy đủ các quy định mới của Luật thuế TNCN sửa đổi (Luật số 109/2025/QH15), áp dụng từ **01/01/2026** cho thu nhập từ tiền lương, tiền công.
 
 ### Điểm nổi bật
 
@@ -69,7 +69,7 @@
 
 | Công cụ | Mô tả | Hiệu lực |
 |---------|-------|----------|
-| **Thuế hộ kinh doanh** | Ngưỡng doanh thu mới 200 triệu/năm | 01/07/2026 |
+| **Thuế hộ kinh doanh** | Ngưỡng doanh thu mới 500 triệu/năm | 01/01/2026 |
 | **Thuế chuyển nhượng BĐS** | 2% TNCN + 0.5% lệ phí trước bạ | Hiện hành |
 | **Kiểm tra miễn thuế** | 21 khoản miễn thuế (16 gốc + 5 mới) | 01/07/2026 |
 | **Thuế cho thuê tài sản** | Thuế thu nhập thụ động từ BĐS | Hiện hành |
@@ -110,7 +110,7 @@
 
 ### Biểu thuế mới 2026 (5 bậc)
 
-> Áp dụng từ **01/07/2026** theo Luật thuế TNCN sửa đổi
+> Áp dụng từ **01/01/2026** cho thu nhập từ tiền lương, tiền công theo Luật số 109/2025/QH15
 
 | Bậc | Thu nhập tính thuế/tháng | Thuế suất |
 |:---:|--------------------------|:---------:|
@@ -122,7 +122,7 @@
 
 ### Biểu thuế hiện hành (7 bậc)
 
-> Áp dụng đến **30/06/2026**
+> Áp dụng đến **31/12/2025**
 
 | Bậc | Thu nhập tính thuế/tháng | Thuế suất |
 |:---:|--------------------------|:---------:|
@@ -136,7 +136,7 @@
 
 ### Giảm trừ gia cảnh
 
-| Khoản giảm trừ | Hiện hành | Từ 01/07/2026 |
+| Khoản giảm trừ | Đến 31/12/2025 | Từ 01/01/2026 |
 |----------------|:---------:|:-------------:|
 | Bản thân | 11 triệu/tháng | **15.5 triệu/tháng** |
 | Người phụ thuộc | 4.4 triệu/người | **6.2 triệu/người** |
@@ -150,14 +150,14 @@
 | BHTN | 1% | 1% | 20× lương tối thiểu vùng |
 | Công đoàn | - | 2% | Không giới hạn |
 
-### Lương tối thiểu vùng (từ 01/07/2024)
+### Lương tối thiểu vùng (từ 01/01/2026 - NĐ 293/2025)
 
 | Vùng | Mức lương | Khu vực áp dụng |
 |:----:|----------:|-----------------|
-| I | 4,960,000₫ | Hà Nội, TP.HCM, Bình Dương, Đồng Nai... |
-| II | 4,410,000₫ | Đà Nẵng, Hải Phòng, Cần Thơ... |
-| III | 3,860,000₫ | Tỉnh lỵ, thành phố trực thuộc tỉnh |
-| IV | 3,450,000₫ | Các huyện còn lại |
+| I | 5,310,000₫ | Hà Nội, TP.HCM, Bình Dương, Đồng Nai... |
+| II | 4,730,000₫ | Đà Nẵng, Hải Phòng, Cần Thơ... |
+| III | 4,140,000₫ | Tỉnh lỵ, thành phố trực thuộc tỉnh |
+| IV | 3,700,000₫ | Các huyện còn lại |
 
 ---
 
