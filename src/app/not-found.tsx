@@ -106,7 +106,7 @@ export default function NotFound() {
 
         {/* Footer */}
         <p className="mt-12 text-sm text-gray-500">
-          Thuế TNCN 2026 · So sánh luật thuế cũ và mới từ 1/7/2026
+          Thuế TNCN 2026 · So sánh luật thuế cũ và mới từ 1/1/2026
         </p>
         </div>
       </main>

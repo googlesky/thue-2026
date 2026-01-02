@@ -430,14 +430,16 @@ export const PRESET_DEFER_BONUS: PresetConfig = {
 };
 
 /**
- * Preset 3: Tối ưu - Dời thưởng vào T7/2026 (luật mới)
+ * Preset 3: Tối ưu - Dời thưởng sang 2026 (luật mới)
  * - 2025: 12 tháng lương (không thưởng)
- * - 2026: 12 tháng lương + thưởng T13/2025 vào T7/2026 (hưởng luật mới)
+ * - 2026: 12 tháng lương + thưởng T13/2025 vào T1/2026 (hưởng luật mới từ đầu năm)
+ *
+ * Note: Luật mới áp dụng từ 01/01/2026 cho toàn bộ năm, nên nhận thưởng T1 hay T7 đều như nhau
  */
 export const PRESET_OPTIMIZE: PresetConfig = {
   id: 'optimize',
-  name: 'Tối ưu (T7/2026)',
-  description: 'Thưởng T13/2025 dời sang T7/2026 để hưởng luật mới',
+  name: 'Tối ưu (T1/2026)',
+  description: 'Thưởng T13/2025 dời sang T1/2026 để hưởng luật mới',
   create: (monthlySalary, dependents, hasInsurance, region, bonusAmount) => {
     const bonus = bonusAmount ?? monthlySalary;
     return {
@@ -453,12 +455,12 @@ export const PRESET_OPTIMIZE: PresetConfig = {
       },
       scenario2026: {
         id: 'optimize-2026',
-        name: '2026 (14 tháng, thưởng T7)',
+        name: '2026 (14 tháng, thưởng T1)',
         year: 2026,
         months: createUniformMonths(monthlySalary),
         bonusMonths: [
-          // Thưởng T13/2025 trả vào T7/2026 (tháng 7 để hưởng luật mới)
-          { month: 7, grossIncome: bonus, isBonus: true, label: 'Thưởng T13/2025 (T7/2026)' },
+          // Thưởng T13/2025 trả vào T1/2026 (luật mới áp dụng từ 01/01/2026)
+          { month: 1, grossIncome: bonus, isBonus: true, label: 'Thưởng T13/2025 (T1/2026)' },
           // Thưởng T13/2026 trả vào T12/2026
           createBonusMonth(14, bonus, 'Thưởng T13/2026 (T12/2026)'),
         ],

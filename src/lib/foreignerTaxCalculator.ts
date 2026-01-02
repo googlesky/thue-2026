@@ -143,7 +143,7 @@ export interface ForeignerTaxInput {
 
   // Năm tính thuế
   taxYear: 2025 | 2026;
-  isSecondHalf2026?: boolean;       // Nửa sau 2026 (luật mới)
+  isSecondHalf2026?: boolean;       // Deprecated: Luật mới áp dụng từ 01/01/2026 cho toàn năm
 }
 
 export interface ForeignerTaxResult {
@@ -339,7 +339,8 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
   } = input;
 
   // Xác định luật áp dụng
-  const useNewLaw = taxYear === 2026 && (isSecondHalf2026 || new Date() >= EFFECTIVE_DATES.NEW_TAX_LAW_2026);
+  // Note: Từ 01/01/2026, luật mới áp dụng cho toàn bộ năm đối với thu nhập tiền lương, tiền công
+  const useNewLaw = taxYear === 2026;
   const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
   const deductions = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
 

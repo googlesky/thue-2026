@@ -135,7 +135,7 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
                   </div>
                   <div>
                     <p className="font-medium text-gray-800">Từ 1/7/2026</p>
-                    <p>Luật chính thức có hiệu lực</p>
+                    <p>Luật chính thức có hiệu lực (thuế chuyển nhượng vàng)</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

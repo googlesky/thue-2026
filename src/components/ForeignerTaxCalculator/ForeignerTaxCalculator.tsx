@@ -582,25 +582,14 @@ export default function ForeignerTaxCalculator({
                     className="input-field"
                   >
                     <option value={2025}>2025 (Luật cũ - 7 bậc)</option>
-                    <option value={2026}>2026 (Luật mới - 5 bậc từ 1/7/2026)</option>
+                    <option value={2026}>2026 (Luật mới - 5 bậc từ 1/1/2026)</option>
                   </select>
+                  {tabState.taxYear === 2026 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Luật mới áp dụng cho toàn bộ năm 2026 đối với thu nhập tiền lương, tiền công.
+                    </p>
+                  )}
                 </div>
-
-                {tabState.taxYear === 2026 && (
-                  <div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tabState.isSecondHalf2026 ?? true}
-                        onChange={(e) => onTabStateChange({ ...tabState, isSecondHalf2026: e.target.checked })}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Áp dụng luật mới (nửa sau 2026)
-                      </span>
-                    </label>
-                  </div>
-                )}
               </div>
             </div>
           )}

@@ -3,8 +3,8 @@
 ## Tổng quan
 
 Tài liệu này mô tả chi tiết cách tính thuế TNCN theo:
-1. **Luật hiện hành** (trước 1/7/2026) - Biểu thuế 7 bậc
-2. **Luật mới** (từ 1/7/2026) - Biểu thuế 5 bậc
+1. **Luật hiện hành** (trước 1/1/2026) - Biểu thuế 7 bậc
+2. **Luật mới** (từ 1/1/2026) - Biểu thuế 5 bậc theo Luật số 109/2025/QH15
 
 ## 1. Công thức tính thuế TNCN
 
