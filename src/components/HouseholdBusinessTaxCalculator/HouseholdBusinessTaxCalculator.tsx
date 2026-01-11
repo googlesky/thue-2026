@@ -137,6 +137,18 @@ export function HouseholdBusinessTaxCalculator() {
             <strong>Dưới ngưỡng:</strong> Không cần đăng ký kinh doanh, không đóng thuế.
             <br />
             <strong>Trên ngưỡng:</strong> Phải đăng ký kinh doanh và nộp thuế theo quy định.
+            <br />
+            <span className="text-orange-700">
+              Ngưỡng áp dụng theo tổng doanh thu của tất cả hoạt động trong năm.
+            </span>
+            {year === 2026 && (
+              <>
+                <br />
+                <span className="text-orange-700">
+                  Lưu ý: TNCN tính trên phần doanh thu vượt ngưỡng, VAT tính trên toàn bộ doanh thu khi vượt ngưỡng.
+                </span>
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -525,6 +537,12 @@ export function HouseholdBusinessTaxCalculator() {
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
               <strong>Thuế khoán:</strong> Nộp thuế theo tỷ lệ % trên doanh thu, không cần hóa đơn chi phí
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-blue-500 mt-0.5">•</span>
+            <span>
+              <strong>Phương pháp lợi nhuận (2026):</strong> Nếu đủ điều kiện xác định chi phí, có thể áp dụng thuế trên lợi nhuận (15-20%). Công cụ này chưa tính theo phương pháp đó.
             </span>
           </li>
           <li className="flex items-start gap-2">

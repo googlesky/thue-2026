@@ -4,7 +4,7 @@
  * Calculates annual PIT settlement for years 2025 and 2026
  * Based on:
  * - Current law (2025): 7 brackets, 11M/4.4M deductions
- * - New law (2026 from July): 5 brackets, 15.5M/6.2M deductions
+ * - New law (2026 from 01/01): 5 brackets, 15.5M/6.2M deductions
  * - Circular 111/2013/TT-BTC for settlement procedures
  */
 
@@ -307,10 +307,18 @@ export function calculateAnnualSettlement(
   // Không còn năm chuyển tiếp - 2025 dùng luật cũ, 2026 dùng luật mới
   const isTransitionYear = false;
 
-  // Calculate insurance (same for all months, based on average or first month salary)
-  const avgSalary =
-    monthlyIncome.reduce((sum, m) => sum + m.grossSalary, 0) / 12 || 0;
-  const monthlyInsurance = getInsuranceDetailed(avgSalary, region, insuranceOptions);
+  // Calculate insurance per month (date-aware caps)
+  const insuranceByMonth = new Map<number, InsuranceDetail>();
+  monthlyIncome.forEach((entry) => {
+    const insuranceDate = new Date(year, entry.month - 1, 1);
+    insuranceByMonth.set(
+      entry.month,
+      getInsuranceDetailed(entry.grossSalary, region, insuranceOptions, insuranceDate)
+    );
+  });
+
+  const getInsuranceForMonth = (month: number): InsuranceDetail =>
+    insuranceByMonth.get(month) ?? { bhxh: 0, bhyt: 0, bhtn: 0, total: 0 };
 
   // Cap voluntary pension
   const cappedPension = Math.min(voluntaryPension, MAX_VOLUNTARY_PENSION_YEARLY);
@@ -320,6 +328,7 @@ export function calculateAnnualSettlement(
     const law = getLawForMonth(year, entry.month);
     const deductions = getDeductions(law);
     const dependentCount = getDependentCountForMonth(dependents, entry.month);
+    const insuranceDetail = getInsuranceForMonth(entry.month);
 
     return {
       month: entry.month,
@@ -329,7 +338,7 @@ export function calculateAnnualSettlement(
       bonus: entry.bonus,
       taxExempt: entry.taxExempt,
       taxableIncome: entry.grossSalary + entry.bonus - entry.taxExempt,
-      insurance: monthlyInsurance.total,
+      insurance: insuranceDetail.total,
       personalDeduction: deductions.personal,
       dependentDeduction: deductions.dependent * dependentCount,
       taxPaid: entry.taxPaid,
@@ -362,7 +371,7 @@ export function calculateAnnualSettlement(
       firstHalfMonths,
       monthlyIncome,
       dependents,
-      monthlyInsurance.total,
+      insuranceByMonth,
       charitableContributions / 2,
       cappedPension / 2
     );
@@ -373,7 +382,7 @@ export function calculateAnnualSettlement(
       secondHalfMonths,
       monthlyIncome,
       dependents,
-      monthlyInsurance.total,
+      insuranceByMonth,
       charitableContributions / 2,
       cappedPension / 2
     );
@@ -391,7 +400,7 @@ export function calculateAnnualSettlement(
       allMonths,
       monthlyIncome,
       dependents,
-      monthlyInsurance.total,
+      insuranceByMonth,
       charitableContributions,
       cappedPension
     );
@@ -413,7 +422,19 @@ export function calculateAnnualSettlement(
   // Calculate dependent deduction based on year
   const totalDependentDeduction = totalDependentMonths * deductions.dependent;
 
-  const totalInsuranceDeduction = monthlyInsurance.total * 12;
+  const totalInsuranceDetail = monthlyIncome.reduce(
+    (sum, entry) => {
+      const detail = getInsuranceForMonth(entry.month);
+      return {
+        bhxh: sum.bhxh + detail.bhxh,
+        bhyt: sum.bhyt + detail.bhyt,
+        bhtn: sum.bhtn + detail.bhtn,
+        total: sum.total + detail.total,
+      };
+    },
+    { bhxh: 0, bhyt: 0, bhtn: 0, total: 0 }
+  );
+  const totalInsuranceDeduction = totalInsuranceDetail.total;
   const totalOtherDeduction = cappedPension + charitableContributions;
   const totalDeductions =
     totalPersonalDeduction +
@@ -427,6 +448,8 @@ export function calculateAnnualSettlement(
   const difference = annualTaxDue - totalTaxPaid;
   const settlementType: 'pay' | 'refund' | 'even' =
     difference > 0 ? 'pay' : difference < 0 ? 'refund' : 'even';
+
+  const monthsCount = monthlyIncome.length || 12;
 
   return {
     year,
@@ -454,13 +477,13 @@ export function calculateAnnualSettlement(
     monthlyBreakdown,
 
     insuranceDetail: {
-      monthly: monthlyInsurance,
-      annual: {
-        bhxh: monthlyInsurance.bhxh * 12,
-        bhyt: monthlyInsurance.bhyt * 12,
-        bhtn: monthlyInsurance.bhtn * 12,
-        total: monthlyInsurance.total * 12,
+      monthly: {
+        bhxh: totalInsuranceDetail.bhxh / monthsCount,
+        bhyt: totalInsuranceDetail.bhyt / monthsCount,
+        bhtn: totalInsuranceDetail.bhtn / monthsCount,
+        total: totalInsuranceDetail.total / monthsCount,
       },
+      annual: totalInsuranceDetail,
     },
 
     dependentSummary: {
@@ -481,7 +504,7 @@ function calculatePeriodResult(
   months: number[],
   monthlyIncome: MonthlyIncomeEntry[],
   dependents: DependentInfo[],
-  monthlyInsurance: number,
+  insuranceByMonth: Map<number, InsuranceDetail>,
   charitableContributions: number,
   voluntaryPension: number
 ): PeriodResult {
@@ -501,7 +524,10 @@ function calculatePeriodResult(
   // Calculate deductions for this period
   const monthCount = months.length;
   const personalDeduction = monthCount * deductions.personal;
-  const insuranceDeduction = monthCount * monthlyInsurance;
+  const insuranceDeduction = months.reduce(
+    (sum, month) => sum + (insuranceByMonth.get(month)?.total ?? 0),
+    0
+  );
 
   // Calculate dependent deduction for this period
   let dependentDeduction = 0;
@@ -575,7 +601,8 @@ export function estimateSettlement(
   const monthlyInsurance = getInsuranceDetailed(
     averageMonthlySalary,
     region,
-    insuranceOptions
+    insuranceOptions,
+    new Date(year, 0, 1)
   );
 
   monthlyIncome.forEach((entry) => {

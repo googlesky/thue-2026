@@ -4,7 +4,7 @@
  *
  * Tax Structure:
  * - PIT: 5% of rental income
- * - VAT: 5% of rental income (if annual revenue > 100M VND)
+ * - VAT: 5% of rental income (if annual revenue exceeds threshold)
  * - Total: 10% (typical case)
  *
  * Expense Deduction Methods:
@@ -87,6 +87,7 @@ export interface RentalIncomeTaxResult {
     potentialSavings: number;
     isVATApplicable: boolean;
     effectiveTaxRate: number;
+    methodImpactsTax: boolean;
   };
 }
 
@@ -97,8 +98,15 @@ export const RENTAL_TAX_RATES = {
   deemedExpenseRate: 0.10, // 10% deemed expenses
 };
 
-// VAT threshold (100 million VND annual revenue)
-export const VAT_THRESHOLD = 100_000_000;
+// Revenue thresholds by year
+export const RENTAL_THRESHOLDS = {
+  2025: 100_000_000,
+  2026: 500_000_000,
+};
+
+export function getRentalThreshold(year: 2025 | 2026): number {
+  return RENTAL_THRESHOLDS[year];
+}
 
 // Property type labels
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
@@ -121,20 +129,28 @@ export function generateId(): string {
  */
 export function calculatePropertyTax(
   property: RentalProperty,
-  totalAnnualRent: number
+  totalAnnualRent: number,
+  year: 2025 | 2026
 ): PropertyTaxResult {
   const annualRent = property.monthlyRent * property.occupiedMonths;
+  const threshold = getRentalThreshold(year);
+  const isTaxable = totalAnnualRent > threshold;
+  const isNewLaw = year === 2026;
+  const thresholdShare = totalAnnualRent > 0 ? (threshold * annualRent) / totalAnnualRent : 0;
 
   // Check if VAT applies (total annual rent > threshold)
-  const isVATApplicable = totalAnnualRent > VAT_THRESHOLD;
+  const isVATApplicable = isTaxable;
 
   // Deemed expense method (10% of revenue)
   const deemedExpenses = Math.round(annualRent * RENTAL_TAX_RATES.deemedExpenseRate);
-  const deemedTaxableIncome = annualRent - deemedExpenses;
-  const deemedPIT = Math.round(deemedTaxableIncome * RENTAL_TAX_RATES.PIT);
+  const pitBase = isTaxable
+    ? (isNewLaw ? Math.max(0, annualRent - thresholdShare) : annualRent)
+    : 0;
+  const deemedTaxableIncome = pitBase;
+  const deemedPIT = isTaxable ? Math.round(pitBase * RENTAL_TAX_RATES.PIT) : 0;
   const deemedVAT = isVATApplicable ? Math.round(annualRent * RENTAL_TAX_RATES.VAT) : 0;
   const deemedTotalTax = deemedPIT + deemedVAT;
-  const deemedNetIncome = annualRent - deemedTotalTax;
+  const deemedNetIncome = annualRent - deemedTotalTax - deemedExpenses;
 
   // Actual expense method
   const actualExpenses =
@@ -144,8 +160,8 @@ export function calculatePropertyTax(
     property.expenses.depreciation +
     property.expenses.insurance +
     property.expenses.otherExpenses;
-  const actualTaxableIncome = Math.max(0, annualRent - actualExpenses);
-  const actualPIT = Math.round(actualTaxableIncome * RENTAL_TAX_RATES.PIT);
+  const actualTaxableIncome = pitBase;
+  const actualPIT = isTaxable ? Math.round(pitBase * RENTAL_TAX_RATES.PIT) : 0;
   const actualVAT = isVATApplicable ? Math.round(annualRent * RENTAL_TAX_RATES.VAT) : 0;
   const actualTotalTax = actualPIT + actualVAT;
   const actualNetIncome = annualRent - actualTotalTax - actualExpenses;
@@ -191,7 +207,7 @@ export function calculateRentalIncomeTax(
 
   // Calculate tax for each property
   const propertyResults = input.properties.map((p) =>
-    calculatePropertyTax(p, totalAnnualRent)
+    calculatePropertyTax(p, totalAnnualRent, input.year)
   );
 
   // Aggregate results
@@ -221,8 +237,9 @@ export function calculateRentalIncomeTax(
   );
 
   // Determine overall recommended method
+  const methodImpactsTax = false;
   const recommendedMethod = totalDeemedNet >= totalActualNet ? 'deemed' : 'actual';
-  const potentialSavings = Math.abs(totalDeemedNet - totalActualNet);
+  const potentialSavings = 0;
 
   // Calculate effective tax rate based on selected method
   const usedTax = input.useActualExpenses ? totalActualTax : totalDeemedTax;
@@ -243,8 +260,9 @@ export function calculateRentalIncomeTax(
       totalActualNet,
       recommendedMethod,
       potentialSavings,
-      isVATApplicable: totalAnnualRent > VAT_THRESHOLD,
+      isVATApplicable: totalAnnualRent > getRentalThreshold(input.year),
       effectiveTaxRate,
+      methodImpactsTax,
     },
   };
 }

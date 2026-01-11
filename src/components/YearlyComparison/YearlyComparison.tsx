@@ -11,7 +11,8 @@ import {
   compareStrategies,
   StrategyComparison as StrategyComparisonType,
 } from '@/lib/yearlyTaxCalculator';
-import { RegionType, SharedTaxState, formatNumber, parseCurrency } from '@/lib/taxCalculator';
+import { RegionType, SharedTaxState, formatNumber } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import ScenarioPresets, { PresetDescription } from './ScenarioPresets';
 import ScenarioColumn from './ScenarioColumn';
 import StrategyComparison from './StrategyComparison';
@@ -46,6 +47,7 @@ export default function YearlyComparison({
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region || 1);
+  const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Custom scenarios (khi không dùng preset)
   const [customScenario2025, setCustomScenario2025] = useState<YearScenario | null>(null);
@@ -147,6 +149,26 @@ export default function YearlyComparison({
     onTabStateChange?.({ selectedPresetId: newPresetId, bonusAmount });
   };
 
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
+  const parseCurrencyWithWarning = (raw: string, max: number) => {
+    const parsed = parseCurrencyInput(raw, { max });
+    setInputWarning(buildWarning(parsed.issues, max));
+    return parsed.value;
+  };
+
   // Get current strategy index
   const getCurrentStrategyIndex = () => {
     if (selectedPresetId === null) {
@@ -178,6 +200,11 @@ export default function YearlyComparison({
           </div>
         </div>
       </div>
+      {inputWarning && (
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {inputWarning}
+        </div>
+      )}
 
       {/* Common Parameters */}
       <div className="card">
@@ -206,7 +233,7 @@ export default function YearlyComparison({
               type="text"
               value={monthlySalary > 0 ? formatNumber(monthlySalary) : ''}
               onChange={(e) => {
-                const value = parseCurrency(e.target.value);
+                const value = parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME);
                 setMonthlySalary(value);
                 if (bonusAmount === monthlySalary || bonusAmount === 0) {
                   setBonusAmount(value);
@@ -234,7 +261,7 @@ export default function YearlyComparison({
               type="text"
               value={bonusAmount > 0 ? formatNumber(bonusAmount) : ''}
               onChange={(e) => {
-                const value = parseCurrency(e.target.value);
+                const value = parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME);
                 setBonusAmount(value);
                 onTabStateChange?.({ selectedPresetId, bonusAmount: value });
               }}

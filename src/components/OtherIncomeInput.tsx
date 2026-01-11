@@ -107,14 +107,14 @@ const incomeFields: IncomeFieldConfig[] = [
     key: 'rental',
     label: 'Cho thuê tài sản',
     icon: '🏠',
-    description: 'Cho thuê nhà, phòng trọ, mặt bằng... (5% TNCN + 5% VAT)',
-    placeholder: 'VD: 10,000,000',
+    description: 'Cho thuê nhà, phòng trọ, mặt bằng... (tổng doanh thu/năm)',
+    placeholder: 'VD: 120,000,000',
   },
   {
     key: 'investment',
-    label: 'Cổ tức / Lãi tiền gửi',
+    label: 'Cổ tức / Lãi đầu tư vốn',
     icon: '📈',
-    description: 'Thu nhập từ cổ tức, lãi tiền gửi ngân hàng (5%)',
+    description: 'Thu nhập từ cổ tức, lãi đầu tư vốn (5%). Lãi tiền gửi ngân hàng được miễn thuế.',
     placeholder: 'VD: 5,000,000',
   },
   {

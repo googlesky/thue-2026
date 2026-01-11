@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { calculatePension, PensionInput, PensionResult } from '@/lib/pensionCalculator';
 import { formatCurrency, formatNumber, parseCurrency } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 import { PensionTabState } from '@/lib/snapshotTypes';
 
@@ -33,6 +34,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
   );
   const [earlyRetirementYears, setEarlyRetirementYears] = useState<number>(tabState?.earlyRetirementYears ?? 0);
   const [isHazardousWork, setIsHazardousWork] = useState<boolean>(tabState?.isHazardousWork ?? false);
+  const [salaryWarning, setSalaryWarning] = useState<string | null>(null);
 
   const [result, setResult] = useState<PensionResult | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -103,8 +105,23 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
   ]);
 
   const handleSalaryChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setCurrentMonthlySalary(numericValue);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setCurrentMonthlySalary(parsed.value.toString());
+    setSalaryWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
+  };
+
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
   };
 
   const currentYear = new Date().getFullYear();
@@ -281,6 +298,9 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
               className="input-field text-lg font-semibold"
               placeholder="Nhập lương đóng BHXH"
             />
+            {salaryWarning && (
+              <p className="text-xs text-amber-600 mt-1">{salaryWarning}</p>
+            )}
           </div>
 
           {/* Early Retirement */}

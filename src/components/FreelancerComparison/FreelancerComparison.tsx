@@ -6,12 +6,12 @@ import {
   RegionType,
   getRegionalMinimumWages,
   formatNumber,
-  parseCurrency,
   calculateOldTax,
   calculateNewTax,
   getInsuranceDetailed,
   isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { FreelancerTabState } from '@/lib/snapshotTypes';
 
 const FREELANCER_TAX_RATE = 0.10;
@@ -42,6 +42,7 @@ export default function FreelancerComparison({
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
   // Auto-detect based on current date (if in 2026, default to new law)
   const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
+  const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Sync from shared state (one-way, only on mount or when sharedState changes externally)
   useEffect(() => {
@@ -97,9 +98,25 @@ export default function FreelancerComparison({
 
   // Handlers with state sync
   const handleGrossChange = (value: string) => {
-    const num = parseCurrency(value);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const num = parsed.value;
+    setInputWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     setGrossIncome(num);
     onStateChange?.({ grossIncome: num });
+  };
+
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
   };
 
   const handleDependentsChange = (value: number) => {
@@ -135,6 +152,11 @@ export default function FreelancerComparison({
         </svg>
         So sánh Freelancer vs Nhân viên
       </h3>
+      {inputWarning && (
+        <div className="mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {inputWarning}
+        </div>
+      )}
 
       {/* Input Section */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

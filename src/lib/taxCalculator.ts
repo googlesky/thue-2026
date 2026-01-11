@@ -316,7 +316,7 @@ export interface SharedTaxState {
 export interface OtherIncomeState {
   freelance: number;         // Thu nhập tự do / dịch vụ
   rental: number;            // Cho thuê tài sản
-  investment: number;        // Đầu tư (cổ tức, lãi tiền gửi)
+  investment: number;        // Đầu tư (cổ tức, lãi đầu tư vốn)
   transfer: number;          // Chuyển nhượng vốn
   lottery: number;           // Trúng thưởng
 }
@@ -342,8 +342,15 @@ export const OTHER_INCOME_TAX_RATES = {
 // Ngưỡng miễn thuế
 export const OTHER_INCOME_THRESHOLDS = {
   lottery: 10_000_000,  // Trúng thưởng miễn thuế dưới 10 triệu
-  rental: 100_000_000,  // Cho thuê tài sản dưới 100 triệu/năm có thể miễn VAT
+  rental2025: 100_000_000,  // Cho thuê tài sản dưới 100 triệu/năm (đến 31/12/2025)
+  rental2026: 500_000_000,  // Cho thuê tài sản dưới 500 triệu/năm (từ 01/01/2026)
 };
+
+export function getRentalIncomeThreshold(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.NEW_TAX_LAW_2026
+    ? OTHER_INCOME_THRESHOLDS.rental2026
+    : OTHER_INCOME_THRESHOLDS.rental2025;
+}
 
 export interface TaxInput {
   grossIncome: number; // Thu nhập gộp (lương thực tế)
@@ -609,20 +616,26 @@ export function calculateNewTax(input: TaxInput): TaxResult {
   };
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number | null | undefined): string {
+  const safeAmount = Number.isFinite(amount) ? (amount as number) : 0;
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(safeAmount);
 }
 
-export function formatNumber(amount: number): string {
-  return new Intl.NumberFormat('vi-VN').format(Math.round(amount));
+export function formatNumber(amount: number | null | undefined): string {
+  const safeAmount = Number.isFinite(amount) ? (amount as number) : 0;
+  return new Intl.NumberFormat('vi-VN').format(Math.round(safeAmount));
 }
 
 export function parseCurrency(value: string): number {
-  return parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return 0;
+  if (digits.length > 15) return Number.MAX_SAFE_INTEGER;
+  const numeric = parseInt(digits, 10) || 0;
+  return Math.min(numeric, Number.MAX_SAFE_INTEGER);
 }
 
 // Tính thuế cho nhiều mức thu nhập (để vẽ biểu đồ)
@@ -737,16 +750,25 @@ export interface OtherIncomeTaxResult {
 }
 
 // Tính thuế cho các nguồn thu nhập khác
-export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherIncomeTaxResult {
+export function calculateOtherIncomeTax(
+  otherIncome: OtherIncomeState,
+  calculationDate: Date = new Date()
+): OtherIncomeTaxResult {
+  const isNewLaw = calculationDate >= EFFECTIVE_DATES.NEW_TAX_LAW_2026;
   // 1. Thu nhập từ dịch vụ / Freelance
   // Cá nhân không đăng ký kinh doanh: 10% trên doanh thu
   const freelanceTax = otherIncome.freelance * OTHER_INCOME_TAX_RATES.freelance;
 
   // 2. Thu nhập từ cho thuê tài sản
-  // Thuế TNCN: 5%, VAT: 5% (chỉ áp dụng khi >= 100 triệu/năm theo Thông tư 40/2021/TT-BTC)
-  const rentalPIT = otherIncome.rental * OTHER_INCOME_TAX_RATES.rental;
-  const isRentalVATApplicable = otherIncome.rental >= OTHER_INCOME_THRESHOLDS.rental;
-  const rentalVAT = isRentalVATApplicable ? otherIncome.rental * OTHER_INCOME_TAX_RATES.rentalVAT : 0;
+  // 2025: áp dụng khi doanh thu > 100 triệu/năm, tính trên toàn bộ doanh thu
+  // 2026: áp dụng khi doanh thu > 500 triệu/năm, PIT trên phần vượt ngưỡng
+  const rentalThreshold = getRentalIncomeThreshold(calculationDate);
+  const isRentalTaxable = otherIncome.rental > rentalThreshold;
+  const rentalPITBase = isRentalTaxable
+    ? (isNewLaw ? otherIncome.rental - rentalThreshold : otherIncome.rental)
+    : 0;
+  const rentalPIT = rentalPITBase * OTHER_INCOME_TAX_RATES.rental;
+  const rentalVAT = isRentalTaxable ? otherIncome.rental * OTHER_INCOME_TAX_RATES.rentalVAT : 0;
 
   // 3. Thu nhập từ đầu tư (cổ tức, lãi tiền gửi)
   // Thuế suất: 5%
@@ -777,18 +799,20 @@ export function calculateOtherIncomeTax(otherIncome: OtherIncomeState): OtherInc
       taxPIT: rentalPIT,
       taxVAT: rentalVAT,
       totalTax: rentalPIT + rentalVAT,
-      rate: isRentalVATApplicable
+      rate: isRentalTaxable
         ? (OTHER_INCOME_TAX_RATES.rental + OTHER_INCOME_TAX_RATES.rentalVAT) * 100
-        : OTHER_INCOME_TAX_RATES.rental * 100,
-      note: isRentalVATApplicable
-        ? '5% TNCN + 5% VAT (doanh thu >= 100tr/năm)'
-        : '5% TNCN (miễn VAT dưới 100tr/năm)',
+        : 0,
+      note: isRentalTaxable
+        ? (isNewLaw
+          ? `5% TNCN (phần vượt ${formatNumber(rentalThreshold)}/năm) + 5% VAT`
+          : `5% TNCN + 5% VAT (doanh thu > ${formatNumber(rentalThreshold)}/năm)`)
+        : `Miễn thuế dưới ${formatNumber(rentalThreshold)}/năm`,
     },
     investment: {
       income: otherIncome.investment,
       tax: investmentTax,
       rate: OTHER_INCOME_TAX_RATES.investment * 100,
-      note: '5% cổ tức/lãi tiền gửi',
+      note: '5% cổ tức/lãi đầu tư vốn (không gồm lãi tiền gửi ngân hàng)',
     },
     transfer: {
       income: otherIncome.transfer,

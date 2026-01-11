@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { convertGrossNet, GrossNetResult } from '@/lib/grossNetCalculator';
 import { formatCurrency, formatNumber, RegionType, getRegionalMinimumWages, SharedTaxState, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface GrossNetConverterProps {
@@ -43,6 +44,8 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const [allowances, setAllowances] = useState<AllowancesState>(
     sharedState?.allowances ?? DEFAULT_ALLOWANCES
   );
+  const [amountWarning, setAmountWarning] = useState<string | null>(null);
+  const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
 
   const [oldResult, setOldResult] = useState<GrossNetResult | null>(null);
   const [newResult, setNewResult] = useState<GrossNetResult | null>(null);
@@ -195,8 +198,24 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   }, [sharedState, grossValue]);
 
   // Handle amount change based on current type
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
   const handleAmountChange = (value: string) => {
-    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const numericValue = parsed.value;
+    setAmountWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
 
     if (type === 'gross') {
       setGrossValue(numericValue);
@@ -258,8 +277,10 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   };
 
   const handleDeclaredSalaryChange = (value: string) => {
-    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const numericValue = parsed.value;
     setDeclaredSalary(numericValue);
+    setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     isLocalChange.current = true;
     if (onStateChange) {
       onStateChange({ declaredSalary: numericValue });
@@ -353,6 +374,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
               className="input-field text-lg font-semibold"
               aria-required="true"
             />
+            {amountWarning && (
+              <p className="text-xs text-amber-600 mt-2">{amountWarning}</p>
+            )}
           </div>
 
           {/* Lương đóng bảo hiểm */}
@@ -389,6 +413,9 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                     placeholder="Ví dụ: 5.000.000"
                     aria-describedby="gn-declared-salary-hint"
                   />
+                  {declaredWarning && (
+                    <p className="text-xs text-amber-600 mt-1">{declaredWarning}</p>
+                  )}
                   <p id="gn-declared-salary-hint" className="text-xs text-amber-600 mt-1">
                     BH tính trên mức này - Thuế tính trên lương thực
                   </p>

@@ -7,9 +7,9 @@ import {
   DEFAULT_INSURANCE_OPTIONS,
   getRegionalMinimumWages,
   formatNumber,
-  parseCurrency,
   isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import {
   CompanyOffer,
   ComparisonResult,
@@ -102,6 +102,7 @@ export default function SalaryComparison({
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
   // Auto-detect based on current date (if in 2026, default to new law)
   const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
+  const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Sync từ shared state - chỉ lấy dependents
   useEffect(() => {
@@ -161,6 +162,30 @@ export default function SalaryComparison({
     onTabStateChange?.({ companies: newCompanies, useNewLaw });
   };
 
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
+  const handleMoneyChange = (
+    companyId: string,
+    field: 'grossSalary' | 'otherBenefits',
+    rawValue: string
+  ) => {
+    const parsed = parseCurrencyInput(rawValue, { max: MAX_MONTHLY_INCOME });
+    setInputWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
+    updateCompany(companyId, { [field]: parsed.value });
+  };
+
   const validCompanyCount = companies.filter(c => c.grossSalary > 0).length;
 
   return (
@@ -171,6 +196,11 @@ export default function SalaryComparison({
         </svg>
         So sánh lương giữa các công ty
       </h3>
+      {inputWarning && (
+        <div className="mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {inputWarning}
+        </div>
+      )}
 
       {/* Common Settings */}
       <div className="flex flex-wrap gap-4 mb-6 pb-4 border-b border-gray-200">
@@ -264,7 +294,7 @@ export default function SalaryComparison({
                 <input
                   type="text"
                   value={company.grossSalary > 0 ? formatNumber(company.grossSalary) : ''}
-                  onChange={(e) => updateCompany(company.id, { grossSalary: parseCurrency(e.target.value) })}
+                  onChange={(e) => handleMoneyChange(company.id, 'grossSalary', e.target.value)}
                   placeholder="30,000,000"
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 />
@@ -298,7 +328,7 @@ export default function SalaryComparison({
                 <input
                   type="text"
                   value={company.otherBenefits > 0 ? formatNumber(company.otherBenefits) : ''}
-                  onChange={(e) => updateCompany(company.id, { otherBenefits: parseCurrency(e.target.value) })}
+                  onChange={(e) => handleMoneyChange(company.id, 'otherBenefits', e.target.value)}
                   placeholder="0"
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 />

@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { MonthlyEntry } from '@/lib/yearlyTaxCalculator';
-import { formatNumber, parseCurrency } from '@/lib/taxCalculator';
+import { formatNumber } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 
 interface MonthlyInputGridProps {
   months: MonthlyEntry[];
@@ -23,20 +25,40 @@ export default function MonthlyInputGrid({
   year,
   disabled = false,
 }: MonthlyInputGridProps) {
+  const [inputWarning, setInputWarning] = useState<string | null>(null);
+
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
   const handleMonthChange = (index: number, value: string) => {
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setInputWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     const newMonths = [...months];
     newMonths[index] = {
       ...newMonths[index],
-      grossIncome: parseCurrency(value),
+      grossIncome: parsed.value,
     };
     onChange(newMonths, bonusMonths);
   };
 
   const handleBonusChange = (index: number, value: string) => {
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setInputWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     const newBonusMonths = [...bonusMonths];
     newBonusMonths[index] = {
       ...newBonusMonths[index],
-      grossIncome: parseCurrency(value),
+      grossIncome: parsed.value,
     };
     onChange(months, newBonusMonths);
   };
@@ -85,6 +107,11 @@ export default function MonthlyInputGrid({
           Điền giống T1
         </button>
       </div>
+      {inputWarning && (
+        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+          {inputWarning}
+        </div>
+      )}
 
       {/* Grid 12 tháng (2 cột mobile, 3 cột desktop) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

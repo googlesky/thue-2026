@@ -125,11 +125,14 @@ export function generateId(): string {
  */
 export function calculateBusinessTax(
   business: HouseholdBusiness,
-  year: 2025 | 2026
+  year: 2025 | 2026,
+  totalAnnualRevenue: number
 ): BusinessTaxResult {
   const annualRevenue = business.monthlyRevenue * business.operatingMonths;
   const threshold = getRevenueThreshold(year);
-  const isAboveThreshold = annualRevenue > threshold;
+  const isAboveThreshold = totalAnnualRevenue > threshold;
+  const thresholdShare =
+    totalAnnualRevenue > 0 ? (threshold * annualRevenue) / totalAnnualRevenue : 0;
 
   let pitRate = 0;
   let vatRate = 0;
@@ -141,13 +144,14 @@ export function calculateBusinessTax(
     pitRate = PIT_RATES[business.category];
     vatRate = VAT_RATES[business.category];
 
-    // Từ 2026: Thuế tính trên phần doanh thu TRÊN ngưỡng miễn thuế
-    // Công thức: Thuế = (Doanh thu - Ngưỡng) × Thuế suất
+    // Từ 2026:
+    // - PIT tính trên phần doanh thu TRÊN ngưỡng miễn thuế
+    // - VAT tính trên toàn bộ doanh thu khi vượt ngưỡng
     // Reference: Luật Thuế TNCN sửa đổi 2025
     if (year === 2026) {
-      const taxableRevenue = annualRevenue - threshold;
+      const taxableRevenue = Math.max(0, annualRevenue - thresholdShare);
       pitAmount = Math.round(taxableRevenue * pitRate);
-      vatAmount = Math.round(taxableRevenue * vatRate);
+      vatAmount = Math.round(annualRevenue * vatRate);
     } else {
       // Trước 2026: Thuế = Doanh thu × Thuế suất (trên toàn bộ doanh thu)
       pitAmount = Math.round(annualRevenue * pitRate);
@@ -191,16 +195,18 @@ export function calculateBusinessTax(
 export function calculateHouseholdBusinessTax(
   input: HouseholdBusinessTaxInput
 ): HouseholdBusinessTaxResult {
+  // Calculate total annual revenue first (threshold applies to total)
+  const totalAnnualRevenue = input.businesses.reduce(
+    (sum, b) => sum + b.monthlyRevenue * b.operatingMonths,
+    0
+  );
+
   // Calculate tax for each business
   const businessResults = input.businesses.map((b) =>
-    calculateBusinessTax(b, input.year)
+    calculateBusinessTax(b, input.year, totalAnnualRevenue)
   );
 
   // Calculate summary
-  const totalAnnualRevenue = businessResults.reduce(
-    (sum, b) => sum + b.annualRevenue,
-    0
-  );
   const totalPIT = businessResults.reduce((sum, b) => sum + b.pitAmount, 0);
   const totalVAT = businessResults.reduce((sum, b) => sum + b.vatAmount, 0);
   const totalTax = totalPIT + totalVAT;
@@ -322,8 +328,9 @@ export function compareTaxBetweenYears(
   savings: number;
   savingsPercentage: number;
 } {
-  const tax2025 = calculateBusinessTax(business, 2025);
-  const tax2026 = calculateBusinessTax(business, 2026);
+  const totalAnnualRevenue = business.monthlyRevenue * business.operatingMonths;
+  const tax2025 = calculateBusinessTax(business, 2025, totalAnnualRevenue);
+  const tax2026 = calculateBusinessTax(business, 2026, totalAnnualRevenue);
   const savings = tax2025.totalTax - tax2026.totalTax;
   const savingsPercentage =
     tax2025.totalTax > 0 ? (savings / tax2025.totalTax) * 100 : 0;

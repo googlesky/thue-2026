@@ -173,6 +173,8 @@ export function getOvertimeTypeLabel(type: OvertimeType): string {
       return 'Ngày nghỉ tuần';
     case 'holiday':
       return 'Ngày lễ, Tết';
+    default:
+      return 'Không xác định';
   }
 }
 
@@ -180,7 +182,9 @@ export function getOvertimeTypeLabel(type: OvertimeType): string {
  * Get Vietnamese label for shift type
  */
 export function getShiftTypeLabel(shift: ShiftType): string {
-  return shift === 'day' ? 'Ca ngày' : 'Ca đêm (22h-6h)';
+  if (shift === 'day') return 'Ca ngày';
+  if (shift === 'night') return 'Ca đêm (22h-6h)';
+  return 'Không xác định';
 }
 
 /**

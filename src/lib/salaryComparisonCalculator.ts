@@ -145,10 +145,11 @@ export function calculateCompanyOffer(
   for (let i = 0; i < bonusMonths; i++) {
     // Tháng có thưởng: thu nhập = lương + thưởng
     const bonusMonthIncome = grossSalary + grossSalary; // lương + 1 tháng thưởng
+    const bonusInsuranceBase = declaredSalary ?? grossSalary;
     const bonusTaxResult = useNewLaw
       ? calculateNewTax({
           grossIncome: bonusMonthIncome,
-          declaredSalary: declaredSalary ? declaredSalary * 2 : undefined,
+          declaredSalary: bonusInsuranceBase,
           dependents,
           hasInsurance,
           insuranceOptions: insOptions,
@@ -156,7 +157,7 @@ export function calculateCompanyOffer(
         })
       : calculateOldTax({
           grossIncome: bonusMonthIncome,
-          declaredSalary: declaredSalary ? declaredSalary * 2 : undefined,
+          declaredSalary: bonusInsuranceBase,
           dependents,
           hasInsurance,
           insuranceOptions: insOptions,

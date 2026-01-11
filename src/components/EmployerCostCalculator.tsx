@@ -9,12 +9,9 @@ import {
   getRegionalMinimumWages,
   getMaxUnemploymentInsuranceSalary,
   formatNumber,
-  parseCurrency,
-  AllowancesState,
-  DEFAULT_ALLOWANCES,
-  EFFECTIVE_DATES,
   isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
 // Constants - inline to avoid dependency issues
@@ -79,6 +76,8 @@ export default function EmployerCostCalculator({
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
   // Auto-detect based on current date (if in 2026, default to new law)
   const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
+  const [grossWarning, setGrossWarning] = useState<string | null>(null);
+  const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
 
   // Sync from shared state
   useEffect(() => {
@@ -163,14 +162,32 @@ export default function EmployerCostCalculator({
 
   // ========== HANDLERS ==========
 
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
   const handleGrossChange = (value: string) => {
-    const numValue = parseCurrency(value);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const numValue = parsed.value;
+    setGrossWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     setGrossSalary(numValue);
     onStateChange?.({ grossIncome: numValue });
   };
 
   const handleDeclaredChange = (value: string) => {
-    const numValue = parseCurrency(value);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const numValue = parsed.value;
+    setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     setDeclaredSalary(numValue);
     onStateChange?.({ declaredSalary: numValue });
   };
@@ -242,6 +259,9 @@ export default function EmployerCostCalculator({
               placeholder="30,000,000"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
+            {grossWarning && (
+              <p className="text-xs text-amber-600 mt-1">{grossWarning}</p>
+            )}
           </div>
 
           {/* Declared Salary Toggle */}
@@ -264,6 +284,9 @@ export default function EmployerCostCalculator({
                   placeholder="Lương đóng BHXH, BHYT, BHTN"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
+                {declaredWarning && (
+                  <p className="text-xs text-amber-600 mt-1">{declaredWarning}</p>
+                )}
                 <p className="text-xs text-amber-600">BH tính trên mức này - Thuế tính trên lương thực</p>
               </>
             )}
