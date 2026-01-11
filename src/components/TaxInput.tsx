@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { formatNumber, RegionType, getRegionalMinimumWages, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface TaxInputProps {
@@ -56,6 +57,11 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   const [allowances, setAllowances] = useState<AllowancesState>(
     initialValues?.allowances ?? { ...DEFAULT_ALLOWANCES }
   );
+  const [grossWarning, setGrossWarning] = useState<string | null>(null);
+  const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
+  const [otherDeductionWarning, setOtherDeductionWarning] = useState<string | null>(null);
+  const [pensionWarning, setPensionWarning] = useState<string | null>(null);
+  const [allowanceWarning, setAllowanceWarning] = useState<string | null>(null);
 
   // Get date-aware regional minimum wages
   const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
@@ -92,25 +98,27 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   }, [initialValues]);
 
   const handleIncomeChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setGrossIncome(numericValue);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setGrossIncome(parsed.value.toString());
+    setGrossWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleDeclaredSalaryChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setDeclaredSalary(numericValue);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setDeclaredSalary(parsed.value.toString());
+    setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleOtherDeductionsChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setOtherDeductions(numericValue);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    setOtherDeductions(parsed.value.toString());
+    setOtherDeductionWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handlePensionChange = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    // Giới hạn tối đa 1 triệu/tháng
-    const amount = Math.min(parseInt(numericValue, 10) || 0, 1_000_000);
-    setPensionContribution(amount.toString());
+    const parsed = parseCurrencyInput(value, { max: 1_000_000 });
+    setPensionContribution(parsed.value.toString());
+    setPensionWarning(buildWarning(parsed.issues, 1_000_000));
   };
 
   const handleInsuranceToggle = (type: keyof InsuranceOptions) => {
@@ -121,11 +129,26 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   };
 
   const handleAllowanceChange = (field: keyof AllowancesState, value: string) => {
-    const numericValue = parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
     setAllowances(prev => ({
       ...prev,
-      [field]: numericValue,
+      [field]: parsed.value,
     }));
+    setAllowanceWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
+  };
+
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
   };
 
   // Sync hasInsurance with individual options
@@ -204,11 +227,17 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
             aria-required="true"
             aria-describedby="gross-income-presets"
           />
+          {grossWarning && (
+            <p className="text-xs text-amber-600 mt-2">{grossWarning}</p>
+          )}
           <div id="gross-income-presets" className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Mức thu nhập mẫu">
             {presetIncomes.map((income) => (
               <button
                 key={income}
-                onClick={() => setGrossIncome(income.toString())}
+                onClick={() => {
+                  setGrossIncome(income.toString());
+                  setGrossWarning(null);
+                }}
                 aria-label={`Chọn mức thu nhập ${formatNumber(income)} VNĐ`}
                 aria-pressed={parseInt(grossIncome, 10) === income}
                 className={`px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm rounded-full transition-colors ${
@@ -258,6 +287,9 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 placeholder="Ví dụ: lương thực 30tr, đóng BH trên 5tr"
                 aria-describedby="declared-salary-hint"
               />
+              {declaredWarning && (
+                <p className="text-xs text-amber-600 mt-1">{declaredWarning}</p>
+              )}
               <p id="declared-salary-hint" className="text-xs text-amber-600 mt-1">
                 Bảo hiểm tính trên mức này • Thuế tính trên lương thực ({grossIncome ? formatNumber(parseInt(grossIncome, 10)) : '0'}đ)
               </p>
@@ -410,6 +442,9 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 placeholder="Tối đa 1.000.000"
                 aria-describedby="pension-contribution-hint"
               />
+              {pensionWarning && (
+                <p className="text-xs text-amber-600 mt-1">{pensionWarning}</p>
+              )}
               <p id="pension-contribution-hint" className="text-xs text-gray-500 mt-1">
                 Tối đa 1.000.000 VNĐ/tháng được giảm trừ
               </p>
@@ -434,6 +469,9 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 placeholder="Đóng góp từ thiện..."
                 aria-describedby="other-deductions-hint"
               />
+              {otherDeductionWarning && (
+                <p className="text-xs text-amber-600 mt-1">{otherDeductionWarning}</p>
+              )}
               <p id="other-deductions-hint" className="text-xs text-gray-500 mt-1">
                 Đóng góp qua các tổ chức từ thiện được công nhận
               </p>
@@ -461,6 +499,9 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
 
         {showAllowances && (
           <div className="space-y-4 bg-green-50 rounded-lg p-4 border border-green-200">
+            {allowanceWarning && (
+              <p className="text-xs text-amber-600">{allowanceWarning}</p>
+            )}
             {/* Tax-exempt allowances */}
             <div>
               <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">

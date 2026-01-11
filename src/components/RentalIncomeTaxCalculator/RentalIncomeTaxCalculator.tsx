@@ -9,7 +9,7 @@ import {
   createEmptyProperty,
   PROPERTY_TYPE_LABELS,
   EXPENSE_CATEGORIES,
-  VAT_THRESHOLD,
+  getRentalThreshold,
 } from '@/lib/rentalIncomeTaxCalculator';
 import { formatCurrency, formatNumber } from '@/lib/taxCalculator';
 
@@ -22,6 +22,7 @@ export default function RentalIncomeTaxCalculator() {
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set());
 
   const [propertyForm, setPropertyForm] = useState<RentalProperty>(createEmptyProperty());
+  const rentalThreshold = getRentalThreshold(year);
 
   // Calculate taxes
   const input: RentalIncomeTaxInput = {
@@ -135,8 +136,8 @@ export default function RentalIncomeTaxCalculator() {
                 className="w-4 h-4 text-blue-600"
               />
               <div>
-                <span className="text-sm font-medium">Khoán chi phí 10%</span>
-                <span className="text-xs text-gray-500 block">Mặc định cho cá nhân</span>
+                <span className="text-sm font-medium">Ước tính chi phí 10%</span>
+                <span className="text-xs text-gray-500 block">Dùng để ước tính thu nhập ròng</span>
               </div>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -149,17 +150,20 @@ export default function RentalIncomeTaxCalculator() {
               />
               <div>
                 <span className="text-sm font-medium">Chi phí thực tế</span>
-                <span className="text-xs text-gray-500 block">Cần chứng từ đầy đủ</span>
+                <span className="text-xs text-gray-500 block">Dùng để ước tính thu nhập ròng</span>
               </div>
             </label>
           </div>
-          {properties.length > 0 && result.summary.recommendedMethod !== (useActualExpenses ? 'actual' : 'deemed') && (
+          {properties.length > 0 && result.summary.methodImpactsTax && result.summary.recommendedMethod !== (useActualExpenses ? 'actual' : 'deemed') && (
             <p className="mt-3 text-sm text-blue-700 bg-blue-100 px-3 py-2 rounded-lg">
               <span className="font-medium">Gợi ý:</span> Phương pháp{' '}
-              {result.summary.recommendedMethod === 'deemed' ? 'khoán 10%' : 'chi phí thực tế'}{' '}
+              {result.summary.recommendedMethod === 'deemed' ? 'ước tính 10%' : 'chi phí thực tế'}{' '}
               có lợi hơn, tiết kiệm {formatCurrency(result.summary.potentialSavings)}/năm
             </p>
           )}
+          <p className="mt-3 text-sm text-blue-700 bg-blue-100 px-3 py-2 rounded-lg">
+            Thuế cho thuê tài sản tính theo tỷ lệ doanh thu; chi phí chỉ dùng để ước tính thu nhập ròng và không làm thay đổi số thuế.
+          </p>
         </div>
 
         {/* Properties List */}
@@ -378,7 +382,7 @@ export default function RentalIncomeTaxCalculator() {
                           <div className={`p-3 rounded-lg ${!useActualExpenses ? 'bg-blue-50 border-2 border-blue-300' : 'bg-white border border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-sm font-medium text-gray-700">Khoán 10%</span>
-                              {prop.recommendedMethod === 'deemed' && (
+                              {result.summary.methodImpactsTax && prop.recommendedMethod === 'deemed' && (
                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                   Khuyến nghị
                                 </span>
@@ -401,7 +405,7 @@ export default function RentalIncomeTaxCalculator() {
                           <div className={`p-3 rounded-lg ${useActualExpenses ? 'bg-blue-50 border-2 border-blue-300' : 'bg-white border border-gray-200'}`}>
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-sm font-medium text-gray-700">Chi phí thực tế</span>
-                              {prop.recommendedMethod === 'actual' && (
+                              {result.summary.methodImpactsTax && prop.recommendedMethod === 'actual' && (
                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                   Khuyến nghị
                                 </span>
@@ -447,11 +451,16 @@ export default function RentalIncomeTaxCalculator() {
             <p className={`text-sm ${result.summary.isVATApplicable ? 'text-amber-700' : 'text-green-700'}`}>
               {result.summary.isVATApplicable ? (
                 <>
-                  <span className="font-medium">Doanh thu trên 100 triệu/năm</span> - Áp dụng VAT 5% + PIT 5% = 10%
+                  <span className="font-medium">Doanh thu trên {formatCurrency(rentalThreshold)}/năm</span>
+                  {' '}– Áp dụng VAT 5% trên doanh thu
+                  {year === 2026
+                    ? ' và PIT 5% trên phần vượt ngưỡng'
+                    : ' và PIT 5% trên doanh thu'}
                 </>
               ) : (
                 <>
-                  <span className="font-medium">Doanh thu dưới 100 triệu/năm</span> - Chỉ áp dụng PIT 5% (miễn VAT)
+                  <span className="font-medium">Doanh thu dưới {formatCurrency(rentalThreshold)}/năm</span>
+                  {' '}– Miễn PIT và VAT
                 </>
               )}
             </p>
@@ -462,7 +471,7 @@ export default function RentalIncomeTaxCalculator() {
             <div className={`p-4 rounded-xl ${!useActualExpenses ? 'bg-blue-100 border-2 border-blue-300' : 'bg-gray-50'}`}>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">📊</span>
-                <span className="font-semibold text-gray-800">Khoán chi phí 10%</span>
+                <span className="font-semibold text-gray-800">Ước tính chi phí 10%</span>
                 {!useActualExpenses && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Đang chọn</span>}
               </div>
               <div className="space-y-2 text-sm">
@@ -551,13 +560,17 @@ export default function RentalIncomeTaxCalculator() {
         <div className="grid sm:grid-cols-2 gap-4 text-sm text-gray-600">
           <div>
             <h4 className="font-medium text-gray-700 mb-1">Thuế suất</h4>
-            <p>PIT: 5% thu nhập chịu thuế</p>
-            <p>VAT: 5% (nếu doanh thu &gt; 100 triệu/năm)</p>
+            <p>
+              PIT: 5% {year === 2026
+                ? `(phần vượt ${formatCurrency(rentalThreshold)}/năm)`
+                : `(doanh thu khi vượt ${formatCurrency(rentalThreshold)}/năm)`}
+            </p>
+            <p>VAT: 5% (nếu doanh thu &gt; {formatCurrency(rentalThreshold)}/năm)</p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-700 mb-1">Chi phí được trừ</h4>
-            <p>Khoán: 10% doanh thu (mặc định)</p>
-            <p>Thực tế: Theo chứng từ hợp lệ</p>
+            <h4 className="font-medium text-gray-700 mb-1">Chi phí</h4>
+            <p>Thuế tính theo doanh thu, không trừ chi phí.</p>
+            <p>Chi phí chỉ dùng để ước tính thu nhập ròng.</p>
           </div>
           <div>
             <h4 className="font-medium text-gray-700 mb-1">Khai thuế</h4>
@@ -566,8 +579,8 @@ export default function RentalIncomeTaxCalculator() {
           </div>
           <div>
             <h4 className="font-medium text-gray-700 mb-1">Ngưỡng VAT</h4>
-            <p>Doanh thu ≤ {formatCurrency(VAT_THRESHOLD)}/năm: Miễn VAT</p>
-            <p>Doanh thu &gt; {formatCurrency(VAT_THRESHOLD)}/năm: Nộp VAT 5%</p>
+            <p>Doanh thu ≤ {formatCurrency(rentalThreshold)}/năm: Miễn VAT</p>
+            <p>Doanh thu &gt; {formatCurrency(rentalThreshold)}/năm: Nộp VAT 5%</p>
           </div>
         </div>
       </div>

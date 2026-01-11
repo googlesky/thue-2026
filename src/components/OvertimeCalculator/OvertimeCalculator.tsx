@@ -5,10 +5,10 @@ import {
   SharedTaxState,
   formatNumber,
   formatCurrency,
-  parseCurrency,
   DEFAULT_INSURANCE_OPTIONS,
   isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import {
   calculateOvertime,
   OvertimeEntry,
@@ -55,6 +55,7 @@ export default function OvertimeCalculator({
   const [includeHolidayBasePay, setIncludeHolidayBasePay] = useState(
     tabState?.includeHolidayBasePay ?? true
   );
+  const [salaryWarning, setSalaryWarning] = useState<string | null>(null);
   // Auto-detect based on current date (if in 2026, default to new law)
   const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
 
@@ -99,12 +100,28 @@ export default function OvertimeCalculator({
 
   // Handle salary change
   const handleSalaryChange = (value: string) => {
-    const numValue = parseCurrency(value);
+    const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
+    const numValue = parsed.value;
+    setSalaryWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
     isLocalChange.current = true;
     setMonthlySalary(numValue);
     updateTabState({ monthlySalary: numValue });
     // Also update shared state
     onStateChange?.({ grossIncome: numValue });
+  };
+
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
   };
 
   // Add new overtime entry
@@ -230,6 +247,9 @@ export default function OvertimeCalculator({
                 VND
               </span>
             </div>
+            {salaryWarning && (
+              <p className="text-xs text-amber-600 mt-2">{salaryWarning}</p>
+            )}
             {hourlyRate > 0 && (
               <p className="text-xs text-gray-500 mt-1">
                 Lương giờ: {formatNumber(hourlyRate)} VND/giờ
@@ -395,6 +415,11 @@ export default function OvertimeCalculator({
                   {formatCurrency(result.totalGrossIncome)}
                 </div>
               </div>
+              {entries.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                  Chưa có giờ tăng ca. Kết quả hiện tại chỉ tính lương cơ bản.
+                </div>
+              )}
 
               {/* Breakdown */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">

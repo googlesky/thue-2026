@@ -11,6 +11,7 @@ import {
   AllowancesState,
   calculateAllowancesBreakdown,
 } from './taxCalculator';
+import { MAX_MONTHLY_INCOME } from '@/utils/inputSanitizers';
 
 export interface GrossNetInput {
   amount: number;
@@ -110,12 +111,13 @@ export function netToGross(input: GrossNetInput): GrossNetResult {
   // Binary search để tìm gross từ net
   let low = targetNet;
   let high = targetNet * 2; // Gross thường không quá 2 lần net
+  const maxSearch = MAX_MONTHLY_INCOME * 2;
   let result: GrossNetResult | null = null;
 
   // Đảm bảo high đủ lớn
   while (grossToNet({ ...input, amount: high, type: 'gross' }).net < targetNet) {
     high *= 1.5;
-    if (high > 1_000_000_000) break; // Safety limit
+    if (high > maxSearch) break; // Safety limit aligned with input cap
   }
 
   // Binary search

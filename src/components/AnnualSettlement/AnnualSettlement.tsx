@@ -5,11 +5,11 @@ import {
   SharedTaxState,
   formatNumber,
   formatCurrency,
-  parseCurrency,
   DEFAULT_INSURANCE_OPTIONS,
   RegionType,
   InsuranceOptions,
 } from '@/lib/taxCalculator';
+import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import {
   SettlementYear,
   MonthlyIncomeEntry,
@@ -88,6 +88,7 @@ export default function AnnualSettlement({
   const [manualTaxPaidMode, setManualTaxPaidMode] = useState(tabState?.manualTaxPaidMode ?? false);
   const [manualTaxPaid, setManualTaxPaid] = useState(tabState?.manualTaxPaid ?? 0);
   const [showMonthlyDetails, setShowMonthlyDetails] = useState(false);
+  const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Sync from shared state
   useEffect(() => {
@@ -162,12 +163,18 @@ export default function AnnualSettlement({
   useEffect(() => {
     if (useAverageSalary && averageSalary > 0) {
       const newMonthlyIncome = createDefaultMonthlyIncome(averageSalary, 0, 0);
-      // Calculate estimated tax for each month
-      const insurance = getInsuranceDetailed(averageSalary, region, insuranceOptions);
       newMonthlyIncome.forEach(entry => {
+        // Calculate estimated tax for each month (date-aware for insurance caps)
+        const insurance = getInsuranceDetailed(
+          entry.grossSalary,
+          region,
+          insuranceOptions,
+          new Date(year, entry.month - 1, 1)
+        );
         const law = getLawForMonth(year, entry.month);
         const dependentCountForMonth = getDependentCountForMonth(entry.month);
-        entry.taxPaid = estimateMonthlyTax(averageSalary, dependentCountForMonth, insurance.total, law);
+        const taxableForMonth = entry.grossSalary + entry.bonus - entry.taxExempt;
+        entry.taxPaid = estimateMonthlyTax(taxableForMonth, dependentCountForMonth, insurance.total, law);
       });
       setMonthlyIncome(newMonthlyIncome);
     }
@@ -197,9 +204,29 @@ export default function AnnualSettlement({
     updateTabState({ year: newYear });
   };
 
+  const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
+    const messages: string[] = [];
+    if (issues.negative) {
+      messages.push('Không hỗ trợ số âm.');
+    }
+    if (issues.decimal) {
+      messages.push('Không hỗ trợ số thập phân, đã bỏ phần lẻ.');
+    }
+    if (issues.overflow && max) {
+      messages.push(`Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`);
+    }
+    return messages.length ? messages.join(' ') : null;
+  };
+
+  const parseCurrencyWithWarning = (raw: string, max: number) => {
+    const parsed = parseCurrencyInput(raw, { max });
+    setInputWarning(buildWarning(parsed.issues, max));
+    return parsed.value;
+  };
+
   // Handle average salary change
   const handleAverageSalaryChange = (value: string) => {
-    const numValue = parseCurrency(value);
+    const numValue = parseCurrencyWithWarning(value, MAX_MONTHLY_INCOME);
     isLocalChange.current = true;
     setAverageSalary(numValue);
     updateTabState({ averageSalary: numValue });
@@ -306,6 +333,11 @@ export default function AnnualSettlement({
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Left column - Input */}
         <div className="space-y-6">
+          {inputWarning && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {inputWarning}
+            </div>
+          )}
           {/* Income input */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Thu nhập</h3>
@@ -376,7 +408,7 @@ export default function AnnualSettlement({
                           <input
                             type="text"
                             value={formatNumber(entry.grossSalary)}
-                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'grossSalary', parseCurrency(e.target.value))}
+                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'grossSalary', parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME))}
                             className="w-full px-2 py-1 border border-gray-200 rounded text-right"
                           />
                         </td>
@@ -384,7 +416,7 @@ export default function AnnualSettlement({
                           <input
                             type="text"
                             value={formatNumber(entry.bonus)}
-                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'bonus', parseCurrency(e.target.value))}
+                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'bonus', parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME))}
                             className="w-full px-2 py-1 border border-gray-200 rounded text-right"
                           />
                         </td>
@@ -392,7 +424,7 @@ export default function AnnualSettlement({
                           <input
                             type="text"
                             value={formatNumber(entry.taxPaid)}
-                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'taxPaid', parseCurrency(e.target.value))}
+                            onChange={(e) => handleMonthlyIncomeChange(entry.month, 'taxPaid', parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME))}
                             className="w-full px-2 py-1 border border-gray-200 rounded text-right"
                           />
                         </td>
@@ -495,7 +527,7 @@ export default function AnnualSettlement({
                   type="text"
                   value={formatNumber(charitableContributions)}
                   onChange={(e) => {
-                    const value = parseCurrency(e.target.value);
+                    const value = parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME * 12);
                     setCharitableContributions(value);
                     updateTabState({ charitableContributions: value });
                   }}
@@ -514,7 +546,7 @@ export default function AnnualSettlement({
                   type="text"
                   value={formatNumber(voluntaryPension)}
                   onChange={(e) => {
-                    const value = Math.min(parseCurrency(e.target.value), 12_000_000);
+                    const value = parseCurrencyWithWarning(e.target.value, 12_000_000);
                     setVoluntaryPension(value);
                     updateTabState({ voluntaryPension: value });
                   }}
@@ -560,7 +592,7 @@ export default function AnnualSettlement({
                   type="text"
                   value={formatNumber(manualTaxPaid)}
                   onChange={(e) => {
-                    const value = parseCurrency(e.target.value);
+                    const value = parseCurrencyWithWarning(e.target.value, MAX_MONTHLY_INCOME * 12);
                     setManualTaxPaid(value);
                     updateTabState({ manualTaxPaid: value });
                   }}

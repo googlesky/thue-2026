@@ -250,6 +250,7 @@ const ResultDetails = memo(function ResultDetails({ result, colorClass, declared
   const hasInsurance = result.insuranceDeduction > 0;
   const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
   const hasAllowances = allowancesBreakdown && allowancesBreakdown.total > 0;
+  const effectiveRate = Number.isFinite(result.effectiveRate) ? result.effectiveRate : 0;
 
   const items: Array<{ label: string; value: number; isHeader?: boolean; isPositive?: boolean; isSubItem?: boolean }> = [
     { label: 'Thu nhập gộp', value: result.grossIncome },
@@ -341,7 +342,7 @@ const ResultDetails = memo(function ResultDetails({ result, colorClass, declared
         </div>
         <div className="flex justify-between text-sm mt-2 text-gray-500">
           <span>Thuế suất thực tế</span>
-          <span>{result.effectiveRate.toFixed(2)}%</span>
+          <span>{effectiveRate.toFixed(2)}%</span>
         </div>
       </div>
 
