@@ -170,7 +170,10 @@ export function saveNamedSave(
       },
       tabs: {
         employerCost: { ...snapshot.tabs.employerCost },
-        freelancer: { ...snapshot.tabs.freelancer },
+        freelancer: {
+          ...snapshot.tabs.freelancer,
+          creatorIncomeSources: snapshot.tabs.freelancer.creatorIncomeSources?.map(s => ({ ...s })) || [],
+        },
         salaryComparison: {
           ...snapshot.tabs.salaryComparison,
           companies: snapshot.tabs.salaryComparison.companies.map(c => ({ ...c })),
@@ -193,6 +196,9 @@ export function saveNamedSave(
           ...snapshot.tabs.foreignerTax,
           allowances: { ...snapshot.tabs.foreignerTax.allowances },
         },
+        latePayment: { ...snapshot.tabs.latePayment },
+        businessFormComparison: { ...snapshot.tabs.businessFormComparison },
+        severance: { ...snapshot.tabs.severance },
       },
       meta: {
         ...snapshot.meta,

@@ -7,7 +7,8 @@ import {
   RegionType,
 } from './taxCalculator';
 import { CompanyOffer } from './salaryComparisonCalculator';
-import { IncomeFrequency } from './freelancerCalculator';
+import { IncomeFrequency, CreatorIncomeSource, DEFAULT_USD_EXCHANGE_RATE } from './freelancerCalculator';
+import { SeveranceType } from './severanceCalculator';
 import { OvertimeEntry, DEFAULT_WORKING_DAYS, DEFAULT_HOURS_PER_DAY } from './overtimeCalculator';
 import {
   SettlementYear,
@@ -27,9 +28,15 @@ export interface EmployerCostTabState {
 }
 
 // Freelancer Comparison tab state
+export type FreelancerMode = 'simple' | 'creator';
+
 export interface FreelancerTabState {
+  mode: FreelancerMode;
   frequency: IncomeFrequency;
   useNewLaw: boolean;
+  // Creator mode specific fields
+  creatorIncomeSources: CreatorIncomeSource[];
+  exchangeRate: number;
 }
 
 // Salary Comparison tab state
@@ -118,6 +125,32 @@ export interface ForeignerTaxTabState {
   isSecondHalf2026: boolean;
 }
 
+// Late Payment Interest Calculator tab state
+export interface LatePaymentTabState {
+  taxType: 'annual_pit' | 'quarterly_pit' | 'monthly_vat' | 'quarterly_vat' | 'property_transfer' | 'rental_income' | 'household_business' | 'other';
+  taxAmount: number;
+  dueDate: string;      // YYYY-MM-DD format
+  paymentDate: string;  // YYYY-MM-DD format
+}
+
+// Business Form Comparison tab state
+export interface BusinessFormComparisonTabState {
+  annualRevenue: number;
+  businessCategory: 'distribution' | 'services' | 'production' | 'other';
+  region: RegionType;
+  dependents: number;
+  hasSelfInsurance: boolean;
+}
+
+// Severance/Retirement Pay Calculator tab state
+export interface SeveranceTabState {
+  type: SeveranceType;
+  totalAmount: number;
+  averageSalary: number;
+  yearsWorked: number;
+  contributionAmount: number; // For voluntary pension
+}
+
 /**
  * Combined snapshot state for all tabs
  */
@@ -132,6 +165,9 @@ export interface TabStates {
   esop: ESOPTabState;
   pension: PensionTabState;
   foreignerTax: ForeignerTaxTabState;
+  latePayment: LatePaymentTabState;
+  businessFormComparison: BusinessFormComparisonTabState;
+  severance: SeveranceTabState;
 }
 
 /**
@@ -178,8 +214,11 @@ export const DEFAULT_EMPLOYER_COST_STATE: EmployerCostTabState = {
 };
 
 export const DEFAULT_FREELANCER_STATE: FreelancerTabState = {
+  mode: 'simple',
   frequency: 'monthly',
   useNewLaw: true,
+  creatorIncomeSources: [],
+  exchangeRate: DEFAULT_USD_EXCHANGE_RATE,
 };
 
 export const DEFAULT_SALARY_COMPARISON_STATE: SalaryComparisonTabState = {
@@ -260,6 +299,44 @@ export const DEFAULT_FOREIGNER_TAX_STATE: ForeignerTaxTabState = {
   isSecondHalf2026: true,
 };
 
+// Helper to get current date in YYYY-MM-DD format
+function getCurrentDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to get default due date (31/3 of current year)
+function getDefaultDueDateString(): string {
+  const year = new Date().getFullYear();
+  return `${year}-03-31`;
+}
+
+export const DEFAULT_LATE_PAYMENT_STATE: LatePaymentTabState = {
+  taxType: 'annual_pit',
+  taxAmount: 10_000_000,
+  dueDate: getDefaultDueDateString(),
+  paymentDate: getCurrentDateString(),
+};
+
+export const DEFAULT_BUSINESS_FORM_COMPARISON_STATE: BusinessFormComparisonTabState = {
+  annualRevenue: 500_000_000,
+  businessCategory: 'services', // Dịch vụ - phổ biến nhất
+  region: 1,
+  dependents: 0,
+  hasSelfInsurance: true,
+};
+
+export const DEFAULT_SEVERANCE_STATE: SeveranceTabState = {
+  type: 'severance',
+  totalAmount: 100_000_000,
+  averageSalary: 20_000_000,
+  yearsWorked: 5,
+  contributionAmount: 0,
+};
+
 export const DEFAULT_TAB_STATES: TabStates = {
   employerCost: DEFAULT_EMPLOYER_COST_STATE,
   freelancer: DEFAULT_FREELANCER_STATE,
@@ -271,6 +348,9 @@ export const DEFAULT_TAB_STATES: TabStates = {
   esop: DEFAULT_ESOP_STATE,
   pension: DEFAULT_PENSION_STATE,
   foreignerTax: DEFAULT_FOREIGNER_TAX_STATE,
+  latePayment: DEFAULT_LATE_PAYMENT_STATE,
+  businessFormComparison: DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
+  severance: DEFAULT_SEVERANCE_STATE,
 };
 
 /**
@@ -384,6 +464,18 @@ export function createSnapshot(
           ...(tabStates?.foreignerTax?.allowances || {}),
         },
       },
+      latePayment: {
+        ...DEFAULT_LATE_PAYMENT_STATE,
+        ...(tabStates?.latePayment || {}),
+      },
+      businessFormComparison: {
+        ...DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
+        ...(tabStates?.businessFormComparison || {}),
+      },
+      severance: {
+        ...DEFAULT_SEVERANCE_STATE,
+        ...(tabStates?.severance || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -491,6 +583,18 @@ export function mergeSnapshotWithDefaults(
           ...DEFAULT_FOREIGNER_TAX_STATE.allowances,
           ...(partial.tabs?.foreignerTax?.allowances || {}),
         },
+      },
+      latePayment: {
+        ...DEFAULT_LATE_PAYMENT_STATE,
+        ...(partial.tabs?.latePayment || {}),
+      },
+      businessFormComparison: {
+        ...DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
+        ...(partial.tabs?.businessFormComparison || {}),
+      },
+      severance: {
+        ...DEFAULT_SEVERANCE_STATE,
+        ...(partial.tabs?.severance || {}),
       },
     },
     meta: {
