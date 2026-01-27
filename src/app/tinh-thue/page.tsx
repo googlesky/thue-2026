@@ -7,10 +7,12 @@ import Header from '@/components/Header';
 // Critical components - loaded immediately (used on default tab)
 import TaxInput from '@/components/TaxInput';
 import TaxResult from '@/components/TaxResult';
-import TabNavigation, { type TabType } from '@/components/TabNavigation';
+import TabNavigation, { type TabType, TAB_GROUPS } from '@/components/TabNavigation';
 import { SaveShareButton } from '@/components/SaveShare';
 import LawInfoModal from '@/components/ui/LawInfoModal';
 import LoadingSpinner, { TabLoadingSkeleton, ChartLoadingSkeleton } from '@/components/ui/LoadingSpinner';
+import { KeyboardShortcuts, ShortcutHelpHint } from '@/components/ui';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Lazy-loaded components for better code splitting
 const TaxChart = lazy(() => import('@/components/TaxChart'));
@@ -29,6 +31,8 @@ const BonusCalculator = lazy(() => import('@/components/BonusCalculator').then(m
 const ESOPCalculator = lazy(() => import('@/components/ESOPCalculator').then(m => ({ default: m.ESOPCalculator })));
 const PensionCalculator = lazy(() => import('@/components/PensionCalculator'));
 const TaxOptimizationTips = lazy(() => import('@/components/TaxOptimizationTips').then(m => ({ default: m.TaxOptimizationTips })));
+const TaxPlanningSimulator = lazy(() => import('@/components/TaxPlanningSimulator').then(m => ({ default: m.TaxPlanningSimulator })));
+const InheritanceGiftTaxCalculator = lazy(() => import('@/components/InheritanceGiftTaxCalculator').then(m => ({ default: m.InheritanceGiftTaxCalculator })));
 const SalarySlipGenerator = lazy(() => import('@/components/SalarySlip').then(m => ({ default: m.SalarySlipGenerator })));
 const TaxCalendar = lazy(() => import('@/components/TaxCalendar').then(m => ({ default: m.TaxCalendar })));
 const ForeignerTaxCalculator = lazy(() => import('@/components/ForeignerTaxCalculator').then(m => ({ default: m.ForeignerTaxCalculator })));
@@ -37,6 +41,10 @@ const RentalIncomeTaxCalculator = lazy(() => import('@/components/RentalIncomeTa
 const HouseholdBusinessTaxCalculator = lazy(() => import('@/components/HouseholdBusinessTaxCalculator').then(m => ({ default: m.HouseholdBusinessTaxCalculator })));
 const RealEstateTransferTaxCalculator = lazy(() => import('@/components/RealEstateTransferTaxCalculator').then(m => ({ default: m.RealEstateTransferTaxCalculator })));
 const TaxExemptionChecker = lazy(() => import('@/components/TaxExemptionChecker').then(m => ({ default: m.TaxExemptionChecker })));
+const LatePaymentCalculator = lazy(() => import('@/components/LatePaymentCalculator').then(m => ({ default: m.LatePaymentCalculator })));
+const BusinessFormComparison = lazy(() => import('@/components/BusinessFormComparison').then(m => ({ default: m.BusinessFormComparison })));
+const SeveranceCalculator = lazy(() => import('@/components/SeveranceCalculator').then(m => ({ default: m.SeveranceCalculator })));
+const TaxDocumentGenerator = lazy(() => import('@/components/TaxDocumentGenerator').then(m => ({ default: m.TaxDocumentGenerator })));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -64,6 +72,9 @@ import {
   ESOPTabState,
   PensionTabState,
   ForeignerTaxTabState,
+  LatePaymentTabState,
+  BusinessFormComparisonTabState,
+  SeveranceTabState,
   DEFAULT_OVERTIME_STATE,
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
   DEFAULT_BONUS_STATE,
@@ -71,6 +82,10 @@ import {
   DEFAULT_PENSION_STATE,
   DEFAULT_YEARLY_COMPARISON_STATE,
   DEFAULT_FOREIGNER_TAX_STATE,
+  DEFAULT_LATE_PAYMENT_STATE,
+  DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
+  DEFAULT_FREELANCER_STATE,
+  DEFAULT_SEVERANCE_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -93,12 +108,17 @@ const VALID_TABS: TabType[] = [
   'household-business', 'real-estate',
   'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
-  'tax-calendar', 'salary-slip', 'exemption-checker'
+  'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
+  'tax-document'
 ];
+
+// Flatten all tabs from TAB_GROUPS for keyboard navigation
+const ALL_TABS = TAB_GROUPS.flatMap(group => group.tabs);
 
 export default function Home() {
   // Next.js hook for navigation tracking
   const pathname = usePathname();
+  const { toggleTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
@@ -113,10 +133,7 @@ export default function Home() {
     includeUnionFee: false,
     useNewLaw: true,
   });
-  const [freelancerState, setFreelancerState] = useState<FreelancerTabState>({
-    frequency: 'monthly',
-    useNewLaw: true,
-  });
+  const [freelancerState, setFreelancerState] = useState<FreelancerTabState>(DEFAULT_FREELANCER_STATE);
   const [salaryComparisonState, setSalaryComparisonState] = useState<SalaryComparisonTabState>({
     companies: [
       createDefaultCompanyOffer('company-1', 'Công ty A'),
@@ -131,6 +148,9 @@ export default function Home() {
   const [esopState, setEsopState] = useState<ESOPTabState>(DEFAULT_ESOP_STATE);
   const [pensionState, setPensionState] = useState<PensionTabState>(DEFAULT_PENSION_STATE);
   const [foreignerTaxState, setForeignerTaxState] = useState<ForeignerTaxTabState>(DEFAULT_FOREIGNER_TAX_STATE);
+  const [latePaymentState, setLatePaymentState] = useState<LatePaymentTabState>(DEFAULT_LATE_PAYMENT_STATE);
+  const [businessFormComparisonState, setBusinessFormComparisonState] = useState<BusinessFormComparisonTabState>(DEFAULT_BUSINESS_FORM_COMPARISON_STATE);
+  const [severanceState, setSeveranceState] = useState<SeveranceTabState>(DEFAULT_SEVERANCE_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -165,6 +185,15 @@ export default function Home() {
     }
     if (snapshot.tabs.foreignerTax) {
       setForeignerTaxState(snapshot.tabs.foreignerTax);
+    }
+    if (snapshot.tabs.latePayment) {
+      setLatePaymentState(snapshot.tabs.latePayment);
+    }
+    if (snapshot.tabs.businessFormComparison) {
+      setBusinessFormComparisonState(snapshot.tabs.businessFormComparison);
+    }
+    if (snapshot.tabs.severance) {
+      setSeveranceState(snapshot.tabs.severance);
     }
   }, []);
 
@@ -373,11 +402,14 @@ export default function Home() {
       esop: esopState,
       pension: pensionState,
       foreignerTax: foreignerTaxState,
+      latePayment: latePaymentState,
+      businessFormComparison: businessFormComparisonState,
+      severance: severanceState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -413,7 +445,7 @@ export default function Home() {
     setSharedState(defaultSharedState);
     setActiveTab('calculator');
     setEmployerCostState({ includeUnionFee: false, useNewLaw: true });
-    setFreelancerState({ frequency: 'monthly', useNewLaw: true });
+    setFreelancerState(DEFAULT_FREELANCER_STATE);
     setSalaryComparisonState({
       companies: [
         createDefaultCompanyOffer('company-1', 'Công ty A'),
@@ -428,6 +460,9 @@ export default function Home() {
     setEsopState(DEFAULT_ESOP_STATE);
     setPensionState(DEFAULT_PENSION_STATE);
     setForeignerTaxState(DEFAULT_FOREIGNER_TAX_STATE);
+    setLatePaymentState(DEFAULT_LATE_PAYMENT_STATE);
+    setBusinessFormComparisonState(DEFAULT_BUSINESS_FORM_COMPARISON_STATE);
+    setSeveranceState(DEFAULT_SEVERANCE_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -563,6 +598,32 @@ export default function Home() {
                     declaredSalary: sharedState.declaredSalary,
                   }}
                 />
+              </Suspense>
+            </div>
+
+            {/* Tax Planning Simulator */}
+            <div className="mb-8">
+              <Suspense fallback={<TabLoadingSkeleton />}>
+                <TaxPlanningSimulator
+                  input={{
+                    grossIncome: sharedState.grossIncome,
+                    dependents: sharedState.dependents,
+                    hasInsurance: sharedState.hasInsurance,
+                    insuranceOptions: sharedState.insuranceOptions,
+                    region: sharedState.region,
+                    otherDeductions: sharedState.otherDeductions,
+                    pensionContribution: sharedState.pensionContribution,
+                    allowances: sharedState.allowances,
+                    declaredSalary: sharedState.declaredSalary,
+                  }}
+                />
+              </Suspense>
+            </div>
+
+            {/* Inheritance & Gift Tax Calculator */}
+            <div className="mb-8">
+              <Suspense fallback={<TabLoadingSkeleton />}>
+                <InheritanceGiftTaxCalculator />
               </Suspense>
             </div>
 
@@ -815,6 +876,50 @@ export default function Home() {
           </div>
         )}
 
+        {activeTab === 'late-payment' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <LatePaymentCalculator
+                tabState={latePaymentState}
+                onTabStateChange={setLatePaymentState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'business-form' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <BusinessFormComparison
+                tabState={businessFormComparisonState}
+                onTabStateChange={setBusinessFormComparisonState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'severance' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <SeveranceCalculator
+                tabState={severanceState}
+                onTabStateChange={setSeveranceState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'tax-document' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxDocumentGenerator
+                sharedState={sharedState}
+                taxResult={newResult}
+              />
+            </Suspense>
+          </div>
+        )}
+
         </div>
       </div>
 
@@ -823,6 +928,27 @@ export default function Home() {
 
       {/* Law Info Modal */}
       <LawInfoModal isOpen={isLawInfoOpen} onClose={() => setIsLawInfoOpen(false)} />
+
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcuts
+        onTabChange={(index) => {
+          // Map index (0-8) to tab
+          if (index < ALL_TABS.length) {
+            handleTabChange(ALL_TABS[index].id as TabType);
+          }
+        }}
+        onSave={() => {
+          // Trigger save by copying URL to clipboard
+          const encoded = encodeSnapshot(currentSnapshot);
+          const url = `${window.location.origin}${window.location.pathname}#${currentSnapshot.activeTab}~${encoded}`;
+          navigator.clipboard.writeText(url).then(() => {
+            alert('Đã sao chép URL trạng thái vào clipboard');
+          });
+        }}
+        onToggleDarkMode={toggleTheme}
+        totalTabs={Math.min(ALL_TABS.length, 9)}
+      />
+      <ShortcutHelpHint />
     </main>
   );
 }

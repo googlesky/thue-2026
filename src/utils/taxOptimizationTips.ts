@@ -31,8 +31,12 @@ export interface TaxOptimizationInput {
   declaredSalary?: number;
 }
 
-export type TipPriority = 'high' | 'medium' | 'low';
-export type TipCategory = 'deduction' | 'timing' | 'structure' | 'compliance' | 'allowance';
+export type TipPriority = 'critical' | 'high' | 'medium' | 'low';
+export type TipCategory = 'deduction' | 'timing' | 'structure' | 'compliance' | 'allowance' | 'investment';
+
+// Priority thresholds for automatic upgrade to critical
+const CRITICAL_SAVINGS_THRESHOLD = 500_000; // >500k/month savings = critical
+const CRITICAL_YEARLY_SAVINGS_THRESHOLD = 6_000_000; // >6M/year savings = critical
 
 export interface TaxTip {
   id: string;
@@ -56,6 +60,15 @@ const HIGH_INCOME_THRESHOLD = 100_000_000; // 100M/month
 
 // Threshold for dependent registration reminder
 const INCOME_THRESHOLD_FOR_DEPENDENT_TIP = 20_000_000; // 20M/month
+
+// Threshold for income splitting tip (married couple)
+const INCOME_SPLITTING_THRESHOLD = 50_000_000; // 50M/month
+
+// Threshold for household business conversion
+const HOUSEHOLD_BUSINESS_ANNUAL_THRESHOLD = 500_000_000; // 500M/year (2026)
+
+// Threshold for investment tip
+const INVESTMENT_TIP_THRESHOLD = 40_000_000; // 40M/month
 
 // New tax law effective date for salary/wage income (thu nhập từ tiền lương, tiền công)
 // Note: Theo điều khoản chuyển tiếp Luật Thuế TNCN sửa đổi 2025, áp dụng từ kỳ tính thuế năm 2026
@@ -517,6 +530,359 @@ function generateAllowancesTip(input: TaxOptimizationInput): TaxTip | null {
 }
 
 /**
+ * Generate tip for income splitting with spouse
+ * Applicable for married couples where one spouse has very high income
+ */
+function generateIncomeSplittingTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome, dependents } = input;
+
+  // Only relevant for very high income
+  if (grossIncome < INCOME_SPLITTING_THRESHOLD) {
+    return null;
+  }
+
+  // Calculate tax at current income
+  const currentTax = calculateNewTax({
+    grossIncome,
+    dependents,
+    hasInsurance: true,
+  });
+
+  // Calculate tax if income split 50-50 between two people
+  const splitIncome = grossIncome / 2;
+  const splitTax = calculateNewTax({
+    grossIncome: splitIncome,
+    dependents: Math.floor(dependents / 2),
+    hasInsurance: true,
+  });
+
+  // Total tax if split (both spouses)
+  const totalSplitTax = splitTax.taxAmount * 2;
+  const savings = currentTax.taxAmount - totalSplitTax;
+
+  if (savings <= 0) {
+    return null;
+  }
+
+  return {
+    id: 'income-splitting',
+    title: 'Cân nhắc phân bổ thu nhập',
+    description: `Với thu nhập cao (${formatNumber(grossIncome)} VNĐ/tháng), nếu vợ/chồng làm cùng công ty hoặc kinh doanh chung, việc phân bổ thu nhập hợp lý giữa hai người có thể giảm tổng thuế phải nộp do tận dụng các bậc thuế thấp hơn.`,
+    potentialSavings: savings,
+    potentialSavingsYearly: savings * 12,
+    priority: 'medium',
+    category: 'structure',
+    icon: 'users',
+    actionable: false,
+  };
+}
+
+/**
+ * Generate tip for deduction stacking
+ * Remind users to maximize all available deductions
+ */
+function generateDeductionStackingTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome, dependents, pensionContribution, otherDeductions, allowances } = input;
+
+  // Only relevant if paying meaningful tax
+  if (grossIncome < 25_000_000) {
+    return null;
+  }
+
+  // Check what deductions are already used
+  const hasFullDependents = dependents >= 2;
+  const hasFullPension = pensionContribution >= MAX_PENSION_DEDUCTION;
+  const hasOtherDeductions = otherDeductions > 0;
+  const hasAllowances = allowances && (
+    allowances.meal > 0 ||
+    allowances.phone > 0 ||
+    allowances.transport > 0
+  );
+
+  // If already maximizing, don't show tip
+  if (hasFullDependents && hasFullPension && hasOtherDeductions && hasAllowances) {
+    return null;
+  }
+
+  // Count unused deduction types
+  const unusedDeductions: string[] = [];
+  if (!hasFullPension) unusedDeductions.push('quỹ hưu trí tự nguyện (tối đa 1tr/tháng)');
+  if (!hasOtherDeductions) unusedDeductions.push('đóng góp từ thiện');
+  if (!hasAllowances) unusedDeductions.push('phụ cấp miễn thuế (ăn trưa, xăng xe, điện thoại)');
+
+  if (unusedDeductions.length === 0) {
+    return null;
+  }
+
+  // Estimate potential savings
+  const maxPotentialDeduction = (!hasFullPension ? MAX_PENSION_DEDUCTION : 0) +
+    (!hasAllowances ? 2_000_000 : 0); // Assume 2M allowances
+  const bracketRate = getHighestBracketRate(grossIncome, true);
+  const estimatedSavings = Math.round(maxPotentialDeduction * bracketRate);
+
+  return {
+    id: 'deduction-stacking',
+    title: 'Tối đa hóa các khoản giảm trừ',
+    description: `Bạn có thể kết hợp nhiều khoản giảm trừ để tối ưu thuế: ${unusedDeductions.join(', ')}. Mỗi khoản giảm trừ đều làm giảm thu nhập tính thuế, đặc biệt hiệu quả khi bạn đang ở bậc thuế cao (${(bracketRate * 100).toFixed(0)}%).`,
+    potentialSavings: estimatedSavings > 0 ? estimatedSavings : undefined,
+    potentialSavingsYearly: estimatedSavings > 0 ? estimatedSavings * 12 : undefined,
+    priority: 'high',
+    category: 'deduction',
+    icon: 'stack',
+    actionable: true,
+  };
+}
+
+/**
+ * Generate tip for tax-advantaged investments
+ * Government bonds and certain investment funds have tax benefits
+ */
+function generateInvestmentTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome } = input;
+
+  // Only relevant for higher income earners with savings capacity
+  if (grossIncome < INVESTMENT_TIP_THRESHOLD) {
+    return null;
+  }
+
+  return {
+    id: 'tax-advantaged-investment',
+    title: 'Đầu tư có ưu đãi thuế',
+    description: `Một số khoản đầu tư có ưu đãi thuế: (1) Trái phiếu Chính phủ: lãi suất được miễn thuế TNCN; (2) Góp vốn vào doanh nghiệp: chỉ chịu thuế khi có cổ tức/lợi nhuận chia; (3) Bảo hiểm nhân thọ: một số sản phẩm có lợi ích thuế. Tuy nhiên, hãy cân nhắc rủi ro đầu tư trước khi quyết định.`,
+    priority: 'low',
+    category: 'investment',
+    icon: 'trending-up',
+    actionable: false,
+  };
+}
+
+/**
+ * Generate tip for household business conversion
+ * For freelancers/contractors with high income
+ */
+function generateHouseholdBusinessTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome } = input;
+
+  // Annual income estimate
+  const annualIncome = grossIncome * 12;
+
+  // Only relevant if annual income is significant but below HKD threshold
+  // Above threshold needs company structure
+  if (annualIncome < 200_000_000 || annualIncome > HOUSEHOLD_BUSINESS_ANNUAL_THRESHOLD) {
+    return null;
+  }
+
+  // Freelancer pays 10% flat tax
+  // HKD pays ~1.5-3% (VAT 1-2% + PIT 0.5-1.5%) depending on business type
+  const freelancerTax = annualIncome * 0.10;
+  const hkdTax = annualIncome * 0.03; // Assume services (2% VAT + 1% PIT with threshold deduction)
+  const savings = freelancerTax - hkdTax;
+
+  if (savings <= 0) {
+    return null;
+  }
+
+  return {
+    id: 'household-business-conversion',
+    title: 'Cân nhắc đăng ký Hộ kinh doanh',
+    description: `Với thu nhập ${formatNumber(annualIncome)} VNĐ/năm từ hoạt động tự do, việc đăng ký Hộ kinh doanh có thể tiết kiệm thuế đáng kể. Hộ KD chịu thuế khoán khoảng 1.5-3% thay vì 10% thuế khấu trừ. Ngưỡng miễn thuế 2026 là 500 triệu/năm cho Hộ KD.`,
+    potentialSavingsYearly: Math.round(savings),
+    priority: 'high',
+    category: 'structure',
+    icon: 'store',
+    actionable: true,
+  };
+}
+
+/**
+ * Generate tip for year-end spending optimization
+ * Remind users to maximize deductions before year end
+ */
+function generateYearEndSpendingTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome, pensionContribution, otherDeductions } = input;
+
+  // Only show in Q4 (October - December)
+  const month = getCurrentMonth();
+  if (month < 10) {
+    return null;
+  }
+
+  // Only relevant for taxpayers
+  if (grossIncome < 20_000_000) {
+    return null;
+  }
+
+  const hasUnusedDeductions =
+    pensionContribution < MAX_PENSION_DEDUCTION || otherDeductions === 0;
+
+  if (!hasUnusedDeductions) {
+    return null;
+  }
+
+  const suggestions: string[] = [];
+  let potentialSavings = 0;
+
+  if (pensionContribution < MAX_PENSION_DEDUCTION) {
+    const remaining = MAX_PENSION_DEDUCTION - pensionContribution;
+    const months = 12 - month + 1;
+    const totalContribution = remaining * months;
+    const rate = getHighestBracketRate(grossIncome - (NEW_DEDUCTIONS.personal + input.dependents * NEW_DEDUCTIONS.dependent), true);
+    const savings = Math.round(totalContribution * rate);
+    suggestions.push(`Hưu trí tự nguyện: còn ${formatNumber(remaining)} VNĐ/tháng chưa tận dụng`);
+    potentialSavings += savings;
+  }
+
+  if (otherDeductions === 0) {
+    suggestions.push('Từ thiện/nhân đạo: chưa có khoản đóng góp nào');
+  }
+
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  const year = getCurrentYear();
+
+  return {
+    id: 'year-end-spending',
+    title: `Tối đa giảm trừ trước 31/12/${year}`,
+    description: `Còn ${12 - month + 1} tháng để tối ưu thuế năm ${year}. ${suggestions.join('. ')}. Các khoản chi được khấu trừ trong năm không được cộng dồn sang năm sau.`,
+    potentialSavingsYearly: potentialSavings > 0 ? potentialSavings : undefined,
+    priority: 'high',
+    category: 'timing',
+    icon: 'calendar',
+    actionable: true,
+  };
+}
+
+/**
+ * Generate tip for dividend vs salary optimization
+ * For business owners who can choose how to receive income
+ */
+function generateDividendVsSalaryTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome, dependents } = input;
+
+  // Only relevant for high income (likely business owners)
+  if (grossIncome < HIGH_INCOME_THRESHOLD) {
+    return null;
+  }
+
+  // Calculate current salary tax
+  const salaryTax = calculateNewTax({
+    grossIncome,
+    dependents,
+    hasInsurance: true,
+  });
+
+  // Dividend tax is flat 5% (after 20% corporate tax)
+  // Effective rate on profit distributed as dividend:
+  // Corporate tax: 20% -> remaining 80%
+  // Dividend tax: 5% of 80% = 4%
+  // Total: 20% + 4% = 24%
+  // But salary also has insurance contributions
+
+  // Compare effective rates
+  const salaryEffectiveRate = salaryTax.effectiveRate;
+  const dividendEffectiveRate = 24; // 20% CIT + 5% PIT on remainder
+
+  // Only suggest if salary tax is higher
+  if (salaryEffectiveRate <= dividendEffectiveRate) {
+    return null;
+  }
+
+  const rateAdvantage = salaryEffectiveRate - dividendEffectiveRate;
+  const monthlySavings = Math.round(grossIncome * (rateAdvantage / 100));
+
+  return {
+    id: 'dividend-vs-salary',
+    title: 'Cổ tức vs Lương cho chủ doanh nghiệp',
+    description: `Với thu nhập cao (${formatNumber(grossIncome)} VNĐ/tháng), thuế suất biên của bạn là ${salaryTax.effectiveRate.toFixed(1)}%. Nếu bạn là chủ doanh nghiệp, việc nhận thu nhập qua cổ tức (5% sau thuế TNDN 20%) có thể hiệu quả hơn về thuế. Tuy nhiên, cần cân nhắc về BHXH và các yếu tố khác.`,
+    potentialSavings: monthlySavings,
+    potentialSavingsYearly: monthlySavings * 12,
+    priority: 'medium',
+    category: 'structure',
+    icon: 'building',
+    actionable: false,
+  };
+}
+
+/**
+ * Generate tip for government bond investment
+ * Interest from government bonds is tax-exempt
+ */
+function generateGovernmentBondTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome } = input;
+
+  // Only relevant for people with savings capacity
+  if (grossIncome < 40_000_000) {
+    return null;
+  }
+
+  // Estimate monthly savings capacity (30% of net income)
+  const netEstimate = grossIncome * 0.75; // rough estimate after tax
+  const savingsCapacity = netEstimate * 0.3;
+
+  // Government bond interest rate ~6-7%/year, compared to bank deposit ~5%/year (taxed 5%)
+  // Effective bank rate: 5% * (1 - 5%) = 4.75%
+  // Advantage: 6.5% - 4.75% = 1.75% per year
+  const annualSavings = savingsCapacity * 12;
+  const taxAdvantage = Math.round(annualSavings * 0.05 * 0.05); // 5% on interest, at 5% rate
+
+  return {
+    id: 'government-bond',
+    title: 'Trái phiếu Chính phủ - Lãi miễn thuế',
+    description: `Lãi từ trái phiếu Chính phủ được miễn thuế TNCN hoàn toàn (Điều 4 Luật Thuế TNCN). So với gửi tiết kiệm ngân hàng (lãi chịu thuế 5%), trái phiếu CP có lợi thế thuế. Phù hợp cho khoản tiết kiệm dài hạn, an toàn.`,
+    potentialSavingsYearly: taxAdvantage > 0 ? taxAdvantage : undefined,
+    priority: 'low',
+    category: 'investment',
+    icon: 'shield',
+    actionable: true,
+  };
+}
+
+/**
+ * Generate tip for maximizing voluntary pension contribution
+ * Specifically targets the 1M/month deduction limit
+ */
+function generateVoluntaryPensionMaxTip(input: TaxOptimizationInput): TaxTip | null {
+  const { grossIncome, dependents, pensionContribution } = input;
+
+  // Only show if partially contributing (not 0, not maxed)
+  if (pensionContribution === 0 || pensionContribution >= MAX_PENSION_DEDUCTION) {
+    return null;
+  }
+
+  // Only relevant for higher income
+  if (grossIncome < 25_000_000) {
+    return null;
+  }
+
+  const remaining = MAX_PENSION_DEDUCTION - pensionContribution;
+  const savingsNewLaw = calculatePensionSavings(
+    grossIncome,
+    dependents,
+    pensionContribution,
+    MAX_PENSION_DEDUCTION,
+    true
+  );
+
+  if (savingsNewLaw <= 0) {
+    return null;
+  }
+
+  return {
+    id: 'pension-maximize',
+    title: 'Tối đa hóa hưu trí tự nguyện',
+    description: `Bạn đang đóng ${formatNumber(pensionContribution)} VNĐ/tháng vào quỹ hưu trí tự nguyện. Nếu tăng thêm ${formatNumber(remaining)} VNĐ/tháng (lên tối đa 1 triệu), bạn tiết kiệm thêm ${formatNumber(savingsNewLaw)} VNĐ thuế/tháng. Đây cũng là khoản tiết kiệm cho tương lai.`,
+    potentialSavings: savingsNewLaw,
+    potentialSavingsYearly: savingsNewLaw * 12,
+    priority: 'high',
+    category: 'deduction',
+    icon: 'piggy-bank',
+    actionable: true,
+  };
+}
+
+/**
  * Generate tip about new tax law comparison
  */
 function generateNewLawComparisonTip(input: TaxOptimizationInput): TaxTip | null {
@@ -569,6 +935,16 @@ export function generateTaxOptimizationTips(input: TaxOptimizationInput): TaxTip
     generateInsuranceTip,
     generateAllowancesTip,
     generateNewLawComparisonTip,
+    // New enhanced tips
+    generateIncomeSplittingTip,
+    generateDeductionStackingTip,
+    generateInvestmentTip,
+    generateHouseholdBusinessTip,
+    // Phase 3B-2: New timing & strategy tips
+    generateYearEndSpendingTip,
+    generateDividendVsSalaryTip,
+    generateGovernmentBondTip,
+    generateVoluntaryPensionMaxTip,
   ];
 
   for (const generator of tipGenerators) {
@@ -578,11 +954,25 @@ export function generateTaxOptimizationTips(input: TaxOptimizationInput): TaxTip
     }
   }
 
+  // Auto-upgrade priority based on savings thresholds
+  tips.forEach(tip => {
+    const monthlySavings = tip.potentialSavings ?? 0;
+    const yearlySavings = tip.potentialSavingsYearly ?? 0;
+
+    // Upgrade to critical if savings exceed thresholds
+    if (monthlySavings >= CRITICAL_SAVINGS_THRESHOLD || yearlySavings >= CRITICAL_YEARLY_SAVINGS_THRESHOLD) {
+      if (tip.priority !== 'critical') {
+        tip.priority = 'critical';
+      }
+    }
+  });
+
   // Sort by priority
   const priorityOrder: Record<TipPriority, number> = {
-    high: 0,
-    medium: 1,
-    low: 2,
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
   };
 
   tips.sort((a, b) => {
@@ -615,6 +1005,9 @@ export function getTipIconName(icon?: string): string {
     'shield-alert': 'ShieldAlertIcon',
     'receipt': 'ReceiptIcon',
     'info': 'InfoIcon',
+    'stack': 'StackIcon',
+    'trending-up': 'TrendingUpIcon',
+    'store': 'StoreIcon',
   };
 
   return iconMap[icon || 'info'] || 'InfoIcon';
@@ -625,14 +1018,16 @@ export function getTipIconName(icon?: string): string {
  */
 export function getPriorityClass(priority: TipPriority): string {
   switch (priority) {
+    case 'critical':
+      return 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-700';
     case 'high':
-      return 'bg-red-100 text-red-700 border-red-200';
+      return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700';
     case 'medium':
-      return 'bg-amber-100 text-amber-700 border-amber-200';
+      return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700';
     case 'low':
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700';
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-200';
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600';
   }
 }
 
@@ -641,6 +1036,8 @@ export function getPriorityClass(priority: TipPriority): string {
  */
 export function getPriorityLabel(priority: TipPriority): string {
   switch (priority) {
+    case 'critical':
+      return 'Cần hành động ngay';
     case 'high':
       return 'Quan trọng';
     case 'medium':
@@ -667,6 +1064,8 @@ export function getCategoryLabel(category: TipCategory): string {
       return 'Tuân thủ';
     case 'allowance':
       return 'Phụ cấp';
+    case 'investment':
+      return 'Đầu tư';
     default:
       return '';
   }

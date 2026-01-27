@@ -30,5 +30,34 @@
   "lang": "vi",
   "dir": "ltr",
   "scope": "/",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "id": "thue-2026-pwa",
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "type": "image/png",
+      "sizes": "1200x630",
+      "form_factor": "wide",
+      "label": "Giao diện tính thuế TNCN"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tính thuế TNCN",
+      "short_name": "Tính thuế",
+      "description": "Mở công cụ tính thuế TNCN",
+      "url": "/tinh-thue",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  }
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface HeaderProps {
   variant?: 'transparent' | 'solid';
@@ -79,23 +80,23 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
   // Dynamic header styles based on variant and scroll state
   const headerBaseStyles = variant === 'transparent' && !isScrolled
     ? 'bg-transparent'
-    : 'bg-white/80 backdrop-blur-xl shadow-lg shadow-gray-900/5 border-b border-gray-200/50';
+    : 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg shadow-gray-900/5 dark:shadow-black/20 border-b border-gray-200/50 dark:border-slate-700/50';
 
   const logoTextStyles = variant === 'transparent' && !isScrolled
     ? 'text-white'
-    : 'text-gray-900';
+    : 'text-gray-900 dark:text-white';
 
   const navLinkBaseStyles = variant === 'transparent' && !isScrolled
     ? 'text-white/90 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-white/30 focus:outline-none'
-    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 focus:ring-2 focus:ring-primary-500/30 focus:outline-none';
+    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-800 focus:ring-2 focus:ring-primary-500/30 focus:outline-none';
 
   const navLinkActiveStyles = variant === 'transparent' && !isScrolled
     ? 'text-white bg-white/20 ring-1 ring-white/30'
-    : 'text-primary-600 bg-primary-50 ring-1 ring-primary-500/20';
+    : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 ring-1 ring-primary-500/20';
 
   const mobileMenuButtonStyles = variant === 'transparent' && !isScrolled
     ? 'text-white hover:bg-white/10 focus:ring-2 focus:ring-white/30'
-    : 'text-gray-600 hover:bg-gray-100 focus:ring-2 focus:ring-primary-500/30';
+    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 focus:ring-2 focus:ring-primary-500/30';
 
   return (
     <>
@@ -183,12 +184,13 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               </Link>
             </nav>
 
-            {/* CTA Button (Desktop) */}
+            {/* CTA Button and Theme Toggle (Desktop) */}
             <div className="hidden md:flex items-center gap-3">
+              <ThemeToggle variant="icon" />
               {!isCalculatorPage && (
                 <Link
                   href="/tinh-thue"
-                  className="group relative px-5 py-2.5 bg-gradient-to-r from-primary-500 via-primary-500 to-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/35 transition-all duration-300 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 overflow-hidden"
+                  className="group relative px-5 py-2.5 bg-gradient-to-r from-primary-500 via-primary-500 to-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/35 transition-all duration-300 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900 overflow-hidden"
                 >
                   {/* Shimmer effect */}
                   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -208,41 +210,44 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              ref={menuButtonRef}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`md:hidden p-2.5 rounded-xl transition-all duration-300 min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none ${mobileMenuButtonStyles}`}
-              aria-label={isMobileMenuOpen ? 'Đóng menu' : 'Mở menu'}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-menu"
-            >
+            {/* Mobile Theme Toggle and Menu Button */}
+            <div className="md:hidden flex items-center gap-1">
+              <ThemeToggle variant="icon" />
+              <button
+                ref={menuButtonRef}
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`p-2.5 rounded-xl transition-all duration-300 min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none ${mobileMenuButtonStyles}`}
+                aria-label={isMobileMenuOpen ? 'Đóng menu' : 'Mở menu'}
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-menu"
+              >
               <div className="relative w-6 h-6">
                 {/* Hamburger to X animation */}
                 <span
                   className={`absolute left-0 block w-6 h-0.5 transform transition-all duration-300 ease-out ${
-                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600'
+                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600 dark:bg-slate-400'
                   } ${isMobileMenuOpen ? 'rotate-45 top-[11px]' : 'top-1'}`}
                 />
                 <span
                   className={`absolute left-0 block w-6 h-0.5 top-[11px] transform transition-all duration-300 ease-out ${
-                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600'
+                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600 dark:bg-slate-400'
                   } ${isMobileMenuOpen ? 'opacity-0 scale-x-0' : 'opacity-100 scale-x-100'}`}
                 />
                 <span
                   className={`absolute left-0 block w-6 h-0.5 transform transition-all duration-300 ease-out ${
-                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600'
+                    variant === 'transparent' && !isScrolled ? 'bg-white' : 'bg-gray-600 dark:bg-slate-400'
                   } ${isMobileMenuOpen ? '-rotate-45 top-[11px]' : 'top-[21px]'}`}
                 />
               </div>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Mobile Backdrop Overlay */}
       <div
-        className={`fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-sm transition-all duration-300 md:hidden ${
+        className={`fixed inset-0 z-40 bg-gray-900/60 dark:bg-black/70 backdrop-blur-sm transition-all duration-300 md:hidden ${
           isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
         }`}
         onClick={() => setIsMobileMenuOpen(false)}
@@ -262,14 +267,14 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
         aria-modal="true"
         aria-label="Menu điều hướng di động"
       >
-        <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-2xl shadow-gray-900/10">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-slate-700/50 shadow-2xl shadow-gray-900/10 dark:shadow-black/30">
           <nav className="px-4 py-4 space-y-1" role="navigation" aria-label="Menu di động">
             <Link
               href="/"
               className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                 isHomePage
-                  ? 'text-primary-600 bg-primary-50 ring-1 ring-primary-500/20'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/80'
+                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 ring-1 ring-primary-500/20'
+                  : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-800 active:bg-gray-200/80 dark:active:bg-slate-700'
               }`}
               aria-current={isHomePage ? 'page' : undefined}
             >
@@ -282,8 +287,8 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               href="/tinh-thue"
               className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                 isCalculatorPage
-                  ? 'text-primary-600 bg-primary-50 ring-1 ring-primary-500/20'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/80'
+                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 ring-1 ring-primary-500/20'
+                  : 'text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-800 active:bg-gray-200/80 dark:active:bg-slate-700'
               }`}
               aria-current={isCalculatorPage ? 'page' : undefined}
             >
@@ -294,7 +299,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
             </Link>
             <Link
               href="/#features"
-              className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/80 transition-all duration-300"
+              className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-800 active:bg-gray-200/80 dark:active:bg-slate-700 transition-all duration-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
