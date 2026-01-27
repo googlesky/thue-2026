@@ -176,6 +176,45 @@ function InfoIcon({ className }: { className?: string }) {
   );
 }
 
+function StackIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+      />
+    </svg>
+  );
+}
+
+function TrendingUpIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+      />
+    </svg>
+  );
+}
+
+function StoreIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+      />
+    </svg>
+  );
+}
+
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,6 +246,9 @@ function getTipIcon(icon?: string): React.FC<{ className?: string }> {
     'shield-alert': ShieldAlertIcon,
     receipt: ReceiptIcon,
     info: InfoIcon,
+    stack: StackIcon,
+    'trending-up': TrendingUpIcon,
+    store: StoreIcon,
   };
 
   return iconMap[icon || 'info'] || InfoIcon;
@@ -216,11 +258,13 @@ function getTipIcon(icon?: string): React.FC<{ className?: string }> {
 
 function PriorityDot({ priority }: { priority: TipPriority }) {
   const colorClass =
-    priority === 'high'
-      ? 'bg-red-500'
-      : priority === 'medium'
-        ? 'bg-amber-500'
-        : 'bg-blue-500';
+    priority === 'critical'
+      ? 'bg-rose-600 animate-pulse'
+      : priority === 'high'
+        ? 'bg-red-500'
+        : priority === 'medium'
+          ? 'bg-amber-500'
+          : 'bg-blue-500';
 
   return (
     <span
@@ -241,42 +285,52 @@ interface TipCardProps {
 const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProps) {
   const IconComponent = getTipIcon(tip.icon);
 
+  // Background and border classes based on priority
+  const cardClasses =
+    tip.priority === 'critical'
+      ? 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/40 dark:border-rose-800 ring-1 ring-rose-200 dark:ring-rose-900'
+      : tip.priority === 'high'
+        ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+        : tip.priority === 'medium'
+          ? 'bg-yellow-50/60 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
+          : 'bg-slate-50/60 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700';
+
+  // Icon container classes based on priority
+  const iconClasses =
+    tip.priority === 'critical'
+      ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400'
+      : tip.priority === 'high'
+        ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400'
+        : tip.priority === 'medium'
+          ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400'
+          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+
   return (
-    <div
-      className={`rounded-lg border transition-all ${
-        tip.priority === 'high'
-          ? 'bg-amber-50/80 border-amber-200'
-          : tip.priority === 'medium'
-            ? 'bg-yellow-50/60 border-yellow-200'
-            : 'bg-slate-50/60 border-slate-200'
-      }`}
-    >
+    <div className={`rounded-lg border transition-all ${cardClasses}`}>
       <button
         onClick={onToggle}
         className="w-full p-3 sm:p-4 text-left flex items-start gap-2 sm:gap-3"
         aria-expanded={isExpanded}
       >
         <div
-          className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
-            tip.priority === 'high'
-              ? 'bg-amber-100 text-amber-600'
-              : tip.priority === 'medium'
-                ? 'bg-yellow-100 text-yellow-600'
-                : 'bg-slate-100 text-slate-600'
-          }`}
+          className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${iconClasses}`}
         >
           <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <PriorityDot priority={tip.priority} />
-            <h4 className="font-semibold text-gray-800 text-sm sm:text-base">{tip.title}</h4>
+            <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm sm:text-base">
+              {tip.title}
+            </h4>
           </div>
           {!isExpanded && (
-            <p className="text-sm text-gray-600 line-clamp-2">{tip.description}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+              {tip.description}
+            </p>
           )}
         </div>
-        <div className="flex-shrink-0 text-gray-400">
+        <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
           {isExpanded ? (
             <ChevronUpIcon className="w-5 h-5" />
           ) : (
@@ -288,16 +342,16 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
       {isExpanded && (
         <div className="px-3 sm:px-4 pb-4 pt-0">
           <div className="pl-0 sm:pl-[52px]">
-            <p className="text-sm text-gray-700 mb-3">{tip.description}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{tip.description}</p>
 
             {(tip.potentialSavings || tip.potentialSavingsYearly) && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                <div className="text-xs text-green-600 font-medium mb-1">
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
+                <div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">
                   Tiết kiệm ước tính
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {tip.potentialSavings && (
-                    <div className="text-green-700">
+                    <div className="text-green-700 dark:text-green-300">
                       <span className="font-bold text-lg">
                         {formatNumber(tip.potentialSavings)}
                       </span>
@@ -305,7 +359,7 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
                     </div>
                   )}
                   {tip.potentialSavingsYearly && (
-                    <div className="text-green-600 text-sm">
+                    <div className="text-green-600 dark:text-green-400 text-sm">
                       (~{formatNumber(tip.potentialSavingsYearly)} VND/năm)
                     </div>
                   )}
@@ -319,11 +373,11 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
               >
                 {getPriorityLabel(tip.priority)}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
                 {getCategoryLabel(tip.category)}
               </span>
               {tip.actionable && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
                   Có thể thực hiện ngay
                 </span>
               )}
@@ -371,10 +425,22 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
   }
 
   // Count by priority
+  const criticalCount = tips.filter((t) => t.priority === 'critical').length;
   const highPriorityCount = tips.filter((t) => t.priority === 'high').length;
 
+  // Build priority summary text
+  const getPrioritySummary = () => {
+    if (criticalCount > 0) {
+      return ` (${criticalCount} cần hành động ngay${highPriorityCount > 0 ? `, ${highPriorityCount} quan trọng` : ''})`;
+    }
+    if (highPriorityCount > 0) {
+      return ` (${highPriorityCount} quan trọng)`;
+    }
+    return '';
+  };
+
   return (
-    <div className="card bg-gradient-to-br from-amber-50/50 to-yellow-50/30 border border-amber-100">
+    <div className="card bg-gradient-to-br from-amber-50/50 to-yellow-50/30 dark:from-amber-950/20 dark:to-yellow-950/10 border border-amber-100 dark:border-amber-900/50">
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -382,17 +448,23 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-md shadow-amber-200/50">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${
+              criticalCount > 0
+                ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-200/50 dark:shadow-rose-900/50 animate-pulse'
+                : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-200/50 dark:shadow-amber-900/50'
+            }`}
+          >
             <LightbulbIcon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800">Gợi ý tối ưu thuế</h3>
-            <p className="text-sm text-gray-600">
-              {tips.length} gợi ý{highPriorityCount > 0 && ` (${highPriorityCount} quan trọng)`}
+            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Gợi ý tối ưu thuế</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {tips.length} gợi ý{getPrioritySummary()}
             </p>
           </div>
         </div>
-        <div className="text-gray-400">
+        <div className="text-gray-400 dark:text-gray-500">
           {isCollapsed ? (
             <ChevronDownIcon className="w-6 h-6" />
           ) : (
@@ -417,7 +489,7 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
           {hasMoreTips && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="w-full py-2.5 px-4 text-sm font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-100/50 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {showAll ? (
                 <>
@@ -434,8 +506,8 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
           )}
 
           {/* Disclaimer */}
-          <div className="pt-3 border-t border-amber-200/50">
-            <p className="text-xs text-gray-500 italic text-center">
+          <div className="pt-3 border-t border-amber-200/50 dark:border-amber-800/50">
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">
               Đây chỉ là gợi ý, vui lòng tham khảo chuyên gia thuế để được tư vấn cụ thể.
             </p>
           </div>

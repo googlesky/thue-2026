@@ -25,7 +25,11 @@ export type TabType =
   | 'tax-history'
   | 'tax-calendar'
   | 'salary-slip'
-  | 'exemption-checker';
+  | 'exemption-checker'
+  | 'late-payment'
+  | 'business-form'
+  | 'severance'
+  | 'tax-document';
 
 interface TabItem {
   id: TabType;
@@ -67,6 +71,10 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'tax-calendar': 'Mốc thời gian quan trọng',
   'salary-slip': 'Tạo phiếu lương',
   'exemption-checker': '21 khoản miễn thuế',
+  'late-payment': 'Lãi 0.03%/ngày',
+  'business-form': 'Lương vs Freelancer vs HKD',
+  severance: 'Thôi việc, BHXH 1 lần',
+  'tax-document': 'Báo cáo thuế TNCN',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -88,6 +96,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'household-business', label: 'Hộ kinh doanh', icon: '🏪', description: TAB_DESCRIPTIONS['household-business'] },
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
+      { id: 'severance', label: 'Trợ cấp thôi việc', icon: '💼', description: TAB_DESCRIPTIONS.severance },
     ],
   },
   {
@@ -99,6 +108,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'salary-compare', label: 'So sánh offer', icon: '📊', description: TAB_DESCRIPTIONS['salary-compare'] },
       { id: 'yearly', label: 'So sánh năm', icon: '📅', description: TAB_DESCRIPTIONS.yearly },
       { id: 'freelancer', label: 'Freelancer vs Fulltime', icon: '👤', description: TAB_DESCRIPTIONS.freelancer },
+      { id: 'business-form', label: 'Hình thức kinh doanh', icon: '⚖️', description: TAB_DESCRIPTIONS['business-form'] },
       { id: 'employer-cost', label: 'Chi phí nhà tuyển dụng', icon: '🏢', description: TAB_DESCRIPTIONS['employer-cost'] },
     ],
   },
@@ -114,7 +124,9 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'tax-history', label: 'Lịch sử luật', icon: '📜', description: TAB_DESCRIPTIONS['tax-history'] },
       { id: 'tax-calendar', label: 'Lịch thuế', icon: '📅', description: TAB_DESCRIPTIONS['tax-calendar'] },
       { id: 'salary-slip', label: 'Phiếu lương', icon: '📋', description: TAB_DESCRIPTIONS['salary-slip'] },
+      { id: 'tax-document', label: 'Báo cáo thuế', icon: '📄', description: TAB_DESCRIPTIONS['tax-document'] },
       { id: 'exemption-checker', label: 'Miễn thuế TNCN', icon: '✅', description: TAB_DESCRIPTIONS['exemption-checker'] },
+      { id: 'late-payment', label: 'Lãi chậm nộp', icon: '⏰', description: TAB_DESCRIPTIONS['late-payment'] },
     ],
   },
 ];
