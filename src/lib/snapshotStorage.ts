@@ -207,6 +207,14 @@ export function saveNamedSave(
         },
         taxTreaty: { ...snapshot.tabs.taxTreaty },
         coupleOptimizer: { ...snapshot.tabs.coupleOptimizer },
+        contentCreator: {
+          ...snapshot.tabs.contentCreator,
+          incomeSources: snapshot.tabs.contentCreator?.incomeSources?.map(s => ({ ...s })) || [],
+        },
+        cryptoTax: {
+          ...snapshot.tabs.cryptoTax,
+          transactions: snapshot.tabs.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
+        },
       },
       meta: {
         ...snapshot.meta,

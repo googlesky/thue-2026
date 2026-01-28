@@ -50,6 +50,8 @@ const WithholdingTax = lazy(() => import('@/components/WithholdingTax').then(m =
 const MultiSourceIncome = lazy(() => import('@/components/MultiSourceIncome').then(m => ({ default: m.MultiSourceIncome })));
 const TaxTreatyReference = lazy(() => import('@/components/TaxTreatyReference').then(m => ({ default: m.TaxTreatyReference })));
 const CoupleTaxOptimizer = lazy(() => import('@/components/CoupleTaxOptimizer').then(m => ({ default: m.CoupleTaxOptimizer })));
+const ContentCreatorTax = lazy(() => import('@/components/ContentCreatorTax').then(m => ({ default: m.ContentCreatorTax })));
+const CryptoTax = lazy(() => import('@/components/CryptoTax').then(m => ({ default: m.CryptoTax })));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -101,6 +103,10 @@ import {
   DEFAULT_TAX_TREATY_STATE,
   CoupleOptimizerTabState,
   DEFAULT_COUPLE_OPTIMIZER_STATE,
+  ContentCreatorTabState,
+  DEFAULT_CONTENT_CREATOR_STATE,
+  CryptoTaxTabState,
+  DEFAULT_CRYPTO_TAX_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -124,7 +130,7 @@ const VALID_TABS: TabType[] = [
   'tax-treaty', 'couple-optimizer', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
-  'tax-document'
+  'tax-document', 'content-creator', 'crypto-tax'
 ];
 
 // Flatten all tabs from TAB_GROUPS for keyboard navigation
@@ -171,6 +177,8 @@ export default function Home() {
   const [multiSourceIncomeState, setMultiSourceIncomeState] = useState<MultiSourceIncomeTabState>(DEFAULT_MULTI_SOURCE_INCOME_STATE);
   const [taxTreatyState, setTaxTreatyState] = useState<TaxTreatyTabState>(DEFAULT_TAX_TREATY_STATE);
   const [coupleOptimizerState, setCoupleOptimizerState] = useState<CoupleOptimizerTabState>(DEFAULT_COUPLE_OPTIMIZER_STATE);
+  const [contentCreatorState, setContentCreatorState] = useState<ContentCreatorTabState>(DEFAULT_CONTENT_CREATOR_STATE);
+  const [cryptoTaxState, setCryptoTaxState] = useState<CryptoTaxTabState>(DEFAULT_CRYPTO_TAX_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -229,6 +237,12 @@ export default function Home() {
     }
     if (snapshot.tabs.coupleOptimizer) {
       setCoupleOptimizerState(snapshot.tabs.coupleOptimizer);
+    }
+    if (snapshot.tabs.contentCreator) {
+      setContentCreatorState(snapshot.tabs.contentCreator);
+    }
+    if (snapshot.tabs.cryptoTax) {
+      setCryptoTaxState(snapshot.tabs.cryptoTax);
     }
   }, []);
 
@@ -445,11 +459,13 @@ export default function Home() {
       multiSourceIncome: multiSourceIncomeState,
       taxTreaty: taxTreatyState,
       coupleOptimizer: coupleOptimizerState,
+      contentCreator: contentCreatorState,
+      cryptoTax: cryptoTaxState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -508,6 +524,8 @@ export default function Home() {
     setMultiSourceIncomeState(DEFAULT_MULTI_SOURCE_INCOME_STATE);
     setTaxTreatyState(DEFAULT_TAX_TREATY_STATE);
     setCoupleOptimizerState(DEFAULT_COUPLE_OPTIMIZER_STATE);
+    setContentCreatorState(DEFAULT_CONTENT_CREATOR_STATE);
+    setCryptoTaxState(DEFAULT_CRYPTO_TAX_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -927,6 +945,22 @@ export default function Home() {
                 tabState={coupleOptimizerState}
                 onTabStateChange={setCoupleOptimizerState}
               />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'content-creator' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <ContentCreatorTax />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'crypto-tax' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <CryptoTax />
             </Suspense>
           </div>
         )}

@@ -19,6 +19,7 @@ import {
 import type { VATMethod, BusinessCategory } from './vatCalculator';
 import type { IncomeType, ResidencyStatus, ForeignContractorType } from './withholdingTaxCalculator';
 import type { IncomeSource, IncomeSourceType } from './multiSourceIncomeCalculator';
+import type { CryptoAssetType, TransactionType } from './cryptoTaxCalculator';
 
 // Withholding Tax Tab State - defined here to avoid Turbopack import issues
 export interface WithholdingTaxTabState {
@@ -116,6 +117,49 @@ export const DEFAULT_COUPLE_OPTIMIZER_STATE: CoupleOptimizerTabState = {
   totalDependents: 0,
   charitableContribution: 0,
   voluntaryPension: 0,
+};
+
+// Content Creator Tab State - defined here to avoid Turbopack import issues
+export interface ContentCreatorIncomeSource {
+  id: string;
+  platformId: string;
+  monthlyIncome: number;
+}
+
+export interface ContentCreatorTabState {
+  incomeSources: ContentCreatorIncomeSource[];
+  taxYear: 2025 | 2026;
+  isSecondHalf2026: boolean;
+}
+
+export const DEFAULT_CONTENT_CREATOR_STATE: ContentCreatorTabState = {
+  incomeSources: [],
+  taxYear: 2026,
+  isSecondHalf2026: true,
+};
+
+// Crypto Tax Tab State - defined here to avoid Turbopack import issues
+export interface CryptoTransactionSnapshot {
+  id: string;
+  date: string; // ISO string for serialization
+  type: TransactionType;
+  assetType: CryptoAssetType;
+  assetName: string;
+  quantity: number;
+  pricePerUnit: number;
+  totalValue: number;
+  fee: number;
+  notes?: string;
+}
+
+export interface CryptoTaxTabState {
+  transactions: CryptoTransactionSnapshot[];
+  taxYear: number;
+}
+
+export const DEFAULT_CRYPTO_TAX_STATE: CryptoTaxTabState = {
+  transactions: [],
+  taxYear: 2026,
 };
 
 // VAT Tab State - defined here to avoid Turbopack import issues
@@ -297,6 +341,8 @@ export interface TabStates {
   multiSourceIncome: MultiSourceIncomeTabState;
   taxTreaty: TaxTreatyTabState;
   coupleOptimizer: CoupleOptimizerTabState;
+  contentCreator: ContentCreatorTabState;
+  cryptoTax: CryptoTaxTabState;
 }
 
 /**
@@ -485,6 +531,8 @@ export const DEFAULT_TAB_STATES: TabStates = {
   multiSourceIncome: DEFAULT_MULTI_SOURCE_INCOME_STATE,
   taxTreaty: DEFAULT_TAX_TREATY_STATE,
   coupleOptimizer: DEFAULT_COUPLE_OPTIMIZER_STATE,
+  contentCreator: DEFAULT_CONTENT_CREATOR_STATE,
+  cryptoTax: DEFAULT_CRYPTO_TAX_STATE,
 };
 
 /**
@@ -631,6 +679,16 @@ export function createSnapshot(
         ...DEFAULT_COUPLE_OPTIMIZER_STATE,
         ...(tabStates?.coupleOptimizer || {}),
       },
+      contentCreator: {
+        ...DEFAULT_CONTENT_CREATOR_STATE,
+        ...(tabStates?.contentCreator || {}),
+        incomeSources: tabStates?.contentCreator?.incomeSources?.map(s => ({ ...s })) || [],
+      },
+      cryptoTax: {
+        ...DEFAULT_CRYPTO_TAX_STATE,
+        ...(tabStates?.cryptoTax || {}),
+        transactions: tabStates?.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -771,6 +829,16 @@ export function mergeSnapshotWithDefaults(
       coupleOptimizer: {
         ...DEFAULT_COUPLE_OPTIMIZER_STATE,
         ...(partial.tabs?.coupleOptimizer || {}),
+      },
+      contentCreator: {
+        ...DEFAULT_CONTENT_CREATOR_STATE,
+        ...(partial.tabs?.contentCreator || {}),
+        incomeSources: partial.tabs?.contentCreator?.incomeSources?.map(s => ({ ...s })) || [],
+      },
+      cryptoTax: {
+        ...DEFAULT_CRYPTO_TAX_STATE,
+        ...(partial.tabs?.cryptoTax || {}),
+        transactions: partial.tabs?.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
       },
     },
     meta: {
