@@ -34,7 +34,9 @@ export type TabType =
   | 'withholding-tax'
   | 'multi-source-income'
   | 'tax-treaty'
-  | 'couple-optimizer';
+  | 'couple-optimizer'
+  | 'content-creator'
+  | 'crypto-tax';
 
 interface TabItem {
   id: TabType;
@@ -85,6 +87,8 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'multi-source-income': 'Tổng hợp nhiều nguồn',
   'tax-treaty': 'Tra cứu hiệp định thuế',
   'couple-optimizer': 'Tối ưu thuế vợ chồng',
+  'content-creator': 'YouTuber, TikToker, Affiliate',
+  'crypto-tax': 'Bitcoin, Ethereum, NFT',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -107,6 +111,8 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'vat', label: 'Thuế GTGT (VAT)', icon: '📋', description: TAB_DESCRIPTIONS.vat },
       { id: 'withholding-tax', label: 'Khấu trừ tại nguồn', icon: '✂️', description: TAB_DESCRIPTIONS['withholding-tax'] },
       { id: 'multi-source-income', label: 'Đa nguồn thu nhập', icon: '📊', description: TAB_DESCRIPTIONS['multi-source-income'] },
+      { id: 'content-creator', label: 'Content Creator', icon: '🎬', description: TAB_DESCRIPTIONS['content-creator'] },
+      { id: 'crypto-tax', label: 'Crypto/NFT', icon: '₿', description: TAB_DESCRIPTIONS['crypto-tax'] },
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
       { id: 'severance', label: 'Trợ cấp thôi việc', icon: '💼', description: TAB_DESCRIPTIONS.severance },
