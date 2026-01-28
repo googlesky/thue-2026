@@ -52,6 +52,8 @@ const TaxTreatyReference = lazy(() => import('@/components/TaxTreatyReference').
 const CoupleTaxOptimizer = lazy(() => import('@/components/CoupleTaxOptimizer').then(m => ({ default: m.CoupleTaxOptimizer })));
 const ContentCreatorTax = lazy(() => import('@/components/ContentCreatorTax').then(m => ({ default: m.ContentCreatorTax })));
 const CryptoTax = lazy(() => import('@/components/CryptoTax').then(m => ({ default: m.CryptoTax })));
+const TaxDeadlineManager = lazy(() => import('@/components/TaxDeadlineManager'));
+const IncomeSummaryDashboard = lazy(() => import('@/components/IncomeSummaryDashboard'));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -130,7 +132,7 @@ const VALID_TABS: TabType[] = [
   'tax-treaty', 'couple-optimizer', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
-  'tax-document', 'content-creator', 'crypto-tax'
+  'tax-document', 'content-creator', 'crypto-tax', 'tax-deadline', 'income-summary'
 ];
 
 // Flatten all tabs from TAB_GROUPS for keyboard navigation
@@ -1050,6 +1052,22 @@ export default function Home() {
                 sharedState={sharedState}
                 taxResult={newResult}
               />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'tax-deadline' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxDeadlineManager />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'income-summary' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <IncomeSummaryDashboard />
             </Suspense>
           </div>
         )}

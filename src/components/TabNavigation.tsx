@@ -36,7 +36,9 @@ export type TabType =
   | 'tax-treaty'
   | 'couple-optimizer'
   | 'content-creator'
-  | 'crypto-tax';
+  | 'crypto-tax'
+  | 'tax-deadline'
+  | 'income-summary';
 
 interface TabItem {
   id: TabType;
@@ -89,6 +91,8 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'couple-optimizer': 'Tối ưu thuế vợ chồng',
   'content-creator': 'YouTuber, TikToker, Affiliate',
   'crypto-tax': 'Bitcoin, Ethereum, NFT',
+  'tax-deadline': 'Quản lý deadline nộp thuế',
+  'income-summary': 'Dashboard thu nhập năm',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -113,6 +117,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'multi-source-income', label: 'Đa nguồn thu nhập', icon: '📊', description: TAB_DESCRIPTIONS['multi-source-income'] },
       { id: 'content-creator', label: 'Content Creator', icon: '🎬', description: TAB_DESCRIPTIONS['content-creator'] },
       { id: 'crypto-tax', label: 'Crypto/NFT', icon: '₿', description: TAB_DESCRIPTIONS['crypto-tax'] },
+      { id: 'income-summary', label: 'Tổng hợp thu nhập', icon: '📊', description: TAB_DESCRIPTIONS['income-summary'] },
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
       { id: 'severance', label: 'Trợ cấp thôi việc', icon: '💼', description: TAB_DESCRIPTIONS.severance },
@@ -147,6 +152,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'tax-document', label: 'Báo cáo thuế', icon: '📄', description: TAB_DESCRIPTIONS['tax-document'] },
       { id: 'exemption-checker', label: 'Miễn thuế TNCN', icon: '✅', description: TAB_DESCRIPTIONS['exemption-checker'] },
       { id: 'late-payment', label: 'Lãi chậm nộp', icon: '⏰', description: TAB_DESCRIPTIONS['late-payment'] },
+      { id: 'tax-deadline', label: 'Deadline thuế', icon: '📅', description: TAB_DESCRIPTIONS['tax-deadline'] },
       { id: 'tax-treaty', label: 'Hiệp định thuế', icon: '🌐', description: TAB_DESCRIPTIONS['tax-treaty'] },
     ],
   },
