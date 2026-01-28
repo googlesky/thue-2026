@@ -16,6 +16,130 @@ import {
   DependentInfo,
   createDefaultMonthlyIncome,
 } from './annualSettlementCalculator';
+import type { VATMethod, BusinessCategory } from './vatCalculator';
+import type { IncomeType, ResidencyStatus, ForeignContractorType } from './withholdingTaxCalculator';
+import type { IncomeSource, IncomeSourceType } from './multiSourceIncomeCalculator';
+
+// Withholding Tax Tab State - defined here to avoid Turbopack import issues
+export interface WithholdingTaxTabState {
+  // Individual WHT fields
+  paymentAmount: number;
+  incomeType: IncomeType;
+  residencyStatus: ResidencyStatus;
+  isFamilyMember: boolean;
+  showComparison: boolean;
+  // FCT fields
+  contractValue: number;
+  contractType: ForeignContractorType;
+  hasVATRegistration: boolean;
+}
+
+export const DEFAULT_WITHHOLDING_TAX_STATE: WithholdingTaxTabState = {
+  paymentAmount: 0,
+  incomeType: 'salary_with_contract',
+  residencyStatus: 'resident',
+  isFamilyMember: false,
+  showComparison: false,
+  contractValue: 0,
+  contractType: 'service',
+  hasVATRegistration: false,
+};
+
+// Multi-source Income Tab State - defined here to avoid Turbopack import issues
+export interface MultiSourceIncomeTabState {
+  incomeSources: IncomeSource[];
+  dependents: number;
+  hasInsurance: boolean;
+  pensionContribution: number;
+  charitableContribution: number;
+  taxYear: 2025 | 2026;
+  isSecondHalf2026: boolean;
+}
+
+export const DEFAULT_MULTI_SOURCE_INCOME_STATE: MultiSourceIncomeTabState = {
+  incomeSources: [],
+  dependents: 0,
+  hasInsurance: true,
+  pensionContribution: 0,
+  charitableContribution: 0,
+  taxYear: 2026,
+  isSecondHalf2026: true,
+};
+
+// Tax Treaty Tab State - defined here to avoid Turbopack import issues
+export type TreatyIncomeType = 'dividends' | 'interest' | 'royalties';
+
+export interface TaxTreatyTabState {
+  selectedCountry: string;
+  daysInVietnam: number;
+  incomeType: TreatyIncomeType;
+  incomeAmount: number;
+  isQualifiedDividend: boolean;
+}
+
+export const DEFAULT_TAX_TREATY_STATE: TaxTreatyTabState = {
+  selectedCountry: '',
+  daysInVietnam: 0,
+  incomeType: 'dividends',
+  incomeAmount: 0,
+  isQualifiedDividend: false,
+};
+
+// Couple Optimizer Tab State - defined here to avoid Turbopack import issues
+export interface CoupleOptimizerTabState {
+  person1Name: string;
+  person1Income: number;
+  person1HasInsurance: boolean;
+  person1Pension: number;
+  person1OtherDeductions: number;
+  person2Name: string;
+  person2Income: number;
+  person2HasInsurance: boolean;
+  person2Pension: number;
+  person2OtherDeductions: number;
+  totalDependents: number;
+  charitableContribution: number;
+  voluntaryPension: number;
+}
+
+export const DEFAULT_COUPLE_OPTIMIZER_STATE: CoupleOptimizerTabState = {
+  person1Name: '',
+  person1Income: 0,
+  person1HasInsurance: true,
+  person1Pension: 0,
+  person1OtherDeductions: 0,
+  person2Name: '',
+  person2Income: 0,
+  person2HasInsurance: true,
+  person2Pension: 0,
+  person2OtherDeductions: 0,
+  totalDependents: 0,
+  charitableContribution: 0,
+  voluntaryPension: 0,
+};
+
+// VAT Tab State - defined here to avoid Turbopack import issues
+export interface VATTabState {
+  method: VATMethod;
+  businessCategory: BusinessCategory;
+  salesRevenue: number;
+  purchaseValue: number;
+  outputRate: number;
+  inputRate: number;
+  useCurrentDate: boolean;
+  customDate: string;
+}
+
+export const DEFAULT_VAT_STATE: VATTabState = {
+  method: 'deduction',
+  businessCategory: 'services',
+  salesRevenue: 0,
+  purchaseValue: 0,
+  outputRate: 0.10,
+  inputRate: 0.10,
+  useCurrentDate: true,
+  customDate: new Date().toISOString().split('T')[0],
+};
 
 /**
  * Tab-specific state types for each calculator tab
@@ -168,6 +292,11 @@ export interface TabStates {
   latePayment: LatePaymentTabState;
   businessFormComparison: BusinessFormComparisonTabState;
   severance: SeveranceTabState;
+  vat: VATTabState;
+  withholdingTax: WithholdingTaxTabState;
+  multiSourceIncome: MultiSourceIncomeTabState;
+  taxTreaty: TaxTreatyTabState;
+  coupleOptimizer: CoupleOptimizerTabState;
 }
 
 /**
@@ -351,6 +480,11 @@ export const DEFAULT_TAB_STATES: TabStates = {
   latePayment: DEFAULT_LATE_PAYMENT_STATE,
   businessFormComparison: DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
   severance: DEFAULT_SEVERANCE_STATE,
+  vat: DEFAULT_VAT_STATE,
+  withholdingTax: DEFAULT_WITHHOLDING_TAX_STATE,
+  multiSourceIncome: DEFAULT_MULTI_SOURCE_INCOME_STATE,
+  taxTreaty: DEFAULT_TAX_TREATY_STATE,
+  coupleOptimizer: DEFAULT_COUPLE_OPTIMIZER_STATE,
 };
 
 /**
@@ -476,6 +610,27 @@ export function createSnapshot(
         ...DEFAULT_SEVERANCE_STATE,
         ...(tabStates?.severance || {}),
       },
+      vat: {
+        ...DEFAULT_VAT_STATE,
+        ...(tabStates?.vat || {}),
+      },
+      withholdingTax: {
+        ...DEFAULT_WITHHOLDING_TAX_STATE,
+        ...(tabStates?.withholdingTax || {}),
+      },
+      multiSourceIncome: {
+        ...DEFAULT_MULTI_SOURCE_INCOME_STATE,
+        ...(tabStates?.multiSourceIncome || {}),
+        incomeSources: tabStates?.multiSourceIncome?.incomeSources?.map(s => ({ ...s })) || [],
+      },
+      taxTreaty: {
+        ...DEFAULT_TAX_TREATY_STATE,
+        ...(tabStates?.taxTreaty || {}),
+      },
+      coupleOptimizer: {
+        ...DEFAULT_COUPLE_OPTIMIZER_STATE,
+        ...(tabStates?.coupleOptimizer || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -595,6 +750,27 @@ export function mergeSnapshotWithDefaults(
       severance: {
         ...DEFAULT_SEVERANCE_STATE,
         ...(partial.tabs?.severance || {}),
+      },
+      vat: {
+        ...DEFAULT_VAT_STATE,
+        ...(partial.tabs?.vat || {}),
+      },
+      withholdingTax: {
+        ...DEFAULT_WITHHOLDING_TAX_STATE,
+        ...(partial.tabs?.withholdingTax || {}),
+      },
+      multiSourceIncome: {
+        ...DEFAULT_MULTI_SOURCE_INCOME_STATE,
+        ...(partial.tabs?.multiSourceIncome || {}),
+        incomeSources: partial.tabs?.multiSourceIncome?.incomeSources?.map(s => ({ ...s })) || [],
+      },
+      taxTreaty: {
+        ...DEFAULT_TAX_TREATY_STATE,
+        ...(partial.tabs?.taxTreaty || {}),
+      },
+      coupleOptimizer: {
+        ...DEFAULT_COUPLE_OPTIMIZER_STATE,
+        ...(partial.tabs?.coupleOptimizer || {}),
       },
     },
     meta: {

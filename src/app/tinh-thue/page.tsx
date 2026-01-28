@@ -45,6 +45,11 @@ const LatePaymentCalculator = lazy(() => import('@/components/LatePaymentCalcula
 const BusinessFormComparison = lazy(() => import('@/components/BusinessFormComparison').then(m => ({ default: m.BusinessFormComparison })));
 const SeveranceCalculator = lazy(() => import('@/components/SeveranceCalculator').then(m => ({ default: m.SeveranceCalculator })));
 const TaxDocumentGenerator = lazy(() => import('@/components/TaxDocumentGenerator').then(m => ({ default: m.TaxDocumentGenerator })));
+const VATCalculator = lazy(() => import('@/components/VATCalculator').then(m => ({ default: m.VATCalculator })));
+const WithholdingTax = lazy(() => import('@/components/WithholdingTax').then(m => ({ default: m.WithholdingTax })));
+const MultiSourceIncome = lazy(() => import('@/components/MultiSourceIncome').then(m => ({ default: m.MultiSourceIncome })));
+const TaxTreatyReference = lazy(() => import('@/components/TaxTreatyReference').then(m => ({ default: m.TaxTreatyReference })));
+const CoupleTaxOptimizer = lazy(() => import('@/components/CoupleTaxOptimizer').then(m => ({ default: m.CoupleTaxOptimizer })));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -75,6 +80,7 @@ import {
   LatePaymentTabState,
   BusinessFormComparisonTabState,
   SeveranceTabState,
+  VATTabState,
   DEFAULT_OVERTIME_STATE,
   DEFAULT_ANNUAL_SETTLEMENT_STATE,
   DEFAULT_BONUS_STATE,
@@ -86,6 +92,15 @@ import {
   DEFAULT_BUSINESS_FORM_COMPARISON_STATE,
   DEFAULT_FREELANCER_STATE,
   DEFAULT_SEVERANCE_STATE,
+  DEFAULT_VAT_STATE,
+  WithholdingTaxTabState,
+  DEFAULT_WITHHOLDING_TAX_STATE,
+  MultiSourceIncomeTabState,
+  DEFAULT_MULTI_SOURCE_INCOME_STATE,
+  TaxTreatyTabState,
+  DEFAULT_TAX_TREATY_STATE,
+  CoupleOptimizerTabState,
+  DEFAULT_COUPLE_OPTIMIZER_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -105,8 +120,8 @@ const defaultSharedState: SharedTaxState = {
 const VALID_TABS: TabType[] = [
   'calculator', 'gross-net', 'overtime', 'annual-settlement',
   'bonus-calculator', 'esop-calculator', 'foreigner-tax', 'securities', 'rental',
-  'household-business', 'real-estate',
-  'pension', 'employer-cost', 'freelancer',
+  'household-business', 'real-estate', 'vat', 'withholding-tax', 'multi-source-income',
+  'tax-treaty', 'couple-optimizer', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
   'tax-document'
@@ -151,6 +166,11 @@ export default function Home() {
   const [latePaymentState, setLatePaymentState] = useState<LatePaymentTabState>(DEFAULT_LATE_PAYMENT_STATE);
   const [businessFormComparisonState, setBusinessFormComparisonState] = useState<BusinessFormComparisonTabState>(DEFAULT_BUSINESS_FORM_COMPARISON_STATE);
   const [severanceState, setSeveranceState] = useState<SeveranceTabState>(DEFAULT_SEVERANCE_STATE);
+  const [vatState, setVatState] = useState<VATTabState>(DEFAULT_VAT_STATE);
+  const [withholdingTaxState, setWithholdingTaxState] = useState<WithholdingTaxTabState>(DEFAULT_WITHHOLDING_TAX_STATE);
+  const [multiSourceIncomeState, setMultiSourceIncomeState] = useState<MultiSourceIncomeTabState>(DEFAULT_MULTI_SOURCE_INCOME_STATE);
+  const [taxTreatyState, setTaxTreatyState] = useState<TaxTreatyTabState>(DEFAULT_TAX_TREATY_STATE);
+  const [coupleOptimizerState, setCoupleOptimizerState] = useState<CoupleOptimizerTabState>(DEFAULT_COUPLE_OPTIMIZER_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -194,6 +214,21 @@ export default function Home() {
     }
     if (snapshot.tabs.severance) {
       setSeveranceState(snapshot.tabs.severance);
+    }
+    if (snapshot.tabs.vat) {
+      setVatState(snapshot.tabs.vat);
+    }
+    if (snapshot.tabs.withholdingTax) {
+      setWithholdingTaxState(snapshot.tabs.withholdingTax);
+    }
+    if (snapshot.tabs.multiSourceIncome) {
+      setMultiSourceIncomeState(snapshot.tabs.multiSourceIncome);
+    }
+    if (snapshot.tabs.taxTreaty) {
+      setTaxTreatyState(snapshot.tabs.taxTreaty);
+    }
+    if (snapshot.tabs.coupleOptimizer) {
+      setCoupleOptimizerState(snapshot.tabs.coupleOptimizer);
     }
   }, []);
 
@@ -405,11 +440,16 @@ export default function Home() {
       latePayment: latePaymentState,
       businessFormComparison: businessFormComparisonState,
       severance: severanceState,
+      vat: vatState,
+      withholdingTax: withholdingTaxState,
+      multiSourceIncome: multiSourceIncomeState,
+      taxTreaty: taxTreatyState,
+      coupleOptimizer: coupleOptimizerState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -463,6 +503,11 @@ export default function Home() {
     setLatePaymentState(DEFAULT_LATE_PAYMENT_STATE);
     setBusinessFormComparisonState(DEFAULT_BUSINESS_FORM_COMPARISON_STATE);
     setSeveranceState(DEFAULT_SEVERANCE_STATE);
+    setVatState(DEFAULT_VAT_STATE);
+    setWithholdingTaxState(DEFAULT_WITHHOLDING_TAX_STATE);
+    setMultiSourceIncomeState(DEFAULT_MULTI_SOURCE_INCOME_STATE);
+    setTaxTreatyState(DEFAULT_TAX_TREATY_STATE);
+    setCoupleOptimizerState(DEFAULT_COUPLE_OPTIMIZER_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -827,6 +872,61 @@ export default function Home() {
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
               <HouseholdBusinessTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'vat' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <VATCalculator
+                tabState={vatState}
+                onTabStateChange={setVatState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'withholding-tax' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <WithholdingTax
+                tabState={withholdingTaxState}
+                onTabStateChange={setWithholdingTaxState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'multi-source-income' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <MultiSourceIncome
+                tabState={multiSourceIncomeState}
+                onTabStateChange={setMultiSourceIncomeState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'tax-treaty' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <TaxTreatyReference
+                tabState={taxTreatyState}
+                onTabStateChange={setTaxTreatyState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'couple-optimizer' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <CoupleTaxOptimizer
+                tabState={coupleOptimizerState}
+                onTabStateChange={setCoupleOptimizerState}
+              />
             </Suspense>
           </div>
         )}
