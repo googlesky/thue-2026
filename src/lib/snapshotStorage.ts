@@ -199,6 +199,14 @@ export function saveNamedSave(
         latePayment: { ...snapshot.tabs.latePayment },
         businessFormComparison: { ...snapshot.tabs.businessFormComparison },
         severance: { ...snapshot.tabs.severance },
+        vat: { ...snapshot.tabs.vat },
+        withholdingTax: { ...snapshot.tabs.withholdingTax },
+        multiSourceIncome: {
+          ...snapshot.tabs.multiSourceIncome,
+          incomeSources: snapshot.tabs.multiSourceIncome.incomeSources.map(s => ({ ...s })),
+        },
+        taxTreaty: { ...snapshot.tabs.taxTreaty },
+        coupleOptimizer: { ...snapshot.tabs.coupleOptimizer },
       },
       meta: {
         ...snapshot.meta,

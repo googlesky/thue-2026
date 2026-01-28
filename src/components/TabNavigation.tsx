@@ -29,7 +29,12 @@ export type TabType =
   | 'late-payment'
   | 'business-form'
   | 'severance'
-  | 'tax-document';
+  | 'tax-document'
+  | 'vat'
+  | 'withholding-tax'
+  | 'multi-source-income'
+  | 'tax-treaty'
+  | 'couple-optimizer';
 
 interface TabItem {
   id: TabType;
@@ -75,6 +80,11 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'business-form': 'Lương vs Freelancer vs HKD',
   severance: 'Thôi việc, BHXH 1 lần',
   'tax-document': 'Báo cáo thuế TNCN',
+  vat: 'Thuế GTGT doanh nghiệp',
+  'withholding-tax': 'Thuế khấu trừ tại nguồn',
+  'multi-source-income': 'Tổng hợp nhiều nguồn',
+  'tax-treaty': 'Tra cứu hiệp định thuế',
+  'couple-optimizer': 'Tối ưu thuế vợ chồng',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -94,6 +104,9 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'securities', label: 'Chứng khoán', icon: '📊', description: TAB_DESCRIPTIONS.securities },
       { id: 'rental', label: 'Cho thuê nhà', icon: '🏠', description: TAB_DESCRIPTIONS.rental },
       { id: 'household-business', label: 'Hộ kinh doanh', icon: '🏪', description: TAB_DESCRIPTIONS['household-business'] },
+      { id: 'vat', label: 'Thuế GTGT (VAT)', icon: '📋', description: TAB_DESCRIPTIONS.vat },
+      { id: 'withholding-tax', label: 'Khấu trừ tại nguồn', icon: '✂️', description: TAB_DESCRIPTIONS['withholding-tax'] },
+      { id: 'multi-source-income', label: 'Đa nguồn thu nhập', icon: '📊', description: TAB_DESCRIPTIONS['multi-source-income'] },
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
       { id: 'severance', label: 'Trợ cấp thôi việc', icon: '💼', description: TAB_DESCRIPTIONS.severance },
@@ -110,6 +123,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'freelancer', label: 'Freelancer vs Fulltime', icon: '👤', description: TAB_DESCRIPTIONS.freelancer },
       { id: 'business-form', label: 'Hình thức kinh doanh', icon: '⚖️', description: TAB_DESCRIPTIONS['business-form'] },
       { id: 'employer-cost', label: 'Chi phí nhà tuyển dụng', icon: '🏢', description: TAB_DESCRIPTIONS['employer-cost'] },
+      { id: 'couple-optimizer', label: 'Tối ưu vợ chồng', icon: '💑', description: TAB_DESCRIPTIONS['couple-optimizer'] },
     ],
   },
   {
@@ -127,6 +141,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'tax-document', label: 'Báo cáo thuế', icon: '📄', description: TAB_DESCRIPTIONS['tax-document'] },
       { id: 'exemption-checker', label: 'Miễn thuế TNCN', icon: '✅', description: TAB_DESCRIPTIONS['exemption-checker'] },
       { id: 'late-payment', label: 'Lãi chậm nộp', icon: '⏰', description: TAB_DESCRIPTIONS['late-payment'] },
+      { id: 'tax-treaty', label: 'Hiệp định thuế', icon: '🌐', description: TAB_DESCRIPTIONS['tax-treaty'] },
     ],
   },
 ];
