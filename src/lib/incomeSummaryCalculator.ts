@@ -246,10 +246,10 @@ const TAX_BRACKETS_2026 = [
   { min: 120_000_000, max: Infinity, rate: 0.25 },
 ];
 
-// Deductions
+// Deductions (Nghị quyết 110/2025/UBTVQH15)
 const DEDUCTIONS = {
-  personal: 15_400_000, // 15.4 triệu/tháng from 2026
-  dependent: 6_160_000, // 6.16 triệu/người/tháng from 2026
+  personal: 15_500_000, // 15.5 triệu/tháng từ 2026
+  dependent: 6_200_000, // 6.2 triệu/người/tháng từ 2026
   insuranceRate: 0.105, // 10.5% BHXH
   insuranceCap: 46_800_000, // Mức trần BHXH (36 triệu x 130%)
 };
