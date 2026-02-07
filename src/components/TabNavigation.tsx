@@ -376,9 +376,13 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                     {group.icon}
                   </span>
                   <span className="text-sm sm:text-base font-semibold">
-                    {/* On mobile: show active tab label if in this group, otherwise group label */}
                     <span className="sm:hidden">
-                      {activeTabInGroup ? activeTabInGroup.label.split(' ')[0] : group.label}
+                      {group.label}
+                      {isGroupActive && (
+                        <span className="ml-1 text-xs opacity-75">
+                          ({group.tabs.findIndex(t => t.id === activeTab) + 1}/{group.tabs.length})
+                        </span>
+                      )}
                     </span>
                     <span className="hidden sm:inline">{group.label}</span>
                   </span>
@@ -486,7 +490,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                       </div>
 
                       {/* Safe area padding for devices with home indicator */}
-                      <div className="h-6" />
+                      <div style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }} />
                     </div>
                   </>
                 )}
@@ -502,7 +506,7 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
                       py-3 px-3
                       z-50
                       ${group.gridCols === 2 ? 'w-[420px]' : 'w-[260px]'}
-                      max-w-[420px]
+                      max-w-[calc(100vw-2rem)]
                       dropdown-modern-animate
                     `}
                     role="menu"
@@ -599,8 +603,18 @@ function TabNavigationComponent({ activeTab, onTabChange }: TabNavigationProps) 
         </div>
       </div>
 
-      {/* Enhanced breadcrumb - shows group > tab on mobile */}
-      <div className="flex justify-center mt-3 sm:hidden" aria-label="Breadcrumb">
+      {/* Active tab indicator - desktop */}
+      {activeTabInfo && (
+        <div className="hidden md:flex justify-center mt-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white rounded-full shadow-sm border border-gray-100 text-sm">
+            <span>{activeTabInfo.icon}</span>
+            <span className="font-semibold text-gray-800">{activeTabInfo.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced breadcrumb - shows group > tab on mobile & tablet */}
+      <div className="flex justify-center mt-3 md:hidden" aria-label="Breadcrumb">
         {activeTabInfo && (
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-100">
             <span className="flex items-center gap-1.5 text-xs text-gray-500">

@@ -8,17 +8,17 @@ const FOOTER_LINKS = {
   quickLinks: [
     { href: '/', label: 'Trang chủ' },
     { href: '/tinh-thue', label: 'Tính thuế TNCN' },
-    { href: '/tinh-thue?tab=gross-net', label: 'Quy đổi GROSS-NET' },
-    { href: '/tinh-thue?tab=annual-settlement', label: 'Quyết toán thuế' },
+    { href: '/tinh-thue#gross-net', label: 'Quy đổi GROSS-NET' },
+    { href: '/tinh-thue#annual-settlement', label: 'Quyết toán thuế' },
   ],
   tools: [
-    { href: '/tinh-thue?tab=bonus-calculator', label: 'Thuế thưởng Tết' },
-    { href: '/tinh-thue?tab=esop-calculator', label: 'Thuế ESOP' },
-    { href: '/tinh-thue?tab=overtime', label: 'Lương tăng ca' },
-    { href: '/tinh-thue?tab=table', label: 'Biểu thuế suất' },
+    { href: '/tinh-thue#bonus-calculator', label: 'Thuế thưởng Tết' },
+    { href: '/tinh-thue#esop-calculator', label: 'Thuế ESOP' },
+    { href: '/tinh-thue#overtime', label: 'Lương tăng ca' },
+    { href: '/tinh-thue#table', label: 'Biểu thuế suất' },
   ],
   resources: [
-    { href: '/tinh-thue?tab=tax-history', label: 'Hướng dẫn sử dụng', external: false },
+    { href: '/tinh-thue#tax-history', label: 'Lịch sử Luật thuế', external: false },
     { href: 'https://github.com/googlesky/thue-2026', label: 'Mã nguồn GitHub', external: true },
     { href: 'mailto:support@1devops.io', label: 'Liên hệ hỗ trợ', external: true },
   ],
@@ -127,7 +127,7 @@ interface FooterLinkProps {
 }
 
 function FooterLink({ href, label, external }: FooterLinkProps) {
-  const baseClasses = "group flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors duration-200 py-1";
+  const baseClasses = "group flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors duration-200 py-1";
 
   if (external) {
     return (
@@ -226,7 +226,7 @@ export default function Footer() {
             </Link>
 
             {/* Description */}
-            <p className="text-sm text-slate-400 leading-relaxed mb-6 max-w-xs">
+            <p className="text-sm text-slate-300 leading-relaxed mb-6 max-w-xs">
               Công cụ tính thuế TNCN trực tuyến miễn phí, hỗ trợ tính lương GROSS-NET và quyết toán thuế năm.
             </p>
 
@@ -239,7 +239,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors duration-200 group"
                 aria-label="Xem mã nguồn trên GitHub"
               >
-                <GitHubIcon className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                <GitHubIcon className="w-5 h-5 text-slate-300 group-hover:text-white transition-colors" />
               </a>
             </div>
           </div>
@@ -297,14 +297,14 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Copyright */}
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-slate-400">
               <span>&copy; 2024-{currentYear} Thue2026</span>
               <span className="hidden sm:inline">|</span>
               <span className="hidden sm:inline">Tất cả quyền được bảo lưu</span>
             </div>
 
             {/* Center - Made in Vietnam Badge */}
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-slate-300">
               <span>Made with</span>
               <span className="text-red-500" aria-label="tình yêu">&#10084;</span>
               <span>in</span>
@@ -315,7 +315,7 @@ export default function Footer() {
             </div>
 
             {/* Version */}
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-slate-400">
               <span className="px-2 py-1 bg-slate-800/50 rounded text-xs font-mono">
                 v1.1.0
               </span>

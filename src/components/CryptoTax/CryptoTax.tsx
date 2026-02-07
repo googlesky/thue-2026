@@ -119,8 +119,8 @@ export default function CryptoTax({
       </div>
 
       {/* Year Selection */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Năm tính thuế
         </label>
         <div className="flex gap-2">
@@ -131,7 +131,7 @@ export default function CryptoTax({
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 year === y
                   ? 'bg-orange-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {y}
@@ -140,8 +140,8 @@ export default function CryptoTax({
         </div>
 
         {!isLawEffective && (
-          <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
               ⚠️ Luật thuế tài sản số có hiệu lực từ <strong>1/7/2026</strong>.
               Giao dịch trước ngày này không chịu thuế theo quy định mới.
             </p>
@@ -150,8 +150,8 @@ export default function CryptoTax({
       </div>
 
       {/* Tax Rate Info */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <h3 className="font-semibold text-gray-900 mb-3">
           Thuế suất áp dụng
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -160,26 +160,26 @@ export default function CryptoTax({
               key={key}
               className={`p-3 rounded-lg ${
                 key === 'crypto'
-                  ? 'bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-300 dark:border-orange-700'
-                  : 'bg-gray-50 dark:bg-gray-900'
+                  ? 'bg-orange-50 border-2 border-orange-300'
+                  : 'bg-gray-50'
               }`}
             >
-              <p className="text-sm text-gray-500 dark:text-gray-400">{config.name}</p>
+              <p className="text-sm text-gray-500">{config.name}</p>
               <p className={`text-xl font-bold ${
-                key === 'crypto' ? 'text-orange-600' : 'text-gray-900 dark:text-white'
+                key === 'crypto' ? 'text-orange-600' : 'text-gray-900'
               }`}>
                 {formatPercent(config.rate)}
               </p>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-3 text-sm text-gray-500">
           Thuế tài sản số = 0,1% × Giá trị giao dịch (tương đương chứng khoán và vàng miếng)
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('transactions')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -209,7 +209,7 @@ export default function CryptoTax({
           {!showAddForm && (
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-500 dark:text-gray-400 hover:border-orange-500 hover:text-orange-500 transition-colors"
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-orange-500 hover:text-orange-500 transition-colors"
             >
               + Thêm giao dịch
             </button>
@@ -217,15 +217,15 @@ export default function CryptoTax({
 
           {/* Add Transaction Form */}
           {showAddForm && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl p-4 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-4">
                 Thêm giao dịch mới
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Transaction Type */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Loại giao dịch
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -235,8 +235,8 @@ export default function CryptoTax({
                         onClick={() => setFormData(prev => ({ ...prev, type: t.value }))}
                         className={`p-2 rounded-lg text-center transition-colors ${
                           formData.type === t.value
-                            ? 'bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-500'
-                            : 'bg-gray-100 dark:bg-gray-700 border-2 border-transparent'
+                            ? 'bg-orange-100 border-2 border-orange-500'
+                            : 'bg-gray-100 border-2 border-transparent'
                         }`}
                       >
                         <span className="text-lg">{t.icon}</span>
@@ -248,7 +248,7 @@ export default function CryptoTax({
 
                 {/* Asset Type */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Loại tài sản
                   </label>
                   <select
@@ -261,7 +261,7 @@ export default function CryptoTax({
                         assetName: asset?.name || e.target.value,
                       }));
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   >
                     {CRYPTO_ASSETS.map(asset => (
                       <option key={asset.id} value={asset.id}>
@@ -273,20 +273,20 @@ export default function CryptoTax({
 
                 {/* Date */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Ngày giao dịch
                   </label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   />
                 </div>
 
                 {/* Quantity */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Số lượng
                   </label>
                   <input
@@ -295,13 +295,13 @@ export default function CryptoTax({
                     value={formData.quantity || ''}
                     onChange={e => setFormData(prev => ({ ...prev, quantity: Number(e.target.value) || 0 }))}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   />
                 </div>
 
                 {/* Price per unit */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Giá mỗi đơn vị (VND)
                   </label>
                   <input
@@ -309,13 +309,13 @@ export default function CryptoTax({
                     value={formData.pricePerUnit || ''}
                     onChange={e => setFormData(prev => ({ ...prev, pricePerUnit: Number(e.target.value) || 0 }))}
                     placeholder="0"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   />
                 </div>
 
                 {/* Fee */}
                 <div>
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Phí giao dịch (VND)
                   </label>
                   <input
@@ -323,13 +323,13 @@ export default function CryptoTax({
                     value={formData.fee || ''}
                     onChange={e => setFormData(prev => ({ ...prev, fee: Number(e.target.value) || 0 }))}
                     placeholder="0"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   />
                 </div>
 
                 {/* Notes */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-sm text-gray-500 mb-1">
                     Ghi chú (tùy chọn)
                   </label>
                   <input
@@ -337,23 +337,23 @@ export default function CryptoTax({
                     value={formData.notes}
                     onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="VD: Bán lấy lãi, chuyển sàn..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   />
                 </div>
               </div>
 
               {/* Total Value */}
               {formData.quantity > 0 && formData.pricePerUnit > 0 && (
-                <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                <div className="mt-4 p-3 bg-orange-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-700 dark:text-gray-300">Giá trị giao dịch:</span>
+                    <span className="text-gray-700">Giá trị giao dịch:</span>
                     <span className="text-xl font-bold text-orange-600">
                       {formatCurrency(formData.quantity * formData.pricePerUnit)}
                     </span>
                   </div>
                   {(formData.type === 'sell' || formData.type === 'swap') && isLawEffective && (
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
-                      <span className="text-gray-700 dark:text-gray-300">Thuế dự kiến (0,1%):</span>
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-200">
+                      <span className="text-gray-700">Thuế dự kiến (0,1%):</span>
                       <span className="font-bold text-red-600">
                         {formatCurrency(formData.quantity * formData.pricePerUnit * 0.001)}
                       </span>
@@ -373,7 +373,7 @@ export default function CryptoTax({
                 </button>
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
                 >
                   Hủy
                 </button>
@@ -383,13 +383,13 @@ export default function CryptoTax({
 
           {/* Transaction List */}
           {transactions.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-white">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">
                   Danh sách giao dịch
                 </h3>
               </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="divide-y divide-gray-100">
                 {transactions.map(tx => {
                   const asset = getAssetByType(tx.assetType);
                   const isTaxable = (tx.type === 'sell' || tx.type === 'swap') && tx.date >= CRYPTO_TAX_CONFIG.effectiveDate;
@@ -402,18 +402,18 @@ export default function CryptoTax({
                         <div>
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-0.5 rounded ${
-                              tx.type === 'buy' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                              tx.type === 'sell' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                              tx.type === 'swap' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                              'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                              tx.type === 'buy' ? 'bg-green-100 text-green-700' :
+                              tx.type === 'sell' ? 'bg-red-100 text-red-700' :
+                              tx.type === 'swap' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
                             }`}>
                               {getTransactionTypeLabel(tx.type)}
                             </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-gray-900">
                               {tx.quantity} {tx.assetName}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-gray-500">
                             {tx.date.toLocaleDateString('vi-VN')} • {formatCurrency(tx.totalValue)}
                           </p>
                         </div>
@@ -421,7 +421,7 @@ export default function CryptoTax({
                       <div className="flex items-center gap-4">
                         {isTaxable && (
                           <div className="text-right">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Thuế</p>
+                            <p className="text-xs text-gray-500">Thuế</p>
                             <p className="font-medium text-red-600">{formatCurrency(taxAmount)}</p>
                           </div>
                         )}
@@ -441,28 +441,28 @@ export default function CryptoTax({
 
           {/* Quick Summary */}
           {result && (
-            <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl p-4">
+            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tổng mua</p>
+                  <p className="text-sm text-gray-500">Tổng mua</p>
                   <p className="text-lg font-bold text-green-600">
                     {formatCurrency(result.totalBuyValue)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tổng bán/swap</p>
+                  <p className="text-sm text-gray-500">Tổng bán/swap</p>
                   <p className="text-lg font-bold text-red-600">
                     {formatCurrency(result.totalSellValue + result.totalSwapValue)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">GD chịu thuế</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm text-gray-500">GD chịu thuế</p>
+                  <p className="text-lg font-bold text-gray-900">
                     {result.totalTaxableTransactions}/{result.totalTransactions}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tổng thuế</p>
+                  <p className="text-sm text-gray-500">Tổng thuế</p>
                   <p className="text-lg font-bold text-orange-600">
                     {formatCurrency(result.totalTax)}
                   </p>
@@ -482,27 +482,27 @@ export default function CryptoTax({
       {activeTab === 'result' && result && (
         <>
           {/* Result Summary */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-4">
               Kết quả tính thuế năm {year}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Giá trị chịu thuế</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Giá trị chịu thuế</p>
+                <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(result.totalTaxableValue)}
                 </p>
               </div>
-              <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Tổng thuế phải nộp</p>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <p className="text-sm text-gray-500">Tổng thuế phải nộp</p>
                 <p className="text-2xl font-bold text-orange-600">
                   {formatCurrency(result.totalTax)}
                 </p>
               </div>
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Thuế suất thực tế</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Thuế suất thực tế</p>
+                <p className="text-2xl font-bold text-gray-900">
                   {result.effectiveTaxRate.toFixed(3)}%
                 </p>
               </div>
@@ -511,20 +511,20 @@ export default function CryptoTax({
 
           {/* Tax by Asset */}
           {result.taxByAsset.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-4">
                 Thuế theo loại tài sản
               </h3>
               <div className="space-y-3">
                 {result.taxByAsset.map(item => {
                   const asset = getAssetByType(item.assetType);
                   return (
-                    <div key={item.assetType} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div key={item.assetType} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{asset?.icon || '🪙'}</span>
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{item.assetName}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="font-medium text-gray-900">{item.assetName}</p>
+                          <p className="text-sm text-gray-500">
                             {item.transactionCount} giao dịch • {formatCurrency(item.totalValue)}
                           </p>
                         </div>
@@ -538,31 +538,31 @@ export default function CryptoTax({
           )}
 
           {/* Tax Comparison */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-4">
               So sánh với các loại tài sản khác
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2 text-gray-500 dark:text-gray-400">Loại tài sản</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Thuế suất</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Số thuế</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 text-gray-500">Loại tài sản</th>
+                    <th className="text-right py-2 text-gray-500">Thuế suất</th>
+                    <th className="text-right py-2 text-gray-500">Số thuế</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.taxComparison.map(item => (
-                    <tr key={item.asset} className={`border-b border-gray-100 dark:border-gray-800 ${
-                      item.asset === 'Tài sản số' ? 'bg-orange-50 dark:bg-orange-900/20' : ''
+                    <tr key={item.asset} className={`border-b border-gray-100 ${
+                      item.asset === 'Tài sản số' ? 'bg-orange-50' : ''
                     }`}>
-                      <td className="py-3 font-medium text-gray-900 dark:text-white">
+                      <td className="py-3 font-medium text-gray-900">
                         {item.asset}
                       </td>
-                      <td className="py-3 text-right text-gray-700 dark:text-gray-300">
+                      <td className="py-3 text-right text-gray-700">
                         {formatPercent(item.rate)}
                       </td>
-                      <td className="py-3 text-right font-medium text-gray-900 dark:text-white">
+                      <td className="py-3 text-right font-medium text-gray-900">
                         {formatCurrency(item.taxAmount)}
                       </td>
                     </tr>
@@ -573,8 +573,8 @@ export default function CryptoTax({
           </div>
 
           {/* Legal Reference */}
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 text-sm text-gray-600 dark:text-gray-400">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Căn cứ pháp lý</h4>
+          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+            <h4 className="font-medium text-gray-900 mb-2">Căn cứ pháp lý</h4>
             <ul className="list-disc list-inside space-y-1">
               <li>Luật Thuế TNCN 2025 - Điều khoản về tài sản số</li>
               <li>Luật Công nghiệp công nghệ số (hiệu lực 1/1/2026)</li>

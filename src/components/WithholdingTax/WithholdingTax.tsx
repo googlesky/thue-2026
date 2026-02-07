@@ -88,14 +88,14 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
   return (
     <div className="space-y-6">
       {/* Mode Selector */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
         <div className="flex gap-2">
           <button
             onClick={() => setMode('individual')}
             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors
               ${mode === 'individual'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
           >
             Cá nhân (TNCN)
@@ -105,7 +105,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors
               ${mode === 'contractor'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
           >
             Nhà thầu nước ngoài (FCT)
@@ -116,15 +116,15 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       {mode === 'individual' ? (
         <>
           {/* Individual WHT Calculator */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Tính thuế khấu trừ tại nguồn
             </h2>
 
             <div className="space-y-4">
               {/* Residency Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tình trạng cư trú
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -133,7 +133,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                     className={`py-2 px-4 rounded-lg text-sm font-medium transition-colors
                       ${tabState.residencyStatus === 'resident'
                         ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                        : 'bg-gray-100 text-gray-700'
                       }`}
                   >
                     Cư trú
@@ -143,13 +143,13 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                     className={`py-2 px-4 rounded-lg text-sm font-medium transition-colors
                       ${tabState.residencyStatus === 'non_resident'
                         ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                        : 'bg-gray-100 text-gray-700'
                       }`}
                   >
                     Không cư trú
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {tabState.residencyStatus === 'resident'
                     ? 'Có mặt ≥ 183 ngày/năm hoặc có nơi ở thường xuyên tại VN'
                     : 'Có mặt < 183 ngày/năm và không có nơi ở thường xuyên'}
@@ -158,13 +158,13 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
               {/* Income Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Loại thu nhập
                 </label>
                 <select
                   value={tabState.incomeType}
                   onChange={(e) => updateField('incomeType', e.target.value as IncomeType)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
                 >
                   {incomeTypeOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -176,7 +176,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
               {/* Family Member Option (for inheritance) */}
               {showFamilyOption && (
-                <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                   <input
                     type="checkbox"
                     id="isFamilyMember"
@@ -184,7 +184,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                     onChange={(e) => updateField('isFamilyMember', e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300"
                   />
-                  <label htmlFor="isFamilyMember" className="text-sm text-gray-700 dark:text-gray-300">
+                  <label htmlFor="isFamilyMember" className="text-sm text-gray-700">
                     Người cho là thành viên gia đình (vợ/chồng, cha mẹ, con)
                   </label>
                 </div>
@@ -192,7 +192,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
               {/* Payment Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Số tiền chi trả (VND)
                 </label>
                 <input
@@ -204,19 +204,19 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                     updateField('paymentAmount', value ? parseInt(value, 10) : 0);
                   }}
                   placeholder="Nhập số tiền..."
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
                 />
               </div>
 
               {/* Rate Info */}
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="p-3 bg-blue-50 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Thuế suất áp dụng:</span>
-                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="text-sm text-gray-600">Thuế suất áp dụng:</span>
+                  <span className="font-semibold text-blue-600">
                     {formatPercent(rateInfo.rate)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   {rateInfo.description}
                 </p>
               </div>
@@ -230,7 +230,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                   onChange={(e) => updateField('showComparison', e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300"
                 />
-                <label htmlFor="showComparison" className="text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor="showComparison" className="text-sm text-gray-700">
                   So sánh cư trú / không cư trú
                 </label>
               </div>
@@ -238,26 +238,26 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
           </div>
 
           {/* WHT Result */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Kết quả tính thuế
             </h3>
 
             <div className="space-y-3">
               {/* Payment Amount */}
-              <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Số tiền chi trả:</span>
-                <span className="font-medium text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-600">Số tiền chi trả:</span>
+                <span className="font-medium text-gray-900">
                   {formatCurrency(whtResult.paymentAmount)}
                 </span>
               </div>
 
               {/* Requires Withholding */}
               {!whtResult.requiresWithholding && whtResult.exemptReason && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <span className="text-green-600 dark:text-green-400">✓</span>
-                    <span className="text-sm text-green-700 dark:text-green-300">
+                    <span className="text-green-600">✓</span>
+                    <span className="text-sm text-green-700">
                       {whtResult.exemptReason}
                     </span>
                   </div>
@@ -265,32 +265,32 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
               )}
 
               {/* Applied Rate */}
-              <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Thuế suất:</span>
-                <span className="font-medium text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-600">Thuế suất:</span>
+                <span className="font-medium text-gray-900">
                   {formatPercent(whtResult.appliedRate)}
                 </span>
               </div>
 
               {/* Withholding Amount */}
-              <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">Thuế khấu trừ:</span>
-                <span className="font-semibold text-red-600 dark:text-red-400">
+              <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-600">Thuế khấu trừ:</span>
+                <span className="font-semibold text-red-600">
                   {formatCurrency(whtResult.withholdingAmount)}
                 </span>
               </div>
 
               {/* Net Amount */}
-              <div className="flex items-center justify-between py-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-3">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Thực nhận:</span>
-                <span className="text-xl font-bold text-green-600 dark:text-green-400">
+              <div className="flex items-center justify-between py-2 bg-gray-50 rounded-lg px-3">
+                <span className="font-medium text-gray-700">Thực nhận:</span>
+                <span className="text-xl font-bold text-green-600">
                   {formatCurrency(whtResult.netAmount)}
                 </span>
               </div>
 
               {/* Legal Note */}
-              <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">
                   <strong>Căn cứ pháp lý:</strong> {whtResult.legalNote}
                 </p>
               </div>
@@ -299,15 +299,15 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
           {/* Comparison Result */}
           {comparisonResult && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 So sánh cư trú / không cư trú
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Resident */}
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">Cư trú</h4>
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-700 mb-2">Cư trú</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Thuế suất:</span>
@@ -325,8 +325,8 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 </div>
 
                 {/* Non-Resident */}
-                <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                  <h4 className="font-medium text-orange-700 dark:text-orange-400 mb-2">Không cư trú</h4>
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <h4 className="font-medium text-orange-700 mb-2">Không cư trú</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Thuế suất:</span>
@@ -345,8 +345,8 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
               </div>
 
               {/* Recommendation */}
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
                   <strong>Kết luận:</strong> {comparisonResult.recommendation}
                 </p>
               </div>
@@ -356,21 +356,21 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       ) : (
         <>
           {/* Foreign Contractor Tax Calculator */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Thuế nhà thầu nước ngoài (FCT)
             </h2>
 
             <div className="space-y-4">
               {/* Contract Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Loại hợp đồng
                 </label>
                 <select
                   value={tabState.contractType}
                   onChange={(e) => updateField('contractType', e.target.value as ForeignContractorType)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
                 >
                   {Object.entries(CONTRACTOR_TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -382,7 +382,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
               {/* Contract Value */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Doanh thu hợp đồng (VND)
                 </label>
                 <input
@@ -394,12 +394,12 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                     updateField('contractValue', value ? parseInt(value, 10) : 0);
                   }}
                   placeholder="Nhập doanh thu..."
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
                 />
               </div>
 
               {/* VAT Registration */}
-              <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                 <input
                   type="checkbox"
                   id="hasVATRegistration"
@@ -407,7 +407,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                   onChange={(e) => updateField('hasVATRegistration', e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300"
                 />
-                <label htmlFor="hasVATRegistration" className="text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor="hasVATRegistration" className="text-sm text-gray-700">
                   Nhà thầu đã đăng ký nộp thuế GTGT tại Việt Nam
                 </label>
               </div>
@@ -416,62 +416,62 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
           {/* FCT Result */}
           {fctResult && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Kết quả tính thuế nhà thầu
               </h3>
 
               <div className="space-y-3">
                 {/* Contract Value */}
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">Doanh thu hợp đồng:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Doanh thu hợp đồng:</span>
+                  <span className="font-medium text-gray-900">
                     {formatCurrency(fctResult.contractValue)}
                   </span>
                 </div>
 
                 {/* PIT */}
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">
                     Thuế TNCN ({(fctResult.pitRate * 100).toFixed(0)}%):
                   </span>
-                  <span className="font-medium text-red-600 dark:text-red-400">
+                  <span className="font-medium text-red-600">
                     {formatCurrency(fctResult.pitAmount)}
                   </span>
                 </div>
 
                 {/* VAT */}
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">
                     Thuế GTGT ({(fctResult.vatRate * 100).toFixed(0)}%):
                   </span>
-                  <span className={`font-medium ${fctResult.vatAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`}>
+                  <span className={`font-medium ${fctResult.vatAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                     {fctResult.vatAmount > 0 ? formatCurrency(fctResult.vatAmount) : 'Không áp dụng'}
                   </span>
                 </div>
 
                 {/* Total Tax */}
-                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="font-medium text-gray-700">
                     Tổng thuế ({(fctResult.totalRate * 100).toFixed(0)}%):
                   </span>
-                  <span className="font-bold text-red-600 dark:text-red-400">
+                  <span className="font-bold text-red-600">
                     {formatCurrency(fctResult.totalTax)}
                   </span>
                 </div>
 
                 {/* Net Amount */}
-                <div className="flex items-center justify-between py-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-3">
-                  <span className="font-medium text-gray-700 dark:text-gray-300">Nhà thầu nhận:</span>
-                  <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                <div className="flex items-center justify-between py-2 bg-gray-50 rounded-lg px-3">
+                  <span className="font-medium text-gray-700">Nhà thầu nhận:</span>
+                  <span className="text-xl font-bold text-green-600">
                     {formatCurrency(fctResult.netAmount)}
                   </span>
                 </div>
 
                 {/* Notes */}
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Ghi chú:</p>
-                  <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Ghi chú:</p>
+                  <ul className="text-xs text-gray-500 space-y-1">
                     {fctResult.notes.map((note, idx) => (
                       <li key={idx}>• {note}</li>
                     ))}
@@ -484,8 +484,8 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       )}
 
       {/* Reference Tables */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Bảng thuế suất tham khảo
         </h3>
 
@@ -493,61 +493,61 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900/50">
-                  <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Loại thu nhập</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Cư trú</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Không cư trú</th>
+                <tr className="bg-gray-50">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Loại thu nhập</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Cư trú</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Không cư trú</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-gray-200">
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Lương (có HĐLĐ ≥ 3 tháng)</td>
+                  <td className="py-2 px-3 text-gray-600">Lương (có HĐLĐ ≥ 3 tháng)</td>
                   <td className="py-2 px-3 text-center text-blue-600">Lũy tiến</td>
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Lương (không HĐLĐ hoặc &lt;3 tháng)</td>
+                  <td className="py-2 px-3 text-gray-600">Lương (không HĐLĐ hoặc &lt;3 tháng)</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%*</td>
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Thu nhập tự do / Dịch vụ</td>
+                  <td className="py-2 px-3 text-gray-600">Thu nhập tự do / Dịch vụ</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%*</td>
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Cho thuê tài sản</td>
+                  <td className="py-2 px-3 text-gray-600">Cho thuê tài sản</td>
                   <td className="py-2 px-3 text-center text-blue-600">5%</td>
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Cổ tức</td>
+                  <td className="py-2 px-3 text-gray-600">Cổ tức</td>
                   <td className="py-2 px-3 text-center text-blue-600">5%</td>
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Lãi tiền gửi</td>
+                  <td className="py-2 px-3 text-gray-600">Lãi tiền gửi</td>
                   <td className="py-2 px-3 text-center text-blue-600">5%</td>
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Chuyển nhượng chứng khoán</td>
+                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng chứng khoán</td>
                   <td className="py-2 px-3 text-center text-blue-600">0.1%</td>
                   <td className="py-2 px-3 text-center text-orange-600">0.1%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Chuyển nhượng BĐS</td>
+                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng BĐS</td>
                   <td className="py-2 px-3 text-center text-blue-600">2%</td>
                   <td className="py-2 px-3 text-center text-orange-600">2%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600 dark:text-gray-400">Trúng thưởng (&gt;10 triệu)</td>
+                  <td className="py-2 px-3 text-gray-600">Trúng thưởng (&gt;10 triệu)</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%**</td>
                   <td className="py-2 px-3 text-center text-orange-600">10%</td>
                 </tr>
               </tbody>
             </table>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            <p className="text-xs text-gray-500 mt-2">
               * Chỉ khấu trừ khi thu nhập ≥ {formatCurrency(WHT_THRESHOLDS.perPayment)}/lần<br />
               ** Tính trên phần vượt 10 triệu đồng
             </p>
@@ -556,29 +556,29 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900/50">
-                  <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Loại hợp đồng</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-700 dark:text-gray-300">TNCN</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-700 dark:text-gray-300">GTGT</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-700 dark:text-gray-300">Tổng</th>
+                <tr className="bg-gray-50">
+                  <th className="text-left py-2 px-3 font-medium text-gray-700">Loại hợp đồng</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">TNCN</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">GTGT</th>
+                  <th className="text-center py-2 px-3 font-medium text-gray-700">Tổng</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-gray-200">
                 {Object.entries(FOREIGN_CONTRACTOR_TAX_RATES).map(([key, rates]) => (
                   <tr key={key}>
-                    <td className="py-2 px-3 text-gray-600 dark:text-gray-400">
+                    <td className="py-2 px-3 text-gray-600">
                       {CONTRACTOR_TYPE_LABELS[key as ForeignContractorType] || key}
                     </td>
                     <td className="py-2 px-3 text-center text-blue-600">{(rates.pit * 100).toFixed(0)}%</td>
                     <td className="py-2 px-3 text-center text-green-600">{(rates.vat * 100).toFixed(0)}%</td>
-                    <td className="py-2 px-3 text-center font-medium text-gray-900 dark:text-white">
+                    <td className="py-2 px-3 text-center font-medium text-gray-900">
                       {(rates.total * 100).toFixed(0)}%
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            <p className="text-xs text-gray-500 mt-2">
               Căn cứ: Thông tư 103/2014/TT-BTC về thuế nhà thầu nước ngoài
             </p>
           </div>
@@ -586,7 +586,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       </div>
 
       {/* Legal Reference */}
-      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 text-xs text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
         <p className="font-medium mb-2">Căn cứ pháp lý:</p>
         <ul className="list-disc list-inside space-y-1">
           <li>Luật Thuế TNCN 2007 (sửa đổi 2012, 2014) - Điều 25 về khấu trừ thuế</li>

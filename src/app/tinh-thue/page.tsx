@@ -549,10 +549,8 @@ export default function Home() {
 
       {/* Hero Banner - Visual connection to homepage */}
       <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
-        {/* Background decorations */}
+        {/* Background decorations - grid only */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 -left-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 -right-20 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl" />
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
         </div>
 
@@ -611,7 +609,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div className="bg-gray-50 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Tab Navigation */}
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 

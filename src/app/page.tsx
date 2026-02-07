@@ -29,11 +29,13 @@ function AnimatedCounter({
   duration = 2000,
   suffix = '',
   prefix = '',
+  delay = 0,
 }: {
   end: number;
   duration?: number;
   suffix?: string;
   prefix?: string;
+  delay?: number;
 }) {
   const [count, setCount] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
@@ -73,6 +75,7 @@ function AnimatedCounter({
 
     let startTime: number | null = null;
     let animationId: number;
+    let delayTimeout: ReturnType<typeof setTimeout>;
     const startValue = 0;
 
     const animate = (timestamp: number) => {
@@ -87,14 +90,19 @@ function AnimatedCounter({
       }
     };
 
-    animationId = requestAnimationFrame(animate);
+    if (delay > 0) {
+      delayTimeout = setTimeout(() => {
+        animationId = requestAnimationFrame(animate);
+      }, delay);
+    } else {
+      animationId = requestAnimationFrame(animate);
+    }
 
     return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
+      if (animationId) cancelAnimationFrame(animationId);
+      if (delayTimeout) clearTimeout(delayTimeout);
     };
-  }, [hasStarted, isMounted, end, duration]);
+  }, [hasStarted, isMounted, end, duration, delay]);
 
   // Show final value during SSR and before animation starts
   if (!isMounted) {
@@ -743,13 +751,26 @@ const comparisonData = {
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({});
+  const blobRef0 = useRef<HTMLDivElement>(null);
+  const blobRef1 = useRef<HTMLDivElement>(null);
+  const blobRef2 = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
 
+    let ticking = false;
     const handleScroll = () => {
-      setScrollY(window.scrollY);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (blobRef0.current) blobRef0.current.style.transform = `translateY(${y * 0.1}px)`;
+          if (blobRef1.current) blobRef1.current.style.transform = `translateY(${y * 0.15}px)`;
+          if (blobRef2.current) blobRef2.current.style.transform = `translateY(${y * -0.1}px)`;
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -767,16 +788,16 @@ export default function HomePage() {
         <div className="absolute inset-0 overflow-hidden">
           {/* Gradient Orbs */}
           <div
-            className="absolute top-0 -left-40 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-blob"
-            style={{ transform: `translateY(${scrollY * 0.1}px)` }}
+            ref={blobRef0}
+            className="absolute top-0 -left-40 w-72 h-72 sm:w-96 sm:h-96 bg-blue-500/30 rounded-full blur-2xl sm:blur-3xl animate-blob"
           />
           <div
-            className="absolute top-1/4 -right-40 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-blob animation-delay-200"
-            style={{ transform: `translateY(${scrollY * 0.15}px)` }}
+            ref={blobRef1}
+            className="absolute top-1/4 -right-40 w-72 h-72 sm:w-96 sm:h-96 bg-purple-500/30 rounded-full blur-2xl sm:blur-3xl animate-blob animation-delay-200"
           />
           <div
-            className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-blob animation-delay-400"
-            style={{ transform: `translateY(${scrollY * -0.1}px)` }}
+            ref={blobRef2}
+            className="absolute bottom-0 left-1/3 w-72 h-72 sm:w-96 sm:h-96 bg-cyan-500/20 rounded-full blur-2xl sm:blur-3xl animate-blob animation-delay-400"
           />
 
           {/* Grid Pattern Overlay */}
@@ -803,7 +824,7 @@ export default function HomePage() {
 
             {/* Main Title */}
             <h1
-              className={`text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 ${mounted ? 'animate-slide-up animation-delay-100' : 'opacity-0'}`}
+              className={`text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 ${mounted ? 'animate-slide-up animation-delay-100' : 'opacity-0'}`}
             >
               <span className="text-white">Tính Thuế TNCN </span>
               <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -888,7 +909,7 @@ export default function HomePage() {
 
             {/* Comparison Cards - Glass Morphism */}
             <div
-              className={`grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto ${mounted ? 'animate-slide-up animation-delay-500' : 'opacity-0'}`}
+              className={`grid sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto ${mounted ? 'animate-slide-up animation-delay-500' : 'opacity-0'}`}
             >
               {/* Old Law Card */}
               <div className="group glass rounded-3xl p-6 text-left transition-all duration-300 hover:bg-white/[0.08] hover:scale-[1.02]">
@@ -1004,7 +1025,7 @@ export default function HomePage() {
         </div>
 
         {/* Bottom Wave */}
-        <div className="absolute bottom-0 left-0 right-0">
+        <div className="absolute bottom-0 left-0 right-0 text-slate-50">
           <svg
             viewBox="0 0 1440 120"
             fill="none"
@@ -1014,7 +1035,7 @@ export default function HomePage() {
           >
             <path
               d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
-              fill="#f8fafc"
+              fill="currentColor"
             />
           </svg>
         </div>
@@ -1057,7 +1078,7 @@ export default function HomePage() {
             ].map((stat, index) => (
               <div
                 key={index}
-                className={`text-center p-4 sm:p-6 rounded-xl sm:rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-105`}
+                className={`text-center p-4 sm:p-6 rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-[1.02]`}
               >
                 <div className={`text-3xl xs:text-4xl sm:text-5xl font-bold ${stat.color} mb-1 sm:mb-2`}>
                   <AnimatedCounter
@@ -1065,6 +1086,7 @@ export default function HomePage() {
                     suffix={stat.suffix}
                     prefix={stat.prefix || ''}
                     duration={1500}
+                    delay={index * 200}
                   />
                 </div>
                 <div className="text-xs sm:text-sm text-gray-600 font-medium">
@@ -1094,7 +1116,16 @@ export default function HomePage() {
           </div>
 
           {/* Feature Categories */}
-          {features.map((category, categoryIndex) => (
+          {features.map((category, categoryIndex) => {
+            const COLLAPSE_THRESHOLD = 8;
+            const shouldCollapse = category.items.length > COLLAPSE_THRESHOLD;
+            const isExpanded = expandedCategories[categoryIndex];
+            const visibleItems = shouldCollapse && !isExpanded
+              ? category.items.slice(0, 4)
+              : category.items;
+            const hiddenCount = category.items.length - 4;
+
+            return (
             <div key={category.category} className="mb-16 last:mb-0">
               {/* Category Header */}
               <div className="flex items-center gap-4 mb-8">
@@ -1111,7 +1142,7 @@ export default function HomePage() {
 
               {/* Feature Grid */}
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                {category.items.map((feature, featureIndex) => (
+                {visibleItems.map((feature, featureIndex) => (
                   <Link
                     key={feature.name}
                     href={feature.href}
@@ -1142,7 +1173,7 @@ export default function HomePage() {
                     <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                       {feature.name}
                     </h4>
-                    <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-gray-500 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                       {feature.description}
                     </p>
 
@@ -1166,8 +1197,35 @@ export default function HomePage() {
                   </Link>
                 ))}
               </div>
+
+              {/* Expand/Collapse button */}
+              {shouldCollapse && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => setExpandedCategories(prev => ({ ...prev, [categoryIndex]: !isExpanded }))}
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-all duration-200"
+                  >
+                    {isExpanded ? (
+                      <>
+                        Thu gọn
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </>
+                    ) : (
+                      <>
+                        Xem thêm {hiddenCount} công cụ khác
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
-          ))}
+          );
+          })}
         </div>
       </section>
 

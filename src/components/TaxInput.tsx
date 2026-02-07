@@ -5,6 +5,13 @@ import { formatNumber, RegionType, getRegionalMinimumWages, formatCurrency, Insu
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 
+// Helper: hiển thị giá trị currency, cho phép rỗng khi user xóa hết (thay vì lock ở "0")
+function displayCurrency(rawValue: string): string {
+  const num = parseInt(rawValue, 10);
+  if (rawValue === '' || isNaN(num)) return '';
+  return formatNumber(num);
+}
+
 interface TaxInputProps {
   onCalculate: (input: {
     grossIncome: number;
@@ -98,24 +105,48 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   }, [initialValues]);
 
   const handleIncomeChange = (value: string) => {
+    const stripped = value.replace(/[^\d]/g, '');
+    if (stripped === '') {
+      setGrossIncome('');
+      setGrossWarning(null);
+      return;
+    }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
     setGrossIncome(parsed.value.toString());
     setGrossWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleDeclaredSalaryChange = (value: string) => {
+    const stripped = value.replace(/[^\d]/g, '');
+    if (stripped === '') {
+      setDeclaredSalary('');
+      setDeclaredWarning(null);
+      return;
+    }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
     setDeclaredSalary(parsed.value.toString());
     setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleOtherDeductionsChange = (value: string) => {
+    const stripped = value.replace(/[^\d]/g, '');
+    if (stripped === '') {
+      setOtherDeductions('');
+      setOtherDeductionWarning(null);
+      return;
+    }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
     setOtherDeductions(parsed.value.toString());
     setOtherDeductionWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handlePensionChange = (value: string) => {
+    const stripped = value.replace(/[^\d]/g, '');
+    if (stripped === '') {
+      setPensionContribution('');
+      setPensionWarning(null);
+      return;
+    }
     const parsed = parseCurrencyInput(value, { max: 1_000_000 });
     setPensionContribution(parsed.value.toString());
     setPensionWarning(buildWarning(parsed.issues, 1_000_000));
@@ -220,8 +251,9 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
           <input
             id="gross-income"
             type="text"
-            value={formatNumber(parseInt(grossIncome, 10) || 0)}
+            value={displayCurrency(grossIncome)}
             onChange={(e) => handleIncomeChange(e.target.value)}
+            onBlur={() => { if (grossIncome === '') setGrossIncome('0'); }}
             className="input-field text-lg font-semibold"
             placeholder="Nhập thu nhập"
             aria-required="true"
@@ -281,7 +313,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               <input
                 id="declared-salary"
                 type="text"
-                value={declaredSalary ? formatNumber(parseInt(declaredSalary, 10) || 0) : ''}
+                value={displayCurrency(declaredSalary)}
                 onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
                 className="input-field"
                 placeholder="Ví dụ: lương thực 30tr, đóng BH trên 5tr"
@@ -436,7 +468,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               <input
                 id="pension-contribution"
                 type="text"
-                value={formatNumber(parseInt(pensionContribution, 10) || 0)}
+                value={displayCurrency(pensionContribution)}
+                onBlur={() => { if (pensionContribution === '') setPensionContribution('0'); }}
                 onChange={(e) => handlePensionChange(e.target.value)}
                 className="input-field"
                 placeholder="Tối đa 1.000.000"
@@ -463,7 +496,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               <input
                 id="other-deductions"
                 type="text"
-                value={formatNumber(parseInt(otherDeductions, 10) || 0)}
+                value={displayCurrency(otherDeductions)}
+                onBlur={() => { if (otherDeductions === '') setOtherDeductions('0'); }}
                 onChange={(e) => handleOtherDeductionsChange(e.target.value)}
                 className="input-field"
                 placeholder="Đóng góp từ thiện..."

@@ -89,24 +89,24 @@ export function RealEstateTransferTaxCalculator() {
       </div>
 
       {/* Tax rate info */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">
           Biểu thuế chuyển nhượng BĐS
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-4">
-            <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+          <div className="bg-teal-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-teal-600">
               {REAL_ESTATE_TAX_RATES.pit * 100}%
             </div>
-            <div className="text-sm text-teal-700 dark:text-teal-300">
+            <div className="text-sm text-teal-700">
               Thuế TNCN trên giá chuyển nhượng
             </div>
           </div>
-          <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-4">
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-emerald-600">
               {REAL_ESTATE_TAX_RATES.registrationFee * 100}%
             </div>
-            <div className="text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="text-sm text-emerald-700">
               Lệ phí trước bạ
             </div>
           </div>
@@ -120,7 +120,7 @@ export function RealEstateTransferTaxCalculator() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             showQuickCalculator
               ? 'bg-teal-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           Tính nhanh
@@ -130,7 +130,7 @@ export function RealEstateTransferTaxCalculator() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             !showQuickCalculator
               ? 'bg-teal-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           Tính chi tiết
@@ -139,13 +139,13 @@ export function RealEstateTransferTaxCalculator() {
 
       {/* Quick Calculator */}
       {showQuickCalculator && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold text-gray-900 mb-4">
             Tính nhanh thuế chuyển nhượng
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Giá trị chuyển nhượng (VNĐ)
               </label>
               <input
@@ -155,7 +155,7 @@ export function RealEstateTransferTaxCalculator() {
                   setQuickValue(formatNumberInput(e.target.value))
                 }
                 placeholder="Nhập giá trị BĐS"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -168,31 +168,31 @@ export function RealEstateTransferTaxCalculator() {
               />
               <label
                 htmlFor="quickExempt"
-                className="text-sm text-gray-700 dark:text-gray-300"
+                className="text-sm text-gray-700"
               >
                 Thuộc diện miễn thuế (chuyển nhượng trong gia đình)
               </label>
             </div>
 
             {quickEstimate && (
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Giá trị BĐS:
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
+                  <span className="font-semibold text-gray-900">
                     {formatCurrency(quickValue)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Thuế TNCN (2%):
                   </span>
                   <span
                     className={`font-semibold ${
                       quickIsExempt
-                        ? 'text-green-600 dark:text-green-400 line-through'
-                        : 'text-red-600 dark:text-red-400'
+                        ? 'text-green-600 line-through'
+                        : 'text-red-600'
                     }`}
                   >
                     {formatCurrency(
@@ -204,14 +204,14 @@ export function RealEstateTransferTaxCalculator() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Lệ phí trước bạ (0.5%):
                   </span>
                   <span
                     className={`font-semibold ${
                       quickIsExempt
-                        ? 'text-green-600 dark:text-green-400 line-through'
-                        : 'text-amber-600 dark:text-amber-400'
+                        ? 'text-green-600 line-through'
+                        : 'text-amber-600'
                     }`}
                   >
                     {formatCurrency(
@@ -222,19 +222,19 @@ export function RealEstateTransferTaxCalculator() {
                     {quickIsExempt && ' (Miễn)'}
                   </span>
                 </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between">
-                  <span className="text-gray-800 dark:text-gray-200 font-medium">
+                <div className="border-t border-gray-200 pt-3 flex justify-between">
+                  <span className="text-gray-800 font-medium">
                     Tổng thuế và phí:
                   </span>
-                  <span className="text-xl font-bold text-teal-600 dark:text-teal-400">
+                  <span className="text-xl font-bold text-teal-600">
                     {formatCurrency(quickEstimate.total)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Số tiền thực nhận:
                   </span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="font-semibold text-emerald-600">
                     {formatCurrency(quickEstimate.netProceeds)}
                   </span>
                 </div>
@@ -252,16 +252,16 @@ export function RealEstateTransferTaxCalculator() {
             {transfers.map((transfer, index) => (
               <div
                 key={transfer.id}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
+                className="bg-white rounded-xl border border-gray-200 p-6"
               >
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-gray-900">
                     Giao dịch #{index + 1}
                   </h3>
                   {transfers.length > 1 && (
                     <button
                       onClick={() => removeTransfer(transfer.id)}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                      className="text-red-600 hover:text-red-700 text-sm"
                     >
                       Xóa
                     </button>
@@ -271,7 +271,7 @@ export function RealEstateTransferTaxCalculator() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Property type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Loại bất động sản
                     </label>
                     <select
@@ -283,7 +283,7 @@ export function RealEstateTransferTaxCalculator() {
                           e.target.value as RealEstateType
                         )
                       }
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     >
                       {Object.entries(PROPERTY_TYPE_LABELS).map(
                         ([value, label]) => (
@@ -297,7 +297,7 @@ export function RealEstateTransferTaxCalculator() {
 
                   {/* Transfer type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Hình thức chuyển nhượng
                     </label>
                     <select
@@ -309,7 +309,7 @@ export function RealEstateTransferTaxCalculator() {
                           e.target.value as TransferType
                         )
                       }
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     >
                       {Object.entries(TRANSFER_TYPE_LABELS).map(
                         ([value, label]) => (
@@ -324,7 +324,7 @@ export function RealEstateTransferTaxCalculator() {
                   {/* Relationship (conditional) */}
                   {showRelationship(transfer) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Quan hệ gia đình
                       </label>
                       <select
@@ -336,7 +336,7 @@ export function RealEstateTransferTaxCalculator() {
                             e.target.value as FamilyRelationship
                           )
                         }
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                       >
                         {Object.entries(FAMILY_RELATIONSHIP_LABELS).map(
                           ([value, label]) => (
@@ -351,7 +351,7 @@ export function RealEstateTransferTaxCalculator() {
 
                   {/* Transfer value */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Giá chuyển nhượng (VNĐ)
                     </label>
                     <input
@@ -369,13 +369,13 @@ export function RealEstateTransferTaxCalculator() {
                         )
                       }
                       placeholder="Nhập giá chuyển nhượng"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
 
                   {/* Land area */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Diện tích đất (m²)
                     </label>
                     <input
@@ -389,7 +389,7 @@ export function RealEstateTransferTaxCalculator() {
                         )
                       }
                       placeholder="Nhập diện tích"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
 
@@ -398,7 +398,7 @@ export function RealEstateTransferTaxCalculator() {
                     transfer.propertyType === 'apartment' ||
                     transfer.propertyType === 'land_house') && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Diện tích xây dựng (m²)
                       </label>
                       <input
@@ -412,14 +412,14 @@ export function RealEstateTransferTaxCalculator() {
                           )
                         }
                         placeholder="Nhập diện tích xây dựng"
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                       />
                     </div>
                   )}
 
                   {/* Transfer date */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Ngày chuyển nhượng
                     </label>
                     <input
@@ -432,13 +432,13 @@ export function RealEstateTransferTaxCalculator() {
                           e.target.value
                         )
                       }
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
 
                   {/* Purchase value (optional) */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Giá mua ban đầu (tùy chọn)
                     </label>
                     <input
@@ -456,13 +456,13 @@ export function RealEstateTransferTaxCalculator() {
                         )
                       }
                       placeholder="Để tính lợi nhuận tham khảo"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
 
                   {/* Property address */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Địa chỉ bất động sản
                     </label>
                     <input
@@ -476,7 +476,7 @@ export function RealEstateTransferTaxCalculator() {
                         )
                       }
                       placeholder="Nhập địa chỉ BĐS"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
                 </div>
@@ -487,15 +487,15 @@ export function RealEstateTransferTaxCalculator() {
           {/* Add transfer button */}
           <button
             onClick={addTransfer}
-            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-400 hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-teal-500 hover:text-teal-600 transition-colors"
           >
             + Thêm giao dịch
           </button>
 
           {/* Results */}
           {result && (
-            <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/30 dark:to-emerald-900/30 rounded-xl border border-teal-200 dark:border-teal-800 p-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl border border-teal-200 p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
                 Kết quả tính thuế
               </h3>
 
@@ -503,47 +503,47 @@ export function RealEstateTransferTaxCalculator() {
               {result.transfers.map((tr, i) => (
                 <div
                   key={tr.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4"
+                  className="bg-white rounded-lg p-4 mb-4"
                 >
-                  <div className="font-medium text-gray-900 dark:text-white mb-2">
+                  <div className="font-medium text-gray-900 mb-2">
                     Giao dịch #{i + 1}: {PROPERTY_TYPE_LABELS[tr.propertyType]}
                   </div>
 
                   {tr.isExempt && (
-                    <div className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-2 rounded-lg mb-3 text-sm">
+                    <div className="bg-green-100 text-green-700 px-3 py-2 rounded-lg mb-3 text-sm">
                       ✓ {tr.exemptionReason}
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600">
                         Giá chuyển nhượng:
                       </span>
                     </div>
-                    <div className="text-right font-medium text-gray-900 dark:text-white">
+                    <div className="text-right font-medium text-gray-900">
                       {formatCurrency(tr.transferValue)}
                     </div>
 
                     {tr.capitalGain > 0 && (
                       <>
                         <div>
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span className="text-gray-600">
                             Lợi nhuận tham khảo:
                           </span>
                         </div>
-                        <div className="text-right font-medium text-emerald-600 dark:text-emerald-400">
+                        <div className="text-right font-medium text-emerald-600">
                           +{formatCurrency(tr.capitalGain)}
                         </div>
                       </>
                     )}
 
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600">
                         Thuế TNCN ({tr.pitRate}%):
                       </span>
                     </div>
-                    <div className="text-right font-medium text-red-600 dark:text-red-400">
+                    <div className="text-right font-medium text-red-600">
                       {tr.isExempt ? (
                         <span className="line-through opacity-50">
                           {formatCurrency(tr.exemptionAmount)}
@@ -554,19 +554,19 @@ export function RealEstateTransferTaxCalculator() {
                     </div>
 
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-gray-600">
                         Lệ phí trước bạ ({tr.registrationRate}%):
                       </span>
                     </div>
-                    <div className="text-right font-medium text-amber-600 dark:text-amber-400">
+                    <div className="text-right font-medium text-amber-600">
                       {formatCurrency(tr.registrationFee)}
                     </div>
 
-                    <div className="col-span-2 border-t border-gray-200 dark:border-gray-700 pt-2 mt-2 flex justify-between">
-                      <span className="font-medium text-gray-900 dark:text-white">
+                    <div className="col-span-2 border-t border-gray-200 pt-2 mt-2 flex justify-between">
+                      <span className="font-medium text-gray-900">
                         Tổng phí giao dịch:
                       </span>
-                      <span className="font-bold text-teal-600 dark:text-teal-400">
+                      <span className="font-bold text-teal-600">
                         {formatCurrency(tr.totalFees)}
                       </span>
                     </div>
@@ -575,63 +575,63 @@ export function RealEstateTransferTaxCalculator() {
               ))}
 
               {/* Summary */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-3">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+              <div className="bg-white rounded-lg p-4 space-y-3">
+                <h4 className="font-semibold text-gray-900 mb-3">
                   Tổng hợp
                 </h4>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Tổng giá trị chuyển nhượng:
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
+                  <span className="font-semibold text-gray-900">
                     {formatCurrency(result.summary.totalTransferValue)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Tổng thuế TNCN:
                   </span>
-                  <span className="font-semibold text-red-600 dark:text-red-400">
+                  <span className="font-semibold text-red-600">
                     {formatCurrency(result.summary.totalPIT)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Tổng lệ phí trước bạ:
                   </span>
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">
+                  <span className="font-semibold text-amber-600">
                     {formatCurrency(result.summary.totalRegistrationFee)}
                   </span>
                 </div>
                 {result.summary.totalExemptions > 0 && (
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <div className="flex justify-between text-green-600">
                     <span>Tổng được miễn:</span>
                     <span className="font-semibold">
                       {formatCurrency(result.summary.totalExemptions)}
                     </span>
                   </div>
                 )}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between">
-                  <span className="text-lg font-medium text-gray-900 dark:text-white">
+                <div className="border-t border-gray-200 pt-3 flex justify-between">
+                  <span className="text-lg font-medium text-gray-900">
                     Tổng thuế và phí:
                   </span>
-                  <span className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+                  <span className="text-2xl font-bold text-teal-600">
                     {formatCurrency(result.summary.totalFees)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Thuế suất thực tế:
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
+                  <span className="font-semibold text-gray-900">
                     {result.summary.effectiveTaxRate.toFixed(2)}%
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600">
                     Số tiền thực nhận:
                   </span>
-                  <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xl font-bold text-emerald-600">
                     {formatCurrency(result.summary.totalNetProceeds)}
                   </span>
                 </div>
@@ -642,11 +642,11 @@ export function RealEstateTransferTaxCalculator() {
       )}
 
       {/* Exemption information */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
-        <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-3">
+      <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+        <h3 className="font-semibold text-blue-800 mb-3">
           Các trường hợp được miễn thuế TNCN
         </h3>
-        <ul className="space-y-2 text-sm text-blue-700 dark:text-blue-400">
+        <ul className="space-y-2 text-sm text-blue-700">
           <li>• Chuyển nhượng giữa vợ và chồng</li>
           <li>• Chuyển nhượng giữa cha mẹ đẻ và con đẻ/con nuôi hợp pháp</li>
           <li>• Chuyển nhượng giữa anh chị em ruột</li>
@@ -659,7 +659,7 @@ export function RealEstateTransferTaxCalculator() {
       </div>
 
       {/* Legal reference */}
-      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+      <div className="text-xs text-gray-500 space-y-1">
         <p>Căn cứ pháp lý:</p>
         <ul className="list-disc list-inside">
           <li>Luật Thuế thu nhập cá nhân số 04/2007/QH12</li>

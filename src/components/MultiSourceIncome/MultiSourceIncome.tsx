@@ -81,25 +81,25 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
           Tổng hợp thu nhập từ nhiều nguồn
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600">
           Thêm các nguồn thu nhập để tính tổng thuế TNCN phải nộp trong năm.
         </p>
       </div>
 
       {/* General Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h3 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+        <h3 className="text-md font-medium text-gray-900 mb-4">
           Thông tin chung
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Dependents */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Số người phụ thuộc
             </label>
             <input
@@ -108,13 +108,13 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               max="20"
               value={tabState.dependents}
               onChange={(e) => updateField('dependents', parseInt(e.target.value) || 0)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+              className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
 
           {/* Tax Year */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Năm thuế
             </label>
             <div className="flex gap-2">
@@ -123,7 +123,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors
                   ${tabState.taxYear === 2025
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'bg-gray-100 text-gray-700'
                   }`}
               >
                 2025
@@ -133,7 +133,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors
                   ${tabState.taxYear === 2026
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'bg-gray-100 text-gray-700'
                   }`}
               >
                 2026
@@ -150,7 +150,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 onChange={(e) => updateField('hasInsurance', e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="text-sm text-gray-700">
                 Có đóng BHXH bắt buộc (được trừ 10.5% lương vào thu nhập chịu thuế)
               </span>
             </label>
@@ -158,7 +158,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
           {/* Pension Contribution */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Hưu trí tự nguyện (VND/năm)
             </label>
             <input
@@ -170,13 +170,13 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 updateField('pensionContribution', value ? parseInt(value, 10) : 0);
               }}
               placeholder="0"
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+              className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
 
           {/* Charitable Contribution */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Từ thiện (VND/năm)
             </label>
             <input
@@ -188,16 +188,16 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 updateField('charitableContribution', value ? parseInt(value, 10) : 0);
               }}
               placeholder="0"
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+              className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
         </div>
       </div>
 
       {/* Income Sources */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-md font-medium text-gray-900 dark:text-white">
+          <h3 className="text-md font-medium text-gray-900">
             Các nguồn thu nhập ({tabState.incomeSources.length})
           </h3>
         </div>
@@ -212,7 +212,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 e.target.value = '';
               }
             }}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+            className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
           >
             <option value="">+ Thêm nguồn thu nhập...</option>
             {sourceOptions.map((opt) => (
@@ -225,7 +225,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
         {/* Source List */}
         {tabState.incomeSources.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-8 text-gray-500">
             Chưa có nguồn thu nhập nào. Chọn loại thu nhập ở trên để thêm.
           </div>
         ) : (
@@ -237,20 +237,20 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               return (
                 <div
                   key={source.id}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                  className="border border-gray-200 rounded-lg overflow-hidden"
                 >
                   {/* Header */}
                   <div
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 cursor-pointer"
+                    className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer"
                     onClick={() => setExpandedSourceId(isExpanded ? null : source.id)}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{getIconForType(source.type)}</span>
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium text-gray-900">
                           {INCOME_SOURCE_LABELS[source.type]}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-sm text-gray-500">
                           {source.amount > 0
                             ? `${formatCurrency(source.amount)} / ${FREQUENCY_LABELS[source.frequency]}`
                             : 'Chưa nhập số tiền'}
@@ -259,7 +259,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                     </div>
                     <div className="flex items-center gap-2">
                       {sourceResult && sourceResult.taxAmount > 0 && (
-                        <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                        <span className="text-sm font-medium text-red-600">
                           Thuế: {formatCurrency(sourceResult.taxAmount)}
                         </span>
                       )}
@@ -278,10 +278,10 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
                   {/* Expanded Content */}
                   {isExpanded && (
-                    <div className="p-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="p-4 space-y-4 border-t border-gray-200">
                       {/* Amount */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Số tiền (VND)
                         </label>
                         <input
@@ -293,13 +293,13 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                             updateSource(source.id, { amount: value ? parseInt(value, 10) : 0 });
                           }}
                           placeholder="Nhập số tiền..."
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                          className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
                         />
                       </div>
 
                       {/* Frequency */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Tần suất
                         </label>
                         <div className="grid grid-cols-3 gap-2">
@@ -310,7 +310,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                               className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors
                                 ${source.frequency === freq
                                   ? 'bg-blue-600 text-white'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                  : 'bg-gray-100 text-gray-700'
                                 }`}
                             >
                               {FREQUENCY_LABELS[freq]}
@@ -321,28 +321,28 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
                       {/* Type-specific options */}
                       {source.type === 'inheritance' && (
-                        <label className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                        <label className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                           <input
                             type="checkbox"
                             checked={source.isFromFamily || false}
                             onChange={(e) => updateSource(source.id, { isFromFamily: e.target.checked })}
                             className="w-4 h-4 rounded border-gray-300"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="text-sm text-gray-700">
                             Từ thành viên gia đình (vợ/chồng, cha mẹ, con) - được miễn thuế
                           </span>
                         </label>
                       )}
 
                       {source.type === 'interest' && (
-                        <label className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <label className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                           <input
                             type="checkbox"
                             checked={source.isGovBond || false}
                             onChange={(e) => updateSource(source.id, { isGovBond: e.target.checked })}
                             className="w-4 h-4 rounded border-gray-300"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="text-sm text-gray-700">
                             Lãi từ trái phiếu Chính phủ - được miễn thuế
                           </span>
                         </label>
@@ -350,7 +350,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
                       {/* Tax Info */}
                       {sourceResult && (
-                        <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                        <div className="p-3 bg-gray-50 rounded-lg">
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <span className="text-gray-500">Thu nhập năm:</span>
@@ -376,7 +376,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                             </div>
                           </div>
                           {sourceResult.notes.length > 0 && (
-                            <ul className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <ul className="mt-2 text-xs text-gray-500">
                               {sourceResult.notes.map((note, idx) => (
                                 <li key={idx}>• {note}</li>
                               ))}
@@ -395,23 +395,23 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
       {/* Results Summary */}
       {tabState.incomeSources.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Tổng hợp thuế năm {tabState.taxYear}
           </h3>
 
           <div className="space-y-3">
             {/* Total Gross Income */}
-            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-gray-600 dark:text-gray-400">Tổng thu nhập:</span>
-              <span className="font-medium text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-600">Tổng thu nhập:</span>
+              <span className="font-medium text-gray-900">
                 {formatCurrency(result.totalGrossIncome)}
               </span>
             </div>
 
             {/* Category Breakdown */}
-            <div className="py-2 border-b border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Phân loại:</div>
+            <div className="py-2 border-b border-gray-200">
+              <div className="text-sm text-gray-500 mb-2">Phân loại:</div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {result.categoryBreakdown.salary.gross > 0 && (
                   <div className="flex justify-between">
@@ -441,17 +441,17 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
             </div>
 
             {/* Total Tax */}
-            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-              <span className="font-medium text-gray-700 dark:text-gray-300">Tổng thuế TNCN:</span>
-              <span className="text-xl font-bold text-red-600 dark:text-red-400">
+            <div className="flex items-center justify-between py-2 border-b border-gray-200">
+              <span className="font-medium text-gray-700">Tổng thuế TNCN:</span>
+              <span className="text-xl font-bold text-red-600">
                 {formatCurrency(result.totalTax)}
               </span>
             </div>
 
             {/* Tax Breakdown */}
             {result.progressiveTax > 0 && result.flatTax > 0 && (
-              <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 text-sm">
-                <div className="text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between py-2 border-b border-gray-200 text-sm">
+                <div className="text-gray-500">
                   <div>Thuế lũy tiến (lương): {formatCurrency(result.progressiveTax)}</div>
                   <div>Thuế khác: {formatCurrency(result.flatTax)}</div>
                 </div>
@@ -459,17 +459,17 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
             )}
 
             {/* Effective Rate */}
-            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-gray-600 dark:text-gray-400">Thuế suất hiệu quả:</span>
-              <span className="font-medium text-orange-600 dark:text-orange-400">
+            <div className="flex items-center justify-between py-2 border-b border-gray-200">
+              <span className="text-gray-600">Thuế suất hiệu quả:</span>
+              <span className="font-medium text-orange-600">
                 {formatPercent(result.overallEffectiveRate)}
               </span>
             </div>
 
             {/* Net Income */}
-            <div className="flex items-center justify-between py-3 bg-green-50 dark:bg-green-900/20 rounded-lg px-3">
-              <span className="font-medium text-gray-700 dark:text-gray-300">Thu nhập thực nhận:</span>
-              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="flex items-center justify-between py-3 bg-green-50 rounded-lg px-3">
+              <span className="font-medium text-gray-700">Thu nhập thực nhận:</span>
+              <span className="text-2xl font-bold text-green-600">
                 {formatCurrency(result.totalNetIncome)}
               </span>
             </div>
@@ -479,13 +479,13 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
 
       {/* Optimization Tips */}
       {result.optimizationTips.length > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 sm:p-6 border border-blue-200 dark:border-blue-800">
-          <h3 className="text-md font-medium text-blue-900 dark:text-blue-100 mb-3">
+        <div className="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+          <h3 className="text-md font-medium text-blue-900 mb-3">
             💡 Gợi ý tối ưu thuế
           </h3>
           <ul className="space-y-2">
             {result.optimizationTips.map((tip, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-200">
+              <li key={idx} className="flex items-start gap-2 text-sm text-blue-800">
                 <span className="mt-0.5">•</span>
                 <span>{tip}</span>
               </li>
@@ -495,7 +495,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
       )}
 
       {/* Legal Reference */}
-      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 text-xs text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
         <p className="font-medium mb-2">Căn cứ pháp lý:</p>
         <ul className="list-disc list-inside space-y-1">
           <li>Luật Thuế TNCN 2007 (sửa đổi 2012, 2014)</li>
