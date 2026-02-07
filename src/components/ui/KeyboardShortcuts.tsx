@@ -113,12 +113,12 @@ export function KeyboardShortcuts({
       aria-modal="true"
       aria-labelledby="shortcuts-title"
     >
-      <div className="relative w-full max-w-lg mx-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[80vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg mx-4 p-6 bg-white rounded-xl shadow-2xl max-h-[80vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2
             id="shortcuts-title"
-            className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2"
+            className="text-xl font-bold text-gray-900 flex items-center gap-2"
           >
             <svg
               className="w-6 h-6"
@@ -137,7 +137,7 @@ export function KeyboardShortcuts({
           </h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Đóng"
           >
             <svg
@@ -160,19 +160,19 @@ export function KeyboardShortcuts({
         <div className="space-y-6">
           {Array.from(groupedShortcuts.entries()).map(([category, categoryShortcuts]) => (
             <div key={category}>
-              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
                 {category}
               </h3>
               <div className="space-y-2">
                 {categoryShortcuts.map((shortcut, index) => (
                   <div
                     key={`${shortcut.key}-${index}`}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <span className="text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-700">
                       {shortcut.description}
                     </span>
-                    <kbd className="ml-4 px-2 py-1 text-xs font-mono font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-gray-600 shadow-sm">
+                    <kbd className="ml-4 px-2 py-1 text-xs font-mono font-semibold bg-gray-100 text-gray-700 rounded border border-gray-300 shadow-sm">
                       {getShortcutKey(shortcut)}
                     </kbd>
                   </div>
@@ -183,9 +183,9 @@ export function KeyboardShortcuts({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Nhấn <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 rounded">Esc</kbd> hoặc <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 rounded">?</kbd> để đóng
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500 text-center">
+            Nhấn <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 rounded">Esc</kbd> hoặc <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 rounded">?</kbd> để đóng
           </p>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function ShortcutHint({
 }) {
   return (
     <kbd
-      className={`px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded border border-gray-200 dark:border-gray-600 ${className}`}
+      className={`px-1.5 py-0.5 text-xs font-mono bg-gray-100 text-gray-500 rounded border border-gray-200 ${className}`}
     >
       {getShortcutKey(shortcut)}
     </kbd>
@@ -245,9 +245,9 @@ export function ShortcutHelpHint() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 animate-fade-in">
+    <div className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-white rounded-lg shadow-lg border border-gray-200 text-sm text-gray-600 animate-fade-in">
       Nhấn{' '}
-      <kbd className="px-1.5 py-0.5 font-mono bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
+      <kbd className="px-1.5 py-0.5 font-mono bg-gray-100 text-gray-700 rounded">
         ?
       </kbd>{' '}
       để xem phím tắt

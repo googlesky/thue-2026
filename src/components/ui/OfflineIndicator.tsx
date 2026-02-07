@@ -43,8 +43,8 @@ export function OfflineIndicator() {
     <div
       className={`fixed top-0 left-0 right-0 z-[9999] px-4 py-3 text-center text-sm font-medium transition-all duration-300 ${
         online
-          ? 'bg-emerald-500 text-white dark:bg-emerald-600'
-          : 'bg-amber-500 text-white dark:bg-amber-600'
+          ? 'bg-emerald-500 text-white'
+          : 'bg-amber-500 text-white'
       }`}
       role="alert"
       aria-live="polite"

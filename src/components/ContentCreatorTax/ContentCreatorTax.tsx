@@ -181,8 +181,8 @@ export default function ContentCreatorTax({
       </div>
 
       {/* Year Selection */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Năm tính thuế
         </label>
         <div className="flex gap-2">
@@ -193,20 +193,20 @@ export default function ContentCreatorTax({
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 year === y
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {y}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-sm text-gray-500">
           Ngưỡng miễn thuế {year}: <strong>{formatCurrency(threshold)}/năm</strong>
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('input')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -233,14 +233,14 @@ export default function ContentCreatorTax({
       {activeTab === 'input' && (
         <>
           {/* Platform Selection */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-4">
               Chọn nền tảng hoạt động
             </h3>
 
             {/* Foreign Platforms */}
             <div className="mb-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-sm text-gray-500 mb-2">
                 Nền tảng nước ngoài (tự kê khai)
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -257,7 +257,7 @@ export default function ContentCreatorTax({
 
             {/* Domestic Platforms */}
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-sm text-gray-500 mb-2">
                 Nền tảng Việt Nam (khấu trừ 10% tại nguồn)
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -275,9 +275,9 @@ export default function ContentCreatorTax({
 
           {/* Income Input */}
           {selectedPlatforms.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <div className="bg-white rounded-xl p-4 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">
+                <h3 className="font-semibold text-gray-900">
                   Nhập thu nhập
                 </h3>
                 <label className="flex items-center gap-2 text-sm">
@@ -287,7 +287,7 @@ export default function ContentCreatorTax({
                     onChange={e => setShowMonthlyInput(e.target.checked)}
                     className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-gray-600 dark:text-gray-400">Nhập theo tháng</span>
+                  <span className="text-gray-600">Nhập theo tháng</span>
                 </label>
               </div>
 
@@ -298,14 +298,14 @@ export default function ContentCreatorTax({
                   if (!platform || !state) return null;
 
                   return (
-                    <div key={platformId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div key={platformId} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-2xl">{platform.icon}</span>
-                        <span className="font-medium text-gray-900 dark:text-white">
+                        <span className="font-medium text-gray-900">
                           {platform.name}
                         </span>
                         {platform.type === 'domestic' && (
-                          <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
                             Khấu trừ 10%
                           </span>
                         )}
@@ -315,7 +315,7 @@ export default function ContentCreatorTax({
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                           {Array.from({ length: 12 }, (_, i) => (
                             <div key={i}>
-                              <label className="text-xs text-gray-500 dark:text-gray-400">
+                              <label className="text-xs text-gray-500">
                                 T{i + 1}
                               </label>
                               <input
@@ -323,14 +323,14 @@ export default function ContentCreatorTax({
                                 value={state.monthlyIncome[i] || ''}
                                 onChange={e => updateMonthlyIncome(platformId, i, Number(e.target.value) || 0)}
                                 placeholder="0"
-                                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-900"
                               />
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div>
-                          <label className="text-sm text-gray-500 dark:text-gray-400">
+                          <label className="text-sm text-gray-500">
                             Thu nhập cả năm (VND)
                           </label>
                           <input
@@ -338,13 +338,13 @@ export default function ContentCreatorTax({
                             value={state.annualIncome || ''}
                             onChange={e => updateAnnualIncome(platformId, Number(e.target.value) || 0)}
                             placeholder="Nhập thu nhập năm..."
-                            className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                           />
                         </div>
                       )}
 
                       {state.annualIncome > 0 && (
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="mt-2 text-sm text-gray-500">
                           Tổng: <strong>{formatCurrency(state.annualIncome)}</strong>
                           {showMonthlyInput && ` (TB: ${formatCurrency(state.annualIncome / 12)}/tháng)`}
                         </p>
@@ -357,7 +357,7 @@ export default function ContentCreatorTax({
           )}
 
           {/* Business Registration */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 shadow-sm">
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -366,10 +366,10 @@ export default function ContentCreatorTax({
                 className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               />
               <div>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-900">
                   Đã đăng ký hộ kinh doanh
                 </span>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500">
                   Nếu đã đăng ký, bạn có MST 13 số và kê khai thuế định kỳ
                 </p>
               </div>
@@ -378,28 +378,28 @@ export default function ContentCreatorTax({
 
           {/* Quick Summary */}
           {result && (
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Tổng thu nhập</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                  <p className="text-sm text-gray-500">Tổng thu nhập</p>
+                  <p className="text-lg font-bold text-gray-900">
                     {formatCurrency(result.totalIncome)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Trạng thái</p>
+                  <p className="text-sm text-gray-500">Trạng thái</p>
                   <p className={`text-lg font-bold ${result.isExempt ? 'text-green-600' : 'text-orange-600'}`}>
                     {result.isExempt ? 'Miễn thuế' : 'Chịu thuế'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Thuế phải nộp</p>
+                  <p className="text-sm text-gray-500">Thuế phải nộp</p>
                   <p className="text-lg font-bold text-red-600">
                     {formatCurrency(result.totalTaxDue)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Còn phải nộp</p>
+                  <p className="text-sm text-gray-500">Còn phải nộp</p>
                   <p className={`text-lg font-bold ${result.remainingTax <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(Math.max(0, result.remainingTax))}
                   </p>
@@ -419,28 +419,28 @@ export default function ContentCreatorTax({
       {activeTab === 'result' && result && (
         <>
           {/* Result Summary */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-4">
               Kết quả tính thuế năm {year}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Income */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <h4 className="text-sm font-medium text-gray-500 uppercase">
                   Thu nhập
                 </h4>
                 {result.totalIncomeByPlatform.map(item => (
                   <div key={item.platformId} className="flex justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">{item.platformName}</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
+                    <span className="text-gray-700">{item.platformName}</span>
+                    <span className="font-medium text-gray-900">
                       {formatCurrency(item.amount)}
                     </span>
                   </div>
                 ))}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 flex justify-between">
-                  <span className="font-medium text-gray-900 dark:text-white">Tổng thu nhập</span>
-                  <span className="font-bold text-gray-900 dark:text-white">
+                <div className="border-t border-gray-200 pt-2 flex justify-between">
+                  <span className="font-medium text-gray-900">Tổng thu nhập</span>
+                  <span className="font-bold text-gray-900">
                     {formatCurrency(result.totalIncome)}
                   </span>
                 </div>
@@ -448,35 +448,35 @@ export default function ContentCreatorTax({
 
               {/* Right: Tax */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <h4 className="text-sm font-medium text-gray-500 uppercase">
                   Thuế
                 </h4>
                 <div className="flex justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-gray-700">
                     Ngưỡng miễn thuế
                   </span>
-                  <span className={`font-medium ${result.isExempt ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>
+                  <span className={`font-medium ${result.isExempt ? 'text-green-600' : 'text-gray-900'}`}>
                     {formatCurrency(result.threshold)}
                   </span>
                 </div>
                 {!result.isExempt && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-700 dark:text-gray-300">Thuế GTGT (5%)</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="text-gray-700">Thuế GTGT (5%)</span>
+                      <span className="font-medium text-gray-900">
                         {formatCurrency(result.vatAmount)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-700 dark:text-gray-300">Thuế TNCN (2%)</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
+                      <span className="text-gray-700">Thuế TNCN (2%)</span>
+                      <span className="font-medium text-gray-900">
                         {formatCurrency(result.pitAmount)}
                       </span>
                     </div>
                   </>
                 )}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 flex justify-between">
-                  <span className="font-medium text-gray-900 dark:text-white">Tổng thuế</span>
+                <div className="border-t border-gray-200 pt-2 flex justify-between">
+                  <span className="font-medium text-gray-900">Tổng thuế</span>
                   <span className="font-bold text-red-600">
                     {formatCurrency(result.totalTaxDue)}
                   </span>
@@ -487,8 +487,8 @@ export default function ContentCreatorTax({
                       <span>Đã khấu trừ tại nguồn</span>
                       <span className="font-medium">-{formatCurrency(result.totalWithheld)}</span>
                     </div>
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2 flex justify-between">
-                      <span className="font-medium text-gray-900 dark:text-white">Còn phải nộp</span>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between">
+                      <span className="font-medium text-gray-900">Còn phải nộp</span>
                       <span className={`font-bold ${result.remainingTax <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {result.remainingTax <= 0
                           ? `Hoàn ${formatCurrency(Math.abs(result.remainingTax))}`
@@ -501,9 +501,9 @@ export default function ContentCreatorTax({
             </div>
 
             {/* Effective Rate */}
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-gray-700 dark:text-gray-300">Thuế suất thực tế</span>
+                <span className="text-gray-700">Thuế suất thực tế</span>
                 <span className="text-2xl font-bold text-purple-600">
                   {result.effectiveTaxRate.toFixed(2)}%
                 </span>
@@ -512,28 +512,28 @@ export default function ContentCreatorTax({
           </div>
 
           {/* Quarterly Breakdown */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-4">
               Kê khai theo quý
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2 text-gray-500 dark:text-gray-400">Quý</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Thu nhập</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Thuế</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Đã khấu trừ</th>
-                    <th className="text-right py-2 text-gray-500 dark:text-gray-400">Hạn kê khai</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 text-gray-500">Quý</th>
+                    <th className="text-right py-2 text-gray-500">Thu nhập</th>
+                    <th className="text-right py-2 text-gray-500">Thuế</th>
+                    <th className="text-right py-2 text-gray-500">Đã khấu trừ</th>
+                    <th className="text-right py-2 text-gray-500">Hạn kê khai</th>
                   </tr>
                 </thead>
                 <tbody>
                   {quarterlySummary.map(q => (
-                    <tr key={q.quarter} className="border-b border-gray-100 dark:border-gray-800">
-                      <td className="py-3 font-medium text-gray-900 dark:text-white">
+                    <tr key={q.quarter} className="border-b border-gray-100">
+                      <td className="py-3 font-medium text-gray-900">
                         Quý {q.quarter}
                       </td>
-                      <td className="py-3 text-right text-gray-700 dark:text-gray-300">
+                      <td className="py-3 text-right text-gray-700">
                         {formatCurrency(q.income)}
                       </td>
                       <td className="py-3 text-right text-red-600">
@@ -542,7 +542,7 @@ export default function ContentCreatorTax({
                       <td className="py-3 text-right text-green-600">
                         {formatCurrency(q.withheld)}
                       </td>
-                      <td className="py-3 text-right text-gray-500 dark:text-gray-400">
+                      <td className="py-3 text-right text-gray-500">
                         {q.deadline}
                       </td>
                     </tr>
@@ -554,8 +554,8 @@ export default function ContentCreatorTax({
 
           {/* Recommendations */}
           {result.recommendations.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-4">
                 Lưu ý và khuyến nghị
               </h3>
               <div className="space-y-3">
@@ -564,18 +564,18 @@ export default function ContentCreatorTax({
                     key={rec.id}
                     className={`p-4 rounded-lg ${
                       rec.type === 'warning'
-                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                        ? 'bg-yellow-50 border border-yellow-200'
                         : rec.type === 'tip'
-                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                        : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-blue-50 border border-blue-200'
                     }`}
                   >
                     <h4 className={`font-medium ${
                       rec.type === 'warning'
-                        ? 'text-yellow-800 dark:text-yellow-200'
+                        ? 'text-yellow-800'
                         : rec.type === 'tip'
-                        ? 'text-green-800 dark:text-green-200'
-                        : 'text-blue-800 dark:text-blue-200'
+                        ? 'text-green-800'
+                        : 'text-blue-800'
                     }`}>
                       {rec.type === 'warning' && '⚠️ '}
                       {rec.type === 'tip' && '💡 '}
@@ -584,10 +584,10 @@ export default function ContentCreatorTax({
                     </h4>
                     <p className={`mt-1 text-sm ${
                       rec.type === 'warning'
-                        ? 'text-yellow-700 dark:text-yellow-300'
+                        ? 'text-yellow-700'
                         : rec.type === 'tip'
-                        ? 'text-green-700 dark:text-green-300'
-                        : 'text-blue-700 dark:text-blue-300'
+                        ? 'text-green-700'
+                        : 'text-blue-700'
                     }`}>
                       {rec.description}
                     </p>
@@ -598,8 +598,8 @@ export default function ContentCreatorTax({
           )}
 
           {/* Legal Reference */}
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 text-sm text-gray-600 dark:text-gray-400">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Căn cứ pháp lý</h4>
+          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+            <h4 className="font-medium text-gray-900 mb-2">Căn cứ pháp lý</h4>
             <ul className="list-disc list-inside space-y-1">
               <li>Luật Thuế TNCN 2025 (có hiệu lực từ 1/7/2026)</li>
               <li>Thông tư 111/2013/TT-BTC về thuế TNCN</li>
@@ -628,14 +628,14 @@ function PlatformButton({
       onClick={onClick}
       className={`p-3 rounded-lg border-2 transition-all text-left ${
         selected
-          ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/30'
-          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          ? 'border-purple-600 bg-purple-50'
+          : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       <div className="flex items-center gap-2">
         <span className="text-xl">{platform.icon}</span>
         <span className={`text-sm font-medium ${
-          selected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'
+          selected ? 'text-purple-700' : 'text-gray-700'
         }`}>
           {platform.name}
         </span>

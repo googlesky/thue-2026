@@ -138,8 +138,8 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
       onClick={onClick}
       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
         active
-          ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+          ? 'bg-primary-100 text-primary-700'
+          : 'text-gray-600 hover:bg-gray-100'
       }`}
     >
       {icon}
@@ -178,63 +178,63 @@ const ResultCard = memo(function ResultCard({
     <div
       className={`p-4 rounded-lg border transition-all ${
         isOptimal
-          ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 ring-1 ring-green-300 dark:ring-green-700'
-          : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+          ? 'bg-green-50 border-green-200 ring-1 ring-green-300'
+          : 'bg-white border-gray-200'
       }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <h4 className="font-semibold text-gray-800 flex items-center gap-2">
             {title}
             {isOptimal && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                 <CheckCircleIcon className="w-3 h-3" />
                 Tối ưu
               </span>
             )}
           </h4>
           {subtitle && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Thu nhập</div>
-          <div className="font-semibold text-gray-800 dark:text-gray-200">
+          <div className="text-xs text-gray-500">Thu nhập</div>
+          <div className="font-semibold text-gray-800">
             {formatNumber(grossIncome)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Thuế/tháng</div>
-          <div className="font-semibold text-red-600 dark:text-red-400">
+          <div className="text-xs text-gray-500">Thuế/tháng</div>
+          <div className="font-semibold text-red-600">
             {formatNumber(taxAmount)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Thực nhận</div>
-          <div className="font-semibold text-green-600 dark:text-green-400">
+          <div className="text-xs text-gray-500">Thực nhận</div>
+          <div className="font-semibold text-green-600">
             {formatNumber(netIncome)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Thuế suất</div>
-          <div className="font-semibold text-gray-800 dark:text-gray-200">
+          <div className="text-xs text-gray-500">Thuế suất</div>
+          <div className="font-semibold text-gray-800">
             {effectiveRate.toFixed(1)}%
           </div>
         </div>
       </div>
 
       {comparison && (comparison.taxChange !== 0 || comparison.netChange !== 0) && (
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+        <div className="mt-3 pt-3 border-t border-gray-200">
           <div className="flex flex-wrap gap-2 text-xs">
             {comparison.taxChange !== 0 && (
               <span
                 className={`px-2 py-1 rounded ${
                   comparison.taxChange < 0
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
                 }`}
               >
                 Thuế: {comparison.taxChange > 0 ? '+' : ''}
@@ -245,8 +245,8 @@ const ResultCard = memo(function ResultCard({
               <span
                 className={`px-2 py-1 rounded ${
                   comparison.netChange > 0
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
                 }`}
               >
                 Thực nhận: {comparison.netChange > 0 ? '+' : ''}
@@ -288,31 +288,31 @@ function SalaryAdjustmentTab({ input, baselineResult }: SalaryAdjustmentTabProps
   return (
     <div className="space-y-4">
       {/* Custom adjustment input */}
-      <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
-        <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-3">
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-800 mb-3">
           Tùy chỉnh mức điều chỉnh
         </h4>
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Loại</label>
+            <label className="block text-xs text-gray-500 mb-1">Loại</label>
             <select
               value={adjustmentType}
               onChange={(e) => setAdjustmentType(e.target.value as 'percentage' | 'amount')}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             >
               <option value="percentage">Phần trăm (%)</option>
               <option value="amount">Số tiền (VND)</option>
             </select>
           </div>
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-500 mb-1">
               Giá trị
             </label>
             <input
               type="number"
               value={customAdjustment}
               onChange={(e) => setCustomAdjustment(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
               placeholder={adjustmentType === 'percentage' ? 'VD: 15' : 'VD: 5000000'}
             />
           </div>
@@ -373,8 +373,8 @@ function DependentChangesTab({ input, baselineResult }: DependentChangesTabProps
   return (
     <div className="space-y-4">
       {/* Current dependents info */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-center gap-2 text-blue-700">
           <UsersIcon className="w-5 h-5" />
           <span className="font-medium">
             Hiện tại: {input.dependents} người phụ thuộc
@@ -383,31 +383,31 @@ function DependentChangesTab({ input, baselineResult }: DependentChangesTabProps
       </div>
 
       {/* Custom change input */}
-      <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
-        <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-3">
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-800 mb-3">
           Tùy chỉnh thay đổi
         </h4>
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Loại</label>
+            <label className="block text-xs text-gray-500 mb-1">Loại</label>
             <select
               value={changeType}
               onChange={(e) => setChangeType(e.target.value as 'add' | 'remove')}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             >
               <option value="add">Thêm người phụ thuộc</option>
               <option value="remove">Bớt người phụ thuộc</option>
             </select>
           </div>
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Số người</label>
+            <label className="block text-xs text-gray-500 mb-1">Số người</label>
             <input
               type="number"
               min={1}
               max={10}
               value={customChange}
               onChange={(e) => setCustomChange(Math.max(1, Number(e.target.value)))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
         </div>
@@ -458,8 +458,8 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
   return (
     <div className="space-y-4">
       {/* Bonus input */}
-      <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
-        <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-3">
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-800 mb-3">
           Tổng thưởng năm
         </h4>
         <div className="flex flex-wrap gap-3 items-end">
@@ -468,32 +468,32 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
               type="number"
               value={annualBonus}
               onChange={(e) => setAnnualBonus(Math.max(0, Number(e.target.value)))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800"
               placeholder="VD: 50000000"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setAnnualBonus(input.grossIncome)}
-              className="px-3 py-2 text-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               1 tháng
             </button>
             <button
               onClick={() => setAnnualBonus(input.grossIncome * 2)}
-              className="px-3 py-2 text-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               2 tháng
             </button>
             <button
               onClick={() => setAnnualBonus(input.grossIncome * 3)}
-              className="px-3 py-2 text-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               3 tháng
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+        <p className="text-xs text-gray-500 mt-2">
           = {formatNumber(annualBonus)} VND ({(annualBonus / input.grossIncome).toFixed(1)} tháng lương)
         </p>
       </div>
@@ -507,29 +507,29 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
               key={result.scenario}
               className={`p-4 rounded-lg border ${
                 isOptimal
-                  ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 ring-1 ring-green-300 dark:ring-green-700'
-                  : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+                  ? 'bg-green-50 border-green-200 ring-1 ring-green-300'
+                  : 'bg-white border-gray-200'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
+                <h4 className="font-semibold text-gray-800 text-sm">
                   {result.scenario}
                 </h4>
                 {isOptimal && (
-                  <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <CheckCircleIcon className="w-5 h-5 text-green-600" />
                 )}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{result.description}</p>
+              <p className="text-xs text-gray-500 mb-3">{result.description}</p>
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Tổng thuế năm:</span>
-                  <span className="font-semibold text-red-600 dark:text-red-400">
+                  <span className="text-gray-600">Tổng thuế năm:</span>
+                  <span className="font-semibold text-red-600">
                     {formatNumber(result.totalTax)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Thực nhận năm:</span>
-                  <span className="font-semibold text-green-600 dark:text-green-400">
+                  <span className="text-gray-600">Thực nhận năm:</span>
+                  <span className="font-semibold text-green-600">
                     {formatNumber(result.totalNetIncome)}
                   </span>
                 </div>
@@ -541,18 +541,18 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
 
       {/* Optimal strategy highlight */}
       {optimalStrategy && (
-        <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
           <div className="flex items-start gap-3">
-            <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <CheckCircleIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
             <div>
-              <h4 className="font-semibold text-green-800 dark:text-green-200">
+              <h4 className="font-semibold text-green-800">
                 Chiến lược tối ưu: {optimalStrategy.scenario}
               </h4>
-              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+              <p className="text-sm text-green-700 mt-1">
                 {optimalStrategy.description}
               </p>
               {results.length > 1 && (
-                <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                <p className="text-sm text-green-600 mt-2">
                   Tiết kiệm so với nhận 1 lần:{' '}
                   <span className="font-semibold">
                     {formatNumber(results[0].totalTax - optimalStrategy.totalTax)} VND/năm
@@ -593,17 +593,17 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
   return (
     <div className="space-y-4">
       {/* Settings */}
-      <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700">
-        <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-3">Tham số dự báo</h4>
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-800 mb-3">Tham số dự báo</h4>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-500 mb-1">
               Số năm dự báo
             </label>
             <select
               value={yearsToProject}
               onChange={(e) => setYearsToProject(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             >
               {[1, 2, 3, 4, 5].map((year) => (
                 <option key={year} value={year}>
@@ -613,7 +613,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-500 mb-1">
               Tăng lương hàng năm (%)
             </label>
             <input
@@ -622,11 +622,11 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
               max={50}
               value={annualSalaryIncrease}
               onChange={(e) => setAnnualSalaryIncrease(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-500 mb-1">
               Lạm phát (%)
             </label>
             <input
@@ -635,7 +635,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
               max={20}
               value={inflationRate}
               onChange={(e) => setInflationRate(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
         </div>
@@ -645,24 +645,24 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-slate-700">
-              <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">
+            <tr className="border-b border-gray-200">
+              <th className="px-3 py-2 text-left text-gray-600 font-medium">
                 Năm
               </th>
-              <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-400 font-medium">
+              <th className="px-3 py-2 text-right text-gray-600 font-medium">
                 Thu nhập/tháng
               </th>
-              <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-400 font-medium">
+              <th className="px-3 py-2 text-right text-gray-600 font-medium">
                 Thuế 2026/tháng
               </th>
-              <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-400 font-medium">
+              <th className="px-3 py-2 text-right text-gray-600 font-medium">
                 Thuế suất
               </th>
-              <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-400 font-medium">
+              <th className="px-3 py-2 text-right text-gray-600 font-medium">
                 Tiết kiệm/năm
               </th>
               {inflationRate > 0 && (
-                <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-400 font-medium">
+                <th className="px-3 py-2 text-right text-gray-600 font-medium">
                   Giá trị thực
                 </th>
               )}
@@ -672,25 +672,25 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
             {projection.map((year) => (
               <tr
                 key={year.year}
-                className="border-b border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                className="border-b border-gray-100 hover:bg-gray-50"
               >
-                <td className="px-3 py-3 font-medium text-gray-800 dark:text-gray-200">
+                <td className="px-3 py-3 font-medium text-gray-800">
                   {year.year}
                 </td>
-                <td className="px-3 py-3 text-right text-gray-800 dark:text-gray-200">
+                <td className="px-3 py-3 text-right text-gray-800">
                   {formatNumber(year.grossIncome)}
                 </td>
-                <td className="px-3 py-3 text-right text-red-600 dark:text-red-400">
+                <td className="px-3 py-3 text-right text-red-600">
                   {formatNumber(year.newTax.monthly)}
                 </td>
-                <td className="px-3 py-3 text-right text-gray-600 dark:text-gray-400">
+                <td className="px-3 py-3 text-right text-gray-600">
                   {year.newTax.effectiveRate.toFixed(1)}%
                 </td>
-                <td className="px-3 py-3 text-right text-green-600 dark:text-green-400 font-medium">
+                <td className="px-3 py-3 text-right text-green-600 font-medium">
                   {formatNumber(year.taxSavings)}
                 </td>
                 {inflationRate > 0 && (
-                  <td className="px-3 py-3 text-right text-gray-500 dark:text-gray-400">
+                  <td className="px-3 py-3 text-right text-gray-500">
                     {year.realValue ? formatNumber(year.realValue) : '-'}
                   </td>
                 )}
@@ -698,14 +698,14 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-gray-50 dark:bg-slate-800/50">
+            <tr className="bg-gray-50">
               <td
                 colSpan={4}
-                className="px-3 py-3 text-right font-medium text-gray-800 dark:text-gray-200"
+                className="px-3 py-3 text-right font-medium text-gray-800"
               >
                 Tổng tiết kiệm (so với Luật cũ):
               </td>
-              <td className="px-3 py-3 text-right font-bold text-green-600 dark:text-green-400">
+              <td className="px-3 py-3 text-right font-bold text-green-600">
                 {formatNumber(totalSavings)}
               </td>
               {inflationRate > 0 && <td></td>}
@@ -715,17 +715,17 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
       </div>
 
       {/* Summary */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Tóm tắt dự báo</h4>
+      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h4 className="font-semibold text-blue-800 mb-2">Tóm tắt dự báo</h4>
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div className="text-blue-700 dark:text-blue-300">
-            <span className="text-blue-600 dark:text-blue-400">Lương năm cuối:</span>{' '}
+          <div className="text-blue-700">
+            <span className="text-blue-600">Lương năm cuối:</span>{' '}
             <span className="font-semibold">
               {formatNumber(projection[projection.length - 1]?.grossIncome || 0)} VND/tháng
             </span>
           </div>
-          <div className="text-blue-700 dark:text-blue-300">
-            <span className="text-blue-600 dark:text-blue-400">Tổng tiết kiệm {yearsToProject} năm:</span>{' '}
+          <div className="text-blue-700">
+            <span className="text-blue-600">Tổng tiết kiệm {yearsToProject} năm:</span>{' '}
             <span className="font-semibold">{formatNumber(totalSavings)} VND</span>
           </div>
         </div>
@@ -757,7 +757,7 @@ function TaxPlanningSimulatorComponent({ input }: TaxPlanningSimulatorProps) {
   ];
 
   return (
-    <div className="card bg-gradient-to-br from-indigo-50/50 to-purple-50/30 dark:from-indigo-950/20 dark:to-purple-950/10 border border-indigo-100 dark:border-indigo-900/50">
+    <div className="card bg-gradient-to-br from-indigo-50/50 to-purple-50/30 border border-indigo-100">
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -765,19 +765,19 @@ function TaxPlanningSimulatorComponent({ input }: TaxPlanningSimulatorProps) {
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-200/50">
             <ChartIcon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            <h3 className="text-lg font-bold text-gray-800">
               Mô phỏng kế hoạch thuế
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600">
               Phân tích What-If cho các kịch bản thuế
             </p>
           </div>
         </div>
-        <div className="text-gray-400 dark:text-gray-500">
+        <div className="text-gray-400">
           {isCollapsed ? (
             <ChevronDownIcon className="w-6 h-6" />
           ) : (
@@ -790,7 +790,7 @@ function TaxPlanningSimulatorComponent({ input }: TaxPlanningSimulatorProps) {
       {!isCollapsed && (
         <div className="mt-4 space-y-4">
           {/* Tab navigation */}
-          <div className="flex flex-wrap gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-lg">
+          <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-lg">
             {tabs.map((tab) => (
               <TabButton
                 key={tab.id}
@@ -815,8 +815,8 @@ function TaxPlanningSimulatorComponent({ input }: TaxPlanningSimulatorProps) {
           </div>
 
           {/* Disclaimer */}
-          <div className="pt-3 border-t border-indigo-200/50 dark:border-indigo-800/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">
+          <div className="pt-3 border-t border-indigo-200/50">
+            <p className="text-xs text-gray-500 italic text-center">
               Đây chỉ là mô phỏng ước tính. Kết quả thực tế có thể khác do nhiều yếu tố.
             </p>
           </div>

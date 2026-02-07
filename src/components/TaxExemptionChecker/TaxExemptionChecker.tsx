@@ -105,13 +105,13 @@ export function TaxExemptionChecker() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'exempt':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300';
+        return 'bg-green-100 text-green-800';
       case 'partial':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300';
+        return 'bg-yellow-100 text-yellow-800';
       case 'needs_review':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300';
+        return 'bg-blue-100 text-blue-800';
       default:
-        return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300';
+        return 'bg-red-100 text-red-800';
     }
   };
 
@@ -143,35 +143,35 @@ export function TaxExemptionChecker() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div className="text-3xl font-bold text-purple-600">
             21
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600">
             Khoản miễn thuế
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div className="text-3xl font-bold text-indigo-600">
             {getOriginalExemptions().length}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600">
             Từ 2007
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div className="text-3xl font-bold text-green-600">
             {getNew2026Exemptions().length}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600">
             Mới 2026
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div className="text-3xl font-bold text-amber-600">
             100%
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="text-sm text-gray-600">
             Miễn thuế
           </div>
         </div>
@@ -184,7 +184,7 @@ export function TaxExemptionChecker() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             viewMode === 'list'
               ? 'bg-purple-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           Danh sách miễn thuế
@@ -194,7 +194,7 @@ export function TaxExemptionChecker() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             viewMode === 'check'
               ? 'bg-purple-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           Kiểm tra điều kiện
@@ -212,7 +212,7 @@ export function TaxExemptionChecker() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm khoản miễn thuế..."
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export function TaxExemptionChecker() {
               />
               <label
                 htmlFor="showNew2026"
-                className="text-sm text-gray-700 dark:text-gray-300"
+                className="text-sm text-gray-700"
               >
                 Chỉ hiện quy định mới 2026
               </label>
@@ -256,24 +256,24 @@ export function TaxExemptionChecker() {
             {filteredExemptions.map((rule) => (
               <div
                 key={rule.id}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:border-purple-500 dark:hover:border-purple-400 transition-colors"
+                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-500 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                      <h3 className="font-semibold text-gray-900">
                         {rule.name}
                       </h3>
                       {rule.isNew2026 && (
-                        <span className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full text-xs font-medium">
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
                           Mới 2026
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    <p className="text-sm text-gray-600 mb-2">
                       {rule.description}
                     </p>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
+                    <div className="text-xs text-gray-500">
                       {rule.legalReference}
                     </div>
                   </div>
@@ -282,18 +282,18 @@ export function TaxExemptionChecker() {
                       handleCategorySelect(rule.id);
                       setViewMode('check');
                     }}
-                    className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors shrink-0"
+                    className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors shrink-0"
                   >
                     Kiểm tra
                   </button>
                 </div>
 
                 {/* Conditions preview */}
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="text-xs font-medium text-gray-700 mb-2">
                     Điều kiện:
                   </div>
-                  <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <ul className="text-xs text-gray-600 space-y-1">
                     {rule.conditions.slice(0, 3).map((cond, i) => (
                       <li key={i} className="flex items-start gap-1">
                         <span className="text-purple-500">•</span>
@@ -301,7 +301,7 @@ export function TaxExemptionChecker() {
                       </li>
                     ))}
                     {rule.conditions.length > 3 && (
-                      <li className="text-purple-600 dark:text-purple-400">
+                      <li className="text-purple-600">
                         +{rule.conditions.length - 3} điều kiện khác...
                       </li>
                     )}
@@ -311,7 +311,7 @@ export function TaxExemptionChecker() {
             ))}
 
             {filteredExemptions.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-gray-500">
                 Không tìm thấy khoản miễn thuế phù hợp
               </div>
             )}
@@ -324,8 +324,8 @@ export function TaxExemptionChecker() {
         <div className="space-y-4">
           {/* Category selector */}
           {!selectedCategory && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">
                 Chọn khoản miễn thuế để kiểm tra
               </h3>
               <select
@@ -333,7 +333,7 @@ export function TaxExemptionChecker() {
                 onChange={(e) =>
                   handleCategorySelect(e.target.value as ExemptionCategory)
                 }
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">-- Chọn loại miễn thuế --</option>
                 <optgroup label="Quy định từ 2007">
@@ -356,18 +356,18 @@ export function TaxExemptionChecker() {
 
           {/* Check form */}
           {selectedRule && !checkResult && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-gray-900">
                     {selectedRule.name}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                     {selectedRule.description}
                   </p>
                 </div>
                 {selectedRule.isNew2026 && (
-                  <span className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full text-xs font-medium shrink-0">
+                  <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium shrink-0">
                     Mới 2026
                   </span>
                 )}
@@ -375,7 +375,7 @@ export function TaxExemptionChecker() {
 
               {/* Income amount */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Số tiền thu nhập (VNĐ)
                 </label>
                 <input
@@ -385,20 +385,20 @@ export function TaxExemptionChecker() {
                     setIncomeAmount(formatNumberInput(e.target.value))
                   }
                   placeholder="Nhập số tiền thu nhập"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
                 />
               </div>
 
               {/* Conditions checklist */}
               <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <div className="text-sm font-medium text-gray-700 mb-3">
                   Kiểm tra các điều kiện:
                 </div>
                 <div className="space-y-3">
                   {selectedRule.conditions.map((condition, index) => (
                     <label
                       key={index}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100"
                     >
                       <input
                         type="checkbox"
@@ -406,7 +406,7 @@ export function TaxExemptionChecker() {
                         onChange={() => handleConditionToggle(index)}
                         className="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm text-gray-700">
                         {condition}
                       </span>
                     </label>
@@ -415,11 +415,11 @@ export function TaxExemptionChecker() {
               </div>
 
               {/* Required documents */}
-              <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
-                <div className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+              <div className="mb-6 bg-amber-50 rounded-lg p-4">
+                <div className="text-sm font-medium text-amber-800 mb-2">
                   Hồ sơ cần chuẩn bị:
                 </div>
-                <ul className="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                <ul className="text-sm text-amber-700 space-y-1">
                   {selectedRule.requiredDocuments.map((doc, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span>•</span>
@@ -440,7 +440,7 @@ export function TaxExemptionChecker() {
                 </button>
                 <button
                   onClick={resetCheck}
-                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                 >
                   Đổi loại
                 </button>
@@ -455,10 +455,10 @@ export function TaxExemptionChecker() {
               <div
                 className={`rounded-xl border-2 p-6 ${
                   checkResult.status === 'exempt'
-                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    ? 'border-green-500 bg-green-50'
                     : checkResult.status === 'needs_review'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-red-500 bg-red-50'
                 }`}
               >
                 <div className="flex items-center gap-3 mb-4">
@@ -481,15 +481,15 @@ export function TaxExemptionChecker() {
                     <div
                       className={`font-bold text-xl ${
                         checkResult.status === 'exempt'
-                          ? 'text-green-700 dark:text-green-300'
+                          ? 'text-green-700'
                           : checkResult.status === 'needs_review'
-                          ? 'text-blue-700 dark:text-blue-300'
-                          : 'text-red-700 dark:text-red-300'
+                          ? 'text-blue-700'
+                          : 'text-red-700'
                       }`}
                     >
                       {getStatusLabel(checkResult.status)}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-gray-600">
                       {checkResult.categoryName}
                     </div>
                   </div>
@@ -498,38 +498,38 @@ export function TaxExemptionChecker() {
                 <p
                   className={`text-sm mb-4 ${
                     checkResult.status === 'exempt'
-                      ? 'text-green-700 dark:text-green-300'
+                      ? 'text-green-700'
                       : checkResult.status === 'needs_review'
-                      ? 'text-blue-700 dark:text-blue-300'
-                      : 'text-red-700 dark:text-red-300'
+                      ? 'text-blue-700'
+                      : 'text-red-700'
                   }`}
                 >
                   {checkResult.explanation}
                 </p>
 
                 {/* Amount breakdown */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-2">
+                <div className="bg-white rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-gray-600">
                       Thu nhập:
                     </span>
-                    <span className="font-medium text-gray-900 dark:text-white">
+                    <span className="font-medium text-gray-900">
                       {formatCurrency(incomeAmount)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-gray-600">
                       Số tiền được miễn:
                     </span>
-                    <span className="font-medium text-green-600 dark:text-green-400">
+                    <span className="font-medium text-green-600">
                       {formatCurrency(checkResult.exemptAmount)}
                     </span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <span className="text-gray-800 dark:text-gray-200 font-medium">
+                  <div className="flex justify-between border-t border-gray-200 pt-2">
+                    <span className="text-gray-800 font-medium">
                       Số tiền chịu thuế:
                     </span>
-                    <span className="font-bold text-red-600 dark:text-red-400">
+                    <span className="font-bold text-red-600">
                       {formatCurrency(checkResult.taxableAmount)}
                     </span>
                   </div>
@@ -537,8 +537,8 @@ export function TaxExemptionChecker() {
               </div>
 
               {/* Conditions check */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">
                   Kết quả kiểm tra điều kiện
                 </h4>
                 <div className="space-y-2">
@@ -547,15 +547,15 @@ export function TaxExemptionChecker() {
                       key={i}
                       className={`flex items-start gap-2 p-2 rounded-lg ${
                         cond.met
-                          ? 'bg-green-50 dark:bg-green-900/20'
-                          : 'bg-gray-50 dark:bg-gray-700/50'
+                          ? 'bg-green-50'
+                          : 'bg-gray-50'
                       }`}
                     >
                       <span
                         className={`w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 ${
                           cond.met
                             ? 'bg-green-500 text-white'
-                            : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                            : 'bg-gray-300 text-gray-600'
                         }`}
                       >
                         {cond.met ? '✓' : '?'}
@@ -564,14 +564,14 @@ export function TaxExemptionChecker() {
                         <div
                           className={`text-sm ${
                             cond.met
-                              ? 'text-green-700 dark:text-green-300'
-                              : 'text-gray-600 dark:text-gray-400'
+                              ? 'text-green-700'
+                              : 'text-gray-600'
                           }`}
                         >
                           {cond.condition}
                         </div>
                         {cond.note && (
-                          <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+                          <div className="text-xs text-gray-500 mt-0.5">
                             {cond.note}
                           </div>
                         )}
@@ -582,7 +582,7 @@ export function TaxExemptionChecker() {
               </div>
 
               {/* Legal reference */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
                 <strong>Căn cứ pháp lý:</strong> {checkResult.legalReference}
               </div>
 
@@ -599,7 +599,7 @@ export function TaxExemptionChecker() {
       )}
 
       {/* Info footer */}
-      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+      <div className="text-xs text-gray-500 space-y-1">
         <p>Lưu ý:</p>
         <ul className="list-disc list-inside space-y-0.5">
           <li>

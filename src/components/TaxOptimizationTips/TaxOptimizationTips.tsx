@@ -288,22 +288,22 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
   // Background and border classes based on priority
   const cardClasses =
     tip.priority === 'critical'
-      ? 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/40 dark:border-rose-800 ring-1 ring-rose-200 dark:ring-rose-900'
+      ? 'bg-rose-50/90 border-rose-300 ring-1 ring-rose-200'
       : tip.priority === 'high'
-        ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+        ? 'bg-amber-50/80 border-amber-200'
         : tip.priority === 'medium'
-          ? 'bg-yellow-50/60 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
-          : 'bg-slate-50/60 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700';
+          ? 'bg-yellow-50/60 border-yellow-200'
+          : 'bg-slate-50/60 border-slate-200';
 
   // Icon container classes based on priority
   const iconClasses =
     tip.priority === 'critical'
-      ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400'
+      ? 'bg-rose-100 text-rose-600'
       : tip.priority === 'high'
-        ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400'
+        ? 'bg-amber-100 text-amber-600'
         : tip.priority === 'medium'
-          ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400'
-          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+          ? 'bg-yellow-100 text-yellow-600'
+          : 'bg-slate-100 text-slate-600';
 
   return (
     <div className={`rounded-lg border transition-all ${cardClasses}`}>
@@ -320,17 +320,17 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <PriorityDot priority={tip.priority} />
-            <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-sm sm:text-base">
+            <h4 className="font-semibold text-gray-800 text-sm sm:text-base">
               {tip.title}
             </h4>
           </div>
           {!isExpanded && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+            <p className="text-sm text-gray-600 line-clamp-2">
               {tip.description}
             </p>
           )}
         </div>
-        <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
+        <div className="flex-shrink-0 text-gray-400">
           {isExpanded ? (
             <ChevronUpIcon className="w-5 h-5" />
           ) : (
@@ -342,16 +342,16 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
       {isExpanded && (
         <div className="px-3 sm:px-4 pb-4 pt-0">
           <div className="pl-0 sm:pl-[52px]">
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{tip.description}</p>
+            <p className="text-sm text-gray-700 mb-3">{tip.description}</p>
 
             {(tip.potentialSavings || tip.potentialSavingsYearly) && (
-              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
-                <div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                <div className="text-xs text-green-600 font-medium mb-1">
                   Tiết kiệm ước tính
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {tip.potentialSavings && (
-                    <div className="text-green-700 dark:text-green-300">
+                    <div className="text-green-700">
                       <span className="font-bold text-lg">
                         {formatNumber(tip.potentialSavings)}
                       </span>
@@ -359,7 +359,7 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
                     </div>
                   )}
                   {tip.potentialSavingsYearly && (
-                    <div className="text-green-600 dark:text-green-400 text-sm">
+                    <div className="text-green-600 text-sm">
                       (~{formatNumber(tip.potentialSavingsYearly)} VND/năm)
                     </div>
                   )}
@@ -373,11 +373,11 @@ const TipCard = memo(function TipCard({ tip, isExpanded, onToggle }: TipCardProp
               >
                 {getPriorityLabel(tip.priority)}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
                 {getCategoryLabel(tip.category)}
               </span>
               {tip.actionable && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200">
                   Có thể thực hiện ngay
                 </span>
               )}
@@ -440,7 +440,7 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
   };
 
   return (
-    <div className="card bg-gradient-to-br from-amber-50/50 to-yellow-50/30 dark:from-amber-950/20 dark:to-yellow-950/10 border border-amber-100 dark:border-amber-900/50">
+    <div className="card bg-gradient-to-br from-amber-50/50 to-yellow-50/30 border border-amber-100">
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -451,20 +451,20 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md ${
               criticalCount > 0
-                ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-200/50 dark:shadow-rose-900/50 animate-pulse'
-                : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-200/50 dark:shadow-amber-900/50'
+                ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-200/50 animate-pulse'
+                : 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-200/50'
             }`}
           >
             <LightbulbIcon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">Gợi ý tối ưu thuế</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <h3 className="text-lg font-bold text-gray-800">Gợi ý tối ưu thuế</h3>
+            <p className="text-sm text-gray-600">
               {tips.length} gợi ý{getPrioritySummary()}
             </p>
           </div>
         </div>
-        <div className="text-gray-400 dark:text-gray-500">
+        <div className="text-gray-400">
           {isCollapsed ? (
             <ChevronDownIcon className="w-6 h-6" />
           ) : (
@@ -489,7 +489,7 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
           {hasMoreTips && (
             <button
               onClick={() => setShowAll(!showAll)}
-              className="w-full py-2.5 px-4 text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 text-sm font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-100/50 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {showAll ? (
                 <>
@@ -506,8 +506,8 @@ function TaxOptimizationTipsComponent({ input }: TaxOptimizationTipsProps) {
           )}
 
           {/* Disclaimer */}
-          <div className="pt-3 border-t border-amber-200/50 dark:border-amber-800/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">
+          <div className="pt-3 border-t border-amber-200/50">
+            <p className="text-xs text-gray-500 italic text-center">
               Đây chỉ là gợi ý, vui lòng tham khảo chuyên gia thuế để được tư vấn cụ thể.
             </p>
           </div>

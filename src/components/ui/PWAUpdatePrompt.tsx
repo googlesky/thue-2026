@@ -44,16 +44,16 @@ export function PWAUpdatePrompt() {
 
   return (
     <div
-      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[9998] p-4 rounded-lg shadow-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[9998] p-4 rounded-lg shadow-xl bg-white border border-gray-200"
       role="alertdialog"
       aria-labelledby="pwa-update-title"
       aria-describedby="pwa-update-desc"
     >
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
           <svg
-            className="w-6 h-6 text-blue-600 dark:text-blue-400"
+            className="w-6 h-6 text-blue-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -71,13 +71,13 @@ export function PWAUpdatePrompt() {
         <div className="flex-1">
           <h3
             id="pwa-update-title"
-            className="font-semibold text-gray-900 dark:text-white"
+            className="font-semibold text-gray-900"
           >
             Có phiên bản mới
           </h3>
           <p
             id="pwa-update-desc"
-            className="mt-1 text-sm text-gray-600 dark:text-gray-400"
+            className="mt-1 text-sm text-gray-600"
           >
             Một phiên bản mới của ứng dụng đã sẵn sàng. Cập nhật ngay để có trải nghiệm tốt nhất.
           </p>
@@ -119,7 +119,7 @@ export function PWAUpdatePrompt() {
             <button
               onClick={handleDismiss}
               disabled={isUpdating}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
             >
               Để sau
             </button>
@@ -130,7 +130,7 @@ export function PWAUpdatePrompt() {
         <button
           onClick={handleDismiss}
           disabled={isUpdating}
-          className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="flex-shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
           aria-label="Đóng"
         >
           <svg
