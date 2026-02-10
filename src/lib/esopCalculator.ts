@@ -64,9 +64,9 @@ export const ESOP_PERIODS: ESOPPeriod[] = [
   {
     id: 'h1-2026',
     name: 'T1-6/2026',
-    description: 'Thực hiện nửa đầu năm 2026 (luật cũ)',
+    description: 'Thực hiện nửa đầu năm 2026 (luật mới 5 bậc)',
     year: '2026 H1',
-    taxLaw: 'old',
+    taxLaw: 'new',
   },
   {
     id: 'h2-2026',
@@ -279,11 +279,11 @@ export function estimateTaxBracket(
   useNewLaw: boolean
 ): { rate: number; bracket: string } {
   if (useNewLaw) {
-    // New 5-bracket system
+    // New 5-bracket system (Luật 109/2025/QH15)
     if (taxableIncome <= 10_000_000) return { rate: 5, bracket: '5%' };
-    if (taxableIncome <= 20_000_000) return { rate: 10, bracket: '10%' };
-    if (taxableIncome <= 40_000_000) return { rate: 20, bracket: '20%' };
-    if (taxableIncome <= 80_000_000) return { rate: 30, bracket: '30%' };
+    if (taxableIncome <= 30_000_000) return { rate: 10, bracket: '10%' };
+    if (taxableIncome <= 60_000_000) return { rate: 20, bracket: '20%' };
+    if (taxableIncome <= 100_000_000) return { rate: 30, bracket: '30%' };
     return { rate: 35, bracket: '35%' };
   } else {
     // Old 7-bracket system
