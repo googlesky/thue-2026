@@ -248,7 +248,7 @@ export function calculateOptimalBonusSplit(
   const h1Portion = totalBonus * splitRatio;
   const h2Portion = totalBonus * (1 - splitRatio);
 
-  // Calculate H1 tax (old law)
+  // Calculate H1 tax (new law - áp dụng từ kỳ tính thuế 2026)
   const h1TaxInput: SharedTaxState = {
     grossIncome: input.monthlySalary + h1Portion,
     dependents: input.dependents,
@@ -258,7 +258,7 @@ export function calculateOptimalBonusSplit(
     region: input.region,
     pensionContribution: 0,
   };
-  const h1Result = calculateOldTax(h1TaxInput);
+  const h1Result = calculateNewTax(h1TaxInput);
 
   // Calculate H2 tax (new law)
   const h2TaxInput: SharedTaxState = {
@@ -272,7 +272,7 @@ export function calculateOptimalBonusSplit(
   };
   const h2Result = calculateNewTax(h2TaxInput);
 
-  // Calculate base tax (no bonus)
+  // Calculate base tax (no bonus) - cả H1 và H2 đều dùng luật mới
   const baseTaxInput: SharedTaxState = {
     grossIncome: input.monthlySalary,
     dependents: input.dependents,
@@ -282,11 +282,10 @@ export function calculateOptimalBonusSplit(
     region: input.region,
     pensionContribution: 0,
   };
-  const baseResultOld = calculateOldTax(baseTaxInput);
-  const baseResultNew = calculateNewTax(baseTaxInput);
+  const baseResult = calculateNewTax(baseTaxInput);
 
-  const h1Tax = h1Result.taxAmount - baseResultOld.taxAmount;
-  const h2Tax = h2Result.taxAmount - baseResultNew.taxAmount;
+  const h1Tax = h1Result.taxAmount - baseResult.taxAmount;
+  const h2Tax = h2Result.taxAmount - baseResult.taxAmount;
   const totalTax = h1Tax + h2Tax;
   const totalNetBonus = totalBonus - totalTax;
 
