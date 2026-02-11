@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
 import { formatNumber, RegionType, getRegionalMinimumWages, formatCurrency, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, AllowancesState, DEFAULT_ALLOWANCES, ALLOWANCE_LIMITS, calculateAllowancesBreakdown } from '@/lib/taxCalculator';
+import { grossToNet, netToGross, GrossNetInput } from '@/lib/grossNetCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 
@@ -64,6 +65,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   const [allowances, setAllowances] = useState<AllowancesState>(
     initialValues?.allowances ?? { ...DEFAULT_ALLOWANCES }
   );
+  const [inputMode, setInputMode] = useState<'gross' | 'net'>('gross');
+  const [netIncome, setNetIncome] = useState<string>('');
   const [grossWarning, setGrossWarning] = useState<string | null>(null);
   const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
   const [otherDeductionWarning, setOtherDeductionWarning] = useState<string | null>(null);
@@ -75,6 +78,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
 
   // Track if we're syncing from external changes
   const isExternalUpdate = useRef(false);
+  // Track the last grossIncome sent via onCalculate, to detect external vs local changes
+  const lastSentGross = useRef<number>(parseInt(initialValues?.grossIncome?.toString() ?? '30000000', 10));
 
   // Sync with initialValues when they change from other tabs
   useEffect(() => {
@@ -91,28 +96,91 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
       setPensionContribution(initialValues.pensionContribution.toString());
       if (initialValues.allowances) {
         setAllowances(initialValues.allowances);
-        // Only auto-open if there are non-zero allowances (e.g., from URL)
-        // Never auto-close if user manually opened
         const hasAnyAllowance = Object.values(initialValues.allowances).some(v => v !== 0);
         if (hasAnyAllowance) {
           setShowAllowances(true);
         }
       }
+      // Nếu đang ở NET mode VÀ grossIncome thay đổi từ bên ngoài (tab khác),
+      // tính lại NET tương ứng. Skip nếu grossIncome giống lastSentGross (thay đổi từ chính TaxInput).
+      if (inputMode === 'net' && initialValues.grossIncome > 0
+        && initialValues.grossIncome !== lastSentGross.current) {
+        const result = grossToNet({
+          amount: initialValues.grossIncome,
+          type: 'gross',
+          dependents: initialValues.dependents,
+          hasInsurance: initialValues.hasInsurance,
+          useNewLaw: true,
+          region: initialValues.region,
+          declaredSalary: initialValues.declaredSalary,
+          allowances: initialValues.allowances,
+        });
+        setNetIncome(Math.round(result.net).toString());
+      }
       setTimeout(() => {
         isExternalUpdate.current = false;
       }, 0);
     }
-  }, [initialValues]);
+  }, [initialValues, inputMode]);
+
+  // Helper: build GrossNetInput từ state hiện tại
+  const buildGrossNetInputParams = useCallback((amount: number, type: 'gross' | 'net'): GrossNetInput => ({
+    amount,
+    type,
+    dependents,
+    hasInsurance,
+    useNewLaw: true,
+    region,
+    declaredSalary: useDeclaredSalary ? (parseInt(declaredSalary, 10) || undefined) : undefined,
+    allowances: showAllowances ? allowances : undefined,
+  }), [dependents, hasInsurance, region, useDeclaredSalary, declaredSalary, showAllowances, allowances]);
+
+  // Chuyển đổi mode GROSS ↔ NET
+  const handleModeChange = useCallback((newMode: 'gross' | 'net') => {
+    if (newMode === inputMode) return;
+
+    if (newMode === 'net') {
+      // GROSS → NET: tính NET từ GROSS hiện tại
+      const currentGross = parseInt(grossIncome, 10) || 0;
+      if (currentGross > 0) {
+        const result = grossToNet(buildGrossNetInputParams(currentGross, 'gross'));
+        setNetIncome(Math.round(result.net).toString());
+      }
+    } else {
+      // NET → GROSS: dùng GROSS đã tính trong useEffect gần nhất
+      if (lastCalculatedGross.current > 0) {
+        setGrossIncome(lastCalculatedGross.current.toString());
+      } else {
+        // Fallback: tính lại
+        const currentNet = parseInt(netIncome, 10) || 0;
+        if (currentNet > 0) {
+          const result = netToGross(buildGrossNetInputParams(currentNet, 'net'));
+          setGrossIncome(Math.round(result.gross).toString());
+        }
+      }
+    }
+
+    setInputMode(newMode);
+    setGrossWarning(null);
+  }, [inputMode, grossIncome, netIncome, buildGrossNetInputParams]);
 
   const handleIncomeChange = (value: string) => {
     const stripped = value.replace(/[^\d]/g, '');
     if (stripped === '') {
-      setGrossIncome('');
+      if (inputMode === 'net') {
+        setNetIncome('');
+      } else {
+        setGrossIncome('');
+      }
       setGrossWarning(null);
       return;
     }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    setGrossIncome(parsed.value.toString());
+    if (inputMode === 'net') {
+      setNetIncome(parsed.value.toString());
+    } else {
+      setGrossIncome(parsed.value.toString());
+    }
     setGrossWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
@@ -193,13 +261,33 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
     }
   }, [insuranceOptions, hasInsurance]);
 
+  // Ref lưu GROSS tính từ NET gần nhất, để dùng khi chuyển mode
+  const lastCalculatedGross = useRef<number>(0);
+
   useEffect(() => {
-    const income = parseInt(grossIncome, 10) || 0;
+    let income: number;
+
+    if (inputMode === 'net') {
+      // NET mode: tính GROSS từ NET rồi truyền GROSS cho onCalculate
+      const net = parseInt(netIncome, 10) || 0;
+      if (net > 0) {
+        const result = netToGross(buildGrossNetInputParams(net, 'net'));
+        income = Math.round(result.gross);
+      } else {
+        income = 0;
+      }
+      lastCalculatedGross.current = income;
+    } else {
+      income = parseInt(grossIncome, 10) || 0;
+    }
+
     const declared = useDeclaredSalary ? (parseInt(declaredSalary, 10) || income) : undefined;
     const other = parseInt(otherDeductions, 10) || 0;
     const pension = parseInt(pensionContribution, 10) || 0;
     // Only include allowances if showAllowances is enabled
     const effectiveAllowances = showAllowances ? allowances : undefined;
+    // Track what we sent so sync effect can distinguish local vs external changes
+    lastSentGross.current = income;
     onCalculate({
       grossIncome: income,
       declaredSalary: declared,
@@ -211,9 +299,10 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
       pensionContribution: pension,
       allowances: effectiveAllowances,
     });
-  }, [grossIncome, useDeclaredSalary, declaredSalary, dependents, otherDeductions, hasInsurance, insuranceOptions, region, pensionContribution, showAllowances, allowances, onCalculate]);
+  }, [grossIncome, netIncome, inputMode, useDeclaredSalary, declaredSalary, dependents, otherDeductions, hasInsurance, insuranceOptions, region, pensionContribution, showAllowances, allowances, onCalculate, buildGrossNetInputParams]);
 
   const presetIncomes = [15_000_000, 20_000_000, 30_000_000, 50_000_000, 80_000_000, 100_000_000];
+  const presetNetIncomes = [10_000_000, 15_000_000, 20_000_000, 30_000_000, 50_000_000, 70_000_000];
 
   const insuranceItems = [
     { key: 'bhxh' as const, label: 'BHXH', rate: '8%' },
@@ -237,12 +326,39 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
       </h2>
 
       <div className="space-y-6">
-        {/* Thu nhập thực tế */}
+        {/* Toggle GROSS / NET */}
         <div>
+          <div className="flex gap-2 mb-3" role="radiogroup" aria-label="Chọn loại thu nhập đầu vào">
+            <button
+              onClick={() => handleModeChange('gross')}
+              role="radio"
+              aria-checked={inputMode === 'gross'}
+              className={`flex-1 py-2 px-4 min-h-[44px] rounded-lg font-medium text-sm transition-colors ${
+                inputMode === 'gross'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              GROSS (Lương gộp)
+            </button>
+            <button
+              onClick={() => handleModeChange('net')}
+              role="radio"
+              aria-checked={inputMode === 'net'}
+              className={`flex-1 py-2 px-4 min-h-[44px] rounded-lg font-medium text-sm transition-colors ${
+                inputMode === 'net'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              NET (Thực nhận)
+            </button>
+          </div>
+
           <label htmlFor="gross-income" className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-            <span>Thu nhập thực tế hàng tháng (VNĐ)</span>
+            <span>{inputMode === 'gross' ? 'Thu nhập thực tế hàng tháng (VNĐ)' : 'Thu nhập thực nhận hàng tháng (VNĐ)'}</span>
             <span className="text-red-500" aria-hidden="true">*</span>
-            <Tooltip content="Lương tổng trước khi trừ bảo hiểm và thuế">
+            <Tooltip content={inputMode === 'gross' ? 'Lương tổng trước khi trừ bảo hiểm và thuế' : 'Lương thực nhận sau khi trừ bảo hiểm và thuế'}>
               <span className="text-gray-500 hover:text-gray-700 cursor-help">
                 <InfoIcon />
               </span>
@@ -251,11 +367,17 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
           <input
             id="gross-income"
             type="text"
-            value={displayCurrency(grossIncome)}
+            value={displayCurrency(inputMode === 'net' ? netIncome : grossIncome)}
             onChange={(e) => handleIncomeChange(e.target.value)}
-            onBlur={() => { if (grossIncome === '') setGrossIncome('0'); }}
+            onBlur={() => {
+              if (inputMode === 'net') {
+                if (netIncome === '') setNetIncome('0');
+              } else {
+                if (grossIncome === '') setGrossIncome('0');
+              }
+            }}
             className="input-field text-lg font-semibold"
-            placeholder="Nhập thu nhập"
+            placeholder={inputMode === 'gross' ? 'Nhập thu nhập GROSS' : 'Nhập thu nhập NET'}
             aria-required="true"
             aria-describedby="gross-income-presets"
           />
@@ -263,24 +385,31 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
             <p className="text-xs text-amber-600 mt-2">{grossWarning}</p>
           )}
           <div id="gross-income-presets" className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Mức thu nhập mẫu">
-            {presetIncomes.map((income) => (
-              <button
-                key={income}
-                onClick={() => {
-                  setGrossIncome(income.toString());
-                  setGrossWarning(null);
-                }}
-                aria-label={`Chọn mức thu nhập ${formatNumber(income)} VNĐ`}
-                aria-pressed={parseInt(grossIncome, 10) === income}
-                className={`px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm rounded-full transition-colors ${
-                  parseInt(grossIncome, 10) === income
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {formatNumber(income)}
-              </button>
-            ))}
+            {(inputMode === 'net' ? presetNetIncomes : presetIncomes).map((income) => {
+              const currentValue = parseInt(inputMode === 'net' ? netIncome : grossIncome, 10);
+              return (
+                <button
+                  key={income}
+                  onClick={() => {
+                    if (inputMode === 'net') {
+                      setNetIncome(income.toString());
+                    } else {
+                      setGrossIncome(income.toString());
+                    }
+                    setGrossWarning(null);
+                  }}
+                  aria-label={`Chọn mức thu nhập ${formatNumber(income)} VNĐ`}
+                  aria-pressed={currentValue === income}
+                  className={`px-3 py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 text-sm rounded-full transition-colors ${
+                    currentValue === income
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {formatNumber(income)}
+                </button>
+              );
+            })}
           </div>
         </div>
 
