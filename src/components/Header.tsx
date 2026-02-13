@@ -119,7 +119,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-primary-500/50 rounded-xl p-1 -ml-1"
               aria-label="Thue2026 - Trang chủ"
             >
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 via-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary-500/30 group-hover:rotate-3">
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 via-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary-500/30">
                 {/* Gradient overlay for extra depth */}
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/20 to-transparent" />
                 <svg
@@ -148,7 +148,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1" role="navigation" aria-label="Menu chính">
+            <nav className="hidden md:flex items-center gap-1.5" role="navigation" aria-label="Menu chính">
               <Link
                 href="/"
                 className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
@@ -158,7 +158,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               >
                 <span className="relative z-10">Trang chủ</span>
                 {isHomePage && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary-500 rounded-full" />
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary-500 rounded-full" />
                 )}
               </Link>
               <Link
@@ -170,7 +170,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               >
                 <span className="relative z-10">Tính thuế</span>
                 {isCalculatorPage && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary-500 rounded-full" />
+                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-primary-500 rounded-full" />
                 )}
               </Link>
               <Link
