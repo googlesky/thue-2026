@@ -54,6 +54,8 @@ const ContentCreatorTax = lazy(() => import('@/components/ContentCreatorTax').th
 const CryptoTax = lazy(() => import('@/components/CryptoTax').then(m => ({ default: m.CryptoTax })));
 const TaxDeadlineManager = lazy(() => import('@/components/TaxDeadlineManager'));
 const IncomeSummaryDashboard = lazy(() => import('@/components/IncomeSummaryDashboard'));
+const RegionComparison = lazy(() => import('@/components/RegionComparison'));
+const MonthlyPlanner = lazy(() => import('@/components/MonthlyPlanner'));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -109,6 +111,8 @@ import {
   DEFAULT_CONTENT_CREATOR_STATE,
   CryptoTaxTabState,
   DEFAULT_CRYPTO_TAX_STATE,
+  MonthlyPlannerTabState,
+  DEFAULT_MONTHLY_PLANNER_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -132,7 +136,8 @@ const VALID_TABS: TabType[] = [
   'tax-treaty', 'couple-optimizer', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
-  'tax-document', 'content-creator', 'crypto-tax', 'tax-deadline', 'income-summary'
+  'tax-document', 'content-creator', 'crypto-tax', 'tax-deadline', 'income-summary',
+  'region-compare', 'monthly-planner'
 ];
 
 // Flatten all tabs from TAB_GROUPS for keyboard navigation
@@ -181,6 +186,7 @@ export default function Home() {
   const [coupleOptimizerState, setCoupleOptimizerState] = useState<CoupleOptimizerTabState>(DEFAULT_COUPLE_OPTIMIZER_STATE);
   const [contentCreatorState, setContentCreatorState] = useState<ContentCreatorTabState>(DEFAULT_CONTENT_CREATOR_STATE);
   const [cryptoTaxState, setCryptoTaxState] = useState<CryptoTaxTabState>(DEFAULT_CRYPTO_TAX_STATE);
+  const [monthlyPlannerState, setMonthlyPlannerState] = useState<MonthlyPlannerTabState>(DEFAULT_MONTHLY_PLANNER_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -245,6 +251,9 @@ export default function Home() {
     }
     if (snapshot.tabs.cryptoTax) {
       setCryptoTaxState(snapshot.tabs.cryptoTax);
+    }
+    if (snapshot.tabs.monthlyPlanner) {
+      setMonthlyPlannerState(snapshot.tabs.monthlyPlanner);
     }
   }, []);
 
@@ -463,11 +472,12 @@ export default function Home() {
       coupleOptimizer: coupleOptimizerState,
       contentCreator: contentCreatorState,
       cryptoTax: cryptoTaxState,
+      monthlyPlanner: monthlyPlannerState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState, monthlyPlannerState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -528,6 +538,7 @@ export default function Home() {
     setCoupleOptimizerState(DEFAULT_COUPLE_OPTIMIZER_STATE);
     setContentCreatorState(DEFAULT_CONTENT_CREATOR_STATE);
     setCryptoTaxState(DEFAULT_CRYPTO_TAX_STATE);
+    setMonthlyPlannerState(DEFAULT_MONTHLY_PLANNER_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -568,35 +579,37 @@ export default function Home() {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex items-center gap-3 text-xs mr-2">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-200 rounded-full border border-red-500/30">
-                  <span className="w-2 h-2 rounded-full bg-red-400"></span>
-                  7 bậc
+              <div className="flex items-center gap-1.5 sm:gap-3 text-xs mr-1 sm:mr-2">
+                <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-red-500/20 text-red-200 rounded-full border border-red-500/30">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-400"></span>
+                  <span className="text-[10px] sm:text-xs">7 bậc</span>
                 </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  5 bậc
+                <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-[10px] sm:text-xs">5 bậc</span>
                 </span>
               </div>
               <button
                 onClick={handleGoHome}
                 aria-label="Đặt lại các giá trị mặc định"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center gap-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                 title="Đặt lại mặc định"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
+                <span className="hidden lg:inline text-xs">Đặt lại</span>
               </button>
               <button
                 onClick={() => setIsLawInfoOpen(true)}
                 aria-label="Xem thông tin luật thuế 2026"
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center gap-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                 title="Thông tin luật thuế 2026"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
+                <span className="hidden lg:inline text-xs">Luật mới</span>
               </button>
               <SaveShareButton
                 snapshot={currentSnapshot}
@@ -1066,6 +1079,30 @@ export default function Home() {
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
               <IncomeSummaryDashboard />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'region-compare' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <RegionComparison
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'monthly-planner' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <MonthlyPlanner
+                sharedState={sharedState}
+                onStateChange={updateSharedState}
+                tabState={monthlyPlannerState}
+                onTabStateChange={setMonthlyPlannerState}
+              />
             </Suspense>
           </div>
         )}

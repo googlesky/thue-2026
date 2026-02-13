@@ -14,8 +14,8 @@ const FOOTER_LINKS = {
   tools: [
     { href: '/tinh-thue#bonus-calculator', label: 'Thuế thưởng Tết' },
     { href: '/tinh-thue#esop-calculator', label: 'Thuế ESOP' },
-    { href: '/tinh-thue#overtime', label: 'Lương tăng ca' },
-    { href: '/tinh-thue#table', label: 'Biểu thuế suất' },
+    { href: '/tinh-thue#monthly-planner', label: 'Kế hoạch 12 tháng' },
+    { href: '/tinh-thue#region-compare', label: 'So sánh vùng lương' },
   ],
   resources: [
     { href: '/tinh-thue#tax-history', label: 'Lịch sử Luật thuế', external: false },
@@ -328,7 +328,7 @@ export default function Footer() {
       <button
         onClick={scrollToTop}
         onKeyDown={handleKeyDown}
-        className={`fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-primary-500/40 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+        className={`fixed bottom-20 sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-primary-500/40 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${
           showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         } ${isScrolling ? 'animate-pulse' : ''}`}
         aria-label="Quay lại đầu trang"

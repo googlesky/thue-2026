@@ -1052,6 +1052,12 @@ export default function HomePage() {
                 label: 'Công cụ tính thuế',
                 color: 'text-blue-600',
                 bgColor: 'bg-blue-50',
+                duration: 1500,
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                ),
               },
               {
                 value: 100,
@@ -1059,6 +1065,12 @@ export default function HomePage() {
                 label: 'Miễn phí',
                 color: 'text-emerald-600',
                 bgColor: 'bg-emerald-50',
+                duration: 1500,
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
               },
               {
                 value: 2026,
@@ -1066,6 +1078,12 @@ export default function HomePage() {
                 label: 'Cập nhật luật mới',
                 color: 'text-purple-600',
                 bgColor: 'bg-purple-50',
+                duration: 500,
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                ),
               },
               {
                 prefix: '24/',
@@ -1074,18 +1092,27 @@ export default function HomePage() {
                 label: 'Truy cập mọi lúc',
                 color: 'text-orange-600',
                 bgColor: 'bg-orange-50',
+                duration: 1500,
+                icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ),
               },
             ].map((stat, index) => (
               <div
                 key={index}
                 className={`text-center p-4 sm:p-6 rounded-2xl ${stat.bgColor} transition-all duration-300 hover:scale-[1.02]`}
               >
+                <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${stat.bgColor} ${stat.color} mb-2 opacity-60`}>
+                  {stat.icon}
+                </div>
                 <div className={`text-3xl xs:text-4xl sm:text-5xl font-bold ${stat.color} mb-1 sm:mb-2`}>
                   <AnimatedCounter
                     end={stat.value}
                     suffix={stat.suffix}
                     prefix={stat.prefix || ''}
-                    duration={1500}
+                    duration={stat.duration}
                     delay={index * 200}
                   />
                 </div>
@@ -1146,7 +1173,7 @@ export default function HomePage() {
                   <Link
                     key={feature.name}
                     href={feature.href}
-                    className={`group relative bg-white rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 border border-gray-100 hover:border-gray-200 card-hover ${
+                    className={`group relative bg-white rounded-2xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 border border-gray-100 hover:border-gray-200 card-hover h-full flex flex-col ${
                       feature.highlight
                         ? 'ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/5'
                         : ''
@@ -1173,12 +1200,12 @@ export default function HomePage() {
                     <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                       {feature.name}
                     </h4>
-                    <p className="text-sm text-gray-500 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                    <p className="text-sm text-gray-500 line-clamp-2 sm:line-clamp-3 leading-relaxed flex-grow">
                       {feature.description}
                     </p>
 
                     {/* Hover Arrow */}
-                    <div className="mt-4 flex items-center gap-1.5 text-blue-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-1">
+                    <div className="flex items-center gap-1.5 text-blue-600 text-sm font-medium opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-1 mt-auto pt-4">
                       <span>Sử dụng ngay</span>
                       <svg
                         className="w-4 h-4"
@@ -1203,7 +1230,7 @@ export default function HomePage() {
                 <div className="flex justify-center mt-6">
                   <button
                     onClick={() => setExpandedCategories(prev => ({ ...prev, [categoryIndex]: !isExpanded }))}
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-all duration-200"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all duration-200"
                   >
                     {isExpanded ? (
                       <>
@@ -1226,6 +1253,74 @@ export default function HomePage() {
             </div>
           );
           })}
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 sm:py-28 bg-slate-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full mb-4">
+              FAQ
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              Câu hỏi thường gặp
+            </h2>
+            <p className="text-lg text-gray-600">
+              Giải đáp nhanh các thắc mắc phổ biến về thuế TNCN 2026
+            </p>
+          </div>
+
+          {/* FAQ Accordion */}
+          <div className="space-y-3">
+            {[
+              {
+                q: 'Luật thuế TNCN mới 2026 có gì khác so với luật cũ?',
+                a: 'Luật thuế mới giảm từ 7 bậc xuống 5 bậc, tăng giảm trừ gia cảnh lên 15,5 triệu/tháng cho bản thân và 6,2 triệu/tháng cho người phụ thuộc. Mức thuế suất cao nhất giảm từ 35% xuống 30%.',
+              },
+              {
+                q: 'Khi nào luật thuế TNCN mới có hiệu lực?',
+                a: 'Luật Thuế TNCN sửa đổi được Quốc hội thông qua ngày 10/12/2025, có hiệu lực từ 1/7/2026. Tuy nhiên, đối với thu nhập từ tiền lương, tiền công, biểu thuế mới (5 bậc, giảm trừ 15,5 triệu) áp dụng từ kỳ tính thuế năm 2026 (tức từ 1/1/2026) theo điều khoản chuyển tiếp.',
+              },
+              {
+                q: 'GROSS và NET trong lương là gì?',
+                a: 'GROSS là tổng lương trước khi trừ thuế và bảo hiểm. NET là lương thực nhận sau khi đã trừ thuế TNCN, BHXH, BHYT, BHTN. Công cụ này giúp quy đổi giữa GROSS và NET một cách chính xác.',
+              },
+              {
+                q: 'Thuế ESOP và cổ phiếu được tính như thế nào?',
+                a: 'Thuế ESOP được tính trên chênh lệch giữa giá thị trường và giá mua ưu đãi. Công cụ ESOP Calculator giúp tính thuế chính xác cho các trường hợp nhận cổ phiếu từ công ty.',
+              },
+              {
+                q: 'Làm sao để tối ưu thuế thưởng Tết?',
+                a: 'Sử dụng Bonus Calculator để tính thuế thưởng Tết, lương tháng 13. Công cụ này giúp so sánh các phương án tính thuế để tối ưu hóa số tiền thực nhận.',
+              },
+              {
+                q: 'Người nước ngoài làm việc tại Việt Nam đóng thuế như thế nào?',
+                a: 'Người nước ngoài có thể là cư trú hoặc không cư trú thuế tại Việt Nam. Nếu ở từ 183 ngày trở lên trong năm, áp dụng thuế suất lũy tiến từ 5-35%. Nếu dưới 183 ngày, áp dụng thuế suất cố định 20%. Việt Nam có hiệp định tránh đánh thuế hai lần với hơn 70 quốc gia.',
+              },
+            ].map((faq, index) => (
+              <details
+                key={index}
+                className="group bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-200 hover:border-gray-200 hover:shadow-sm"
+              >
+                <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-medium text-gray-900 select-none [&::-webkit-details-marker]:hidden">
+                  <span>{faq.q}</span>
+                  <svg
+                    className="w-5 h-5 text-gray-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div className="px-6 pb-5 text-gray-600 leading-relaxed border-t border-gray-50 pt-4">
+                  {faq.a}
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -1252,19 +1347,6 @@ export default function HomePage() {
             href="/tinh-thue"
             className="group inline-flex items-center gap-3 px-10 py-5 bg-white text-blue-600 font-semibold rounded-2xl shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 hover:scale-[1.02]"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
-            </svg>
             <span>Bắt đầu ngay - Miễn phí</span>
             <svg
               className="w-5 h-5 group-hover:translate-x-1 transition-transform"
