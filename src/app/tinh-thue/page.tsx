@@ -56,6 +56,7 @@ const TaxDeadlineManager = lazy(() => import('@/components/TaxDeadlineManager'))
 const IncomeSummaryDashboard = lazy(() => import('@/components/IncomeSummaryDashboard'));
 const RegionComparison = lazy(() => import('@/components/RegionComparison'));
 const MonthlyPlanner = lazy(() => import('@/components/MonthlyPlanner'));
+const MortgageCalculator = lazy(() => import('@/components/MortgageCalculator').then(m => ({ default: m.MortgageCalculator })));
 import Footer from '@/components/Footer';
 import {
   calculateOldTax,
@@ -113,6 +114,8 @@ import {
   DEFAULT_CRYPTO_TAX_STATE,
   MonthlyPlannerTabState,
   DEFAULT_MONTHLY_PLANNER_STATE,
+  MortgageTabState,
+  DEFAULT_MORTGAGE_STATE,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
@@ -137,7 +140,7 @@ const VALID_TABS: TabType[] = [
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
   'tax-document', 'content-creator', 'crypto-tax', 'tax-deadline', 'income-summary',
-  'region-compare', 'monthly-planner'
+  'region-compare', 'monthly-planner', 'mua-nha'
 ];
 
 // Flatten all tabs from TAB_GROUPS for keyboard navigation
@@ -187,6 +190,7 @@ export default function Home() {
   const [contentCreatorState, setContentCreatorState] = useState<ContentCreatorTabState>(DEFAULT_CONTENT_CREATOR_STATE);
   const [cryptoTaxState, setCryptoTaxState] = useState<CryptoTaxTabState>(DEFAULT_CRYPTO_TAX_STATE);
   const [monthlyPlannerState, setMonthlyPlannerState] = useState<MonthlyPlannerTabState>(DEFAULT_MONTHLY_PLANNER_STATE);
+  const [mortgageState, setMortgageState] = useState<MortgageTabState>(DEFAULT_MORTGAGE_STATE);
 
   // Tax calculation results
   const [oldResult, setOldResult] = useState<TaxResultType>(() =>
@@ -254,6 +258,9 @@ export default function Home() {
     }
     if (snapshot.tabs.monthlyPlanner) {
       setMonthlyPlannerState(snapshot.tabs.monthlyPlanner);
+    }
+    if (snapshot.tabs.mortgage) {
+      setMortgageState(snapshot.tabs.mortgage);
     }
   }, []);
 
@@ -473,11 +480,12 @@ export default function Home() {
       contentCreator: contentCreatorState,
       cryptoTax: cryptoTaxState,
       monthlyPlanner: monthlyPlannerState,
+      mortgage: mortgageState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState, monthlyPlannerState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState, monthlyPlannerState, mortgageState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -539,6 +547,7 @@ export default function Home() {
     setContentCreatorState(DEFAULT_CONTENT_CREATOR_STATE);
     setCryptoTaxState(DEFAULT_CRYPTO_TAX_STATE);
     setMonthlyPlannerState(DEFAULT_MONTHLY_PLANNER_STATE);
+    setMortgageState(DEFAULT_MORTGAGE_STATE);
 
     // Recalculate with default values
     setOldResult(calculateOldTax(defaultSharedState));
@@ -1102,6 +1111,17 @@ export default function Home() {
                 onStateChange={updateSharedState}
                 tabState={monthlyPlannerState}
                 onTabStateChange={setMonthlyPlannerState}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'mua-nha' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <MortgageCalculator
+                tabState={mortgageState}
+                onTabStateChange={setMortgageState}
               />
             </Suspense>
           </div>

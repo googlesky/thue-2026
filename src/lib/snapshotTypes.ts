@@ -20,6 +20,8 @@ import type { VATMethod, BusinessCategory } from './vatCalculator';
 import type { IncomeType, ResidencyStatus, ForeignContractorType } from './withholdingTaxCalculator';
 import type { IncomeSource, IncomeSourceType } from './multiSourceIncomeCalculator';
 import type { CryptoAssetType, TransactionType } from './cryptoTaxCalculator';
+import type { MonthlyEntry } from './monthlyPlannerCalculator';
+import { createDefaultMonths } from './monthlyPlannerCalculator';
 
 // Withholding Tax Tab State - defined here to avoid Turbopack import issues
 export interface WithholdingTaxTabState {
@@ -160,6 +162,51 @@ export interface CryptoTaxTabState {
 export const DEFAULT_CRYPTO_TAX_STATE: CryptoTaxTabState = {
   transactions: [],
   taxYear: 2026,
+};
+
+// Monthly Planner Tab State
+export interface MonthlyPlannerTabState {
+  baseSalary: number;
+  months: MonthlyEntry[];
+  selectedPreset: string;
+}
+
+export const DEFAULT_MONTHLY_PLANNER_STATE: MonthlyPlannerTabState = {
+  baseSalary: 0,
+  months: createDefaultMonths(),
+  selectedPreset: 'uniform',
+};
+
+// Mortgage Calculator Tab State
+export type MortgagePropertyType = 'secondary' | 'primary_developer';
+export type MortgageRepaymentMethod = 'annuity' | 'straight_line';
+
+export interface MortgageTabState {
+  propertyPrice: number;
+  downPaymentPercent: number;
+  loanTermYears: number;
+  preferentialRate: number;
+  preferentialMonths: number;
+  floatingRate: number;
+  monthlyIncome: number;
+  otherDebtPayments: number;
+  gracePeriodMonths: number;
+  propertyType: MortgagePropertyType;
+  repaymentMethod: MortgageRepaymentMethod;
+}
+
+export const DEFAULT_MORTGAGE_STATE: MortgageTabState = {
+  propertyPrice: 3_000_000_000,
+  downPaymentPercent: 30,
+  loanTermYears: 20,
+  preferentialRate: 7.0,
+  preferentialMonths: 12,
+  floatingRate: 10.5,
+  monthlyIncome: 30_000_000,
+  otherDebtPayments: 0,
+  gracePeriodMonths: 0,
+  propertyType: 'secondary',
+  repaymentMethod: 'annuity',
 };
 
 // VAT Tab State - defined here to avoid Turbopack import issues
@@ -343,6 +390,8 @@ export interface TabStates {
   coupleOptimizer: CoupleOptimizerTabState;
   contentCreator: ContentCreatorTabState;
   cryptoTax: CryptoTaxTabState;
+  monthlyPlanner: MonthlyPlannerTabState;
+  mortgage: MortgageTabState;
 }
 
 /**
@@ -533,6 +582,8 @@ export const DEFAULT_TAB_STATES: TabStates = {
   coupleOptimizer: DEFAULT_COUPLE_OPTIMIZER_STATE,
   contentCreator: DEFAULT_CONTENT_CREATOR_STATE,
   cryptoTax: DEFAULT_CRYPTO_TAX_STATE,
+  monthlyPlanner: DEFAULT_MONTHLY_PLANNER_STATE,
+  mortgage: DEFAULT_MORTGAGE_STATE,
 };
 
 /**
@@ -689,6 +740,15 @@ export function createSnapshot(
         ...(tabStates?.cryptoTax || {}),
         transactions: tabStates?.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
       },
+      monthlyPlanner: {
+        ...DEFAULT_MONTHLY_PLANNER_STATE,
+        ...(tabStates?.monthlyPlanner || {}),
+        months: tabStates?.monthlyPlanner?.months?.map(m => ({ ...m })) || createDefaultMonths(),
+      },
+      mortgage: {
+        ...DEFAULT_MORTGAGE_STATE,
+        ...(tabStates?.mortgage || {}),
+      },
     },
     meta: {
       createdAt: Date.now(),
@@ -839,6 +899,15 @@ export function mergeSnapshotWithDefaults(
         ...DEFAULT_CRYPTO_TAX_STATE,
         ...(partial.tabs?.cryptoTax || {}),
         transactions: partial.tabs?.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
+      },
+      monthlyPlanner: {
+        ...DEFAULT_MONTHLY_PLANNER_STATE,
+        ...(partial.tabs?.monthlyPlanner || {}),
+        months: partial.tabs?.monthlyPlanner?.months?.map(m => ({ ...m })) || createDefaultMonths(),
+      },
+      mortgage: {
+        ...DEFAULT_MORTGAGE_STATE,
+        ...(partial.tabs?.mortgage || {}),
       },
     },
     meta: {
