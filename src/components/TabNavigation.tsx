@@ -38,7 +38,10 @@ export type TabType =
   | 'content-creator'
   | 'crypto-tax'
   | 'tax-deadline'
-  | 'income-summary';
+  | 'income-summary'
+  | 'region-compare'
+  | 'monthly-planner'
+  | 'mua-nha';
 
 interface TabItem {
   id: TabType;
@@ -93,6 +96,9 @@ const TAB_DESCRIPTIONS: Record<TabType, string> = {
   'crypto-tax': 'Bitcoin, Ethereum, NFT',
   'tax-deadline': 'Quản lý deadline nộp thuế',
   'income-summary': 'Dashboard thu nhập năm',
+  'region-compare': 'So sánh NET 4 vùng',
+  'monthly-planner': 'Kế hoạch lương 12 tháng',
+  'mua-nha': 'Trả góp, phí, khả năng vay',
 };
 
 const TAB_GROUPS: TabGroup[] = [
@@ -121,6 +127,8 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'real-estate', label: 'Chuyển nhượng BĐS', icon: '🏡', description: TAB_DESCRIPTIONS['real-estate'] },
       { id: 'pension', label: 'Dự tính lương hưu', icon: '🏖️', description: TAB_DESCRIPTIONS.pension },
       { id: 'severance', label: 'Trợ cấp thôi việc', icon: '💼', description: TAB_DESCRIPTIONS.severance },
+      { id: 'monthly-planner', label: 'Kế hoạch 12 tháng', icon: '📅', description: TAB_DESCRIPTIONS['monthly-planner'] },
+      { id: 'mua-nha', label: 'Vay mua nhà', icon: '🏠', description: TAB_DESCRIPTIONS['mua-nha'] },
     ],
   },
   {
@@ -135,6 +143,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'business-form', label: 'Hình thức kinh doanh', icon: '⚖️', description: TAB_DESCRIPTIONS['business-form'] },
       { id: 'employer-cost', label: 'Chi phí nhà tuyển dụng', icon: '🏢', description: TAB_DESCRIPTIONS['employer-cost'] },
       { id: 'couple-optimizer', label: 'Tối ưu vợ chồng', icon: '💑', description: TAB_DESCRIPTIONS['couple-optimizer'] },
+      { id: 'region-compare', label: 'So sánh vùng', icon: '📍', description: TAB_DESCRIPTIONS['region-compare'] },
     ],
   },
   {
