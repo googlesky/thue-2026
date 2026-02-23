@@ -7,7 +7,6 @@ import {
   DEFAULT_INSURANCE_OPTIONS,
   getRegionalMinimumWages,
   formatNumber,
-  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import {
@@ -100,8 +99,6 @@ export default function SalaryComparison({
     ]
   );
   const [dependents, setDependents] = useState(sharedState?.dependents || 0);
-  // Auto-detect based on current date (if in 2026, default to new law)
-  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
   const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Sync từ shared state - chỉ lấy dependents
@@ -127,7 +124,6 @@ export default function SalaryComparison({
         createDefaultCompanyOffer('company-2', 'Công ty B'),
       ];
       setCompanies(validCompanies);
-      setUseNewLaw(tabState.useNewLaw);
     }
   }, [tabState]);
 
@@ -136,8 +132,8 @@ export default function SalaryComparison({
     const validCompanies = companies.filter(c => c.grossSalary > 0);
     if (validCompanies.length < 2) return null;
 
-    return compareCompanyOffers(validCompanies, dependents, useNewLaw);
-  }, [companies, dependents, useNewLaw]);
+    return compareCompanyOffers(validCompanies, dependents, true);
+  }, [companies, dependents]);
 
   const addCompany = () => {
     if (companies.length >= 4) return;
@@ -146,20 +142,20 @@ export default function SalaryComparison({
     const newName = `Công ty ${names[companies.length] || (companies.length + 1)}`;
     const newCompanies = [...companies, createDefaultCompanyOffer(newId, newName)];
     setCompanies(newCompanies);
-    onTabStateChange?.({ companies: newCompanies, useNewLaw });
+    onTabStateChange?.({ companies: newCompanies, useNewLaw: true });
   };
 
   const removeCompany = (id: string) => {
     if (companies.length <= 2) return;
     const newCompanies = companies.filter(c => c.id !== id);
     setCompanies(newCompanies);
-    onTabStateChange?.({ companies: newCompanies, useNewLaw });
+    onTabStateChange?.({ companies: newCompanies, useNewLaw: true });
   };
 
   const updateCompany = (id: string, updates: Partial<CompanyOffer>) => {
     const newCompanies = companies.map(c => c.id === id ? { ...c, ...updates } : c);
     setCompanies(newCompanies);
-    onTabStateChange?.({ companies: newCompanies, useNewLaw });
+    onTabStateChange?.({ companies: newCompanies, useNewLaw: true });
   };
 
   const buildWarning = (issues: CurrencyInputIssues, max?: number): string | null => {
@@ -220,34 +216,6 @@ export default function SalaryComparison({
               <option key={n} value={n}>{n} người</option>
             ))}
           </select>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">Biểu thuế:</span>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={!useNewLaw}
-              onChange={() => {
-                setUseNewLaw(false);
-                onTabStateChange?.({ companies, useNewLaw: false });
-              }}
-              className="w-4 h-4 text-primary-600"
-            />
-            <span className="text-sm">Hiện hành</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={useNewLaw}
-              onChange={() => {
-                setUseNewLaw(true);
-                onTabStateChange?.({ companies, useNewLaw: true });
-              }}
-              className="w-4 h-4 text-primary-600"
-            />
-            <span className="text-sm">Mới 2026</span>
-          </label>
         </div>
 
         <button

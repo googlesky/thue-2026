@@ -6,95 +6,27 @@ import {
   formatCurrency,
   OtherIncomeTaxResult,
   AllowancesBreakdown,
-  getTaxConfigForDate,
-  formatDate,
-  EFFECTIVE_DATES,
 } from '@/lib/taxCalculator';
 import { PDFExportButton } from '@/components/PDFExport';
 
 const IncomeWaterfallChart = lazy(() => import('@/components/IncomeWaterfallChart'));
 
 interface TaxResultProps {
-  oldResult: TaxResultType;
-  newResult: TaxResultType;
+  result: TaxResultType;
   otherIncomeTax?: OtherIncomeTaxResult | null;
   declaredSalary?: number;
 }
 
-// Component hiển thị luật đang áp dụng dựa trên ngày hiện tại
-const DateAwareIndicator = memo(function DateAwareIndicator() {
-  const today = new Date();
-  const taxConfig = getTaxConfigForDate(today);
-  const isNew2026 = taxConfig.isNew2026;
-
-  // Tính số ngày còn lại đến mốc tiếp theo (nếu chưa đến 2026)
-  const daysUntil2026 = !isNew2026
-    ? Math.ceil((EFFECTIVE_DATES.NEW_TAX_LAW_2026.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
-
-  return (
-    <div className={`rounded-xl p-4 mb-4 ${
-      isNew2026
-        ? 'bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200'
-        : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200'
-    }`}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isNew2026 ? 'bg-primary-500' : 'bg-amber-500'}`}>
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div>
-            <div className={`text-sm font-medium ${isNew2026 ? 'text-primary-800' : 'text-amber-800'}`}>
-              Ngày tính thuế: {formatDate(today)}
-            </div>
-            <div className={`text-xs ${isNew2026 ? 'text-primary-600' : 'text-amber-600'}`}>
-              {taxConfig.lawName}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isNew2026 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary-500 text-white">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Luật mới có hiệu lực
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500 text-white">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              Còn {daysUntil2026} ngày đến luật mới
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSalary }: TaxResultProps) {
-  const savings = oldResult.taxAmount - newResult.taxAmount;
-  const savingsPercent = oldResult.taxAmount > 0
-    ? ((savings / oldResult.taxAmount) * 100).toFixed(1)
-    : '0';
-
+function TaxResultComponent({ result, otherIncomeTax, declaredSalary }: TaxResultProps) {
   // Calculate totals including other income
   const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
-  const totalNewTax = newResult.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
+  const totalTax = result.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
 
   // Check if using declared salary for insurance
-  const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== oldResult.grossIncome;
+  const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
 
   return (
     <div className="space-y-6">
-      {/* Date-aware indicator */}
-      <DateAwareIndicator />
-
       {/* Notice about declared salary */}
       {hasDeclaredSalary && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
@@ -107,54 +39,21 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
             <div className="ml-3">
               <p className="text-sm text-amber-700">
                 <span className="font-medium">Lưu ý:</span> Bảo hiểm tính trên lương khai báo <span className="font-semibold">{formatCurrency(declaredSalary)}</span>,
-                nhưng thuế TNCN vẫn tính trên lương thực tế <span className="font-semibold">{formatCurrency(oldResult.grossIncome)}</span>
+                nhưng thuế TNCN vẫn tính trên lương thực tế <span className="font-semibold">{formatCurrency(result.grossIncome)}</span>
               </p>
             </div>
           </div>
         </div>
       )}
-      {/* Tổng kết tiết kiệm */}
-      {savings > 0 && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 sm:p-6 text-white">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                <svg className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-lg sm:text-xl font-bold">Bạn tiết kiệm được</h3>
-              </div>
-              <div className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2 font-mono tabular-nums">
-                {formatCurrency(savings)}/tháng
-              </div>
-              <div className="text-green-100 text-sm sm:text-base">
-                Tương đương {formatCurrency(savings * 12)}/năm (giảm {savingsPercent}%)
-              </div>
-            </div>
-            <div className="self-end sm:self-start">
-              <PDFExportButton
-                oldResult={oldResult}
-                newResult={newResult}
-                otherIncomeTax={otherIncomeTax}
-                declaredSalary={declaredSalary}
-                variant="inline"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Nút xuất PDF khi không có tiết kiệm (savings <= 0) */}
-      {savings <= 0 && (
-        <div className="flex justify-end">
-          <PDFExportButton
-            oldResult={oldResult}
-            newResult={newResult}
-            otherIncomeTax={otherIncomeTax}
-            declaredSalary={declaredSalary}
-          />
-        </div>
-      )}
+      {/* PDF Export button */}
+      <div className="flex justify-end">
+        <PDFExportButton
+          result={result}
+          otherIncomeTax={otherIncomeTax}
+          declaredSalary={declaredSalary}
+        />
+      </div>
 
       {/* Other income summary */}
       {hasOtherIncome && (
@@ -189,12 +88,12 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            Tổng kết tất cả nguồn thu nhập (Luật mới)
+            Tổng kết tất cả nguồn thu nhập
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <div className="text-gray-300 text-sm">Lương GROSS</div>
-              <div className="text-xl font-bold font-mono tabular-nums">{formatCurrency(newResult.grossIncome)}</div>
+              <div className="text-xl font-bold font-mono tabular-nums">{formatCurrency(result.grossIncome)}</div>
             </div>
             <div>
               <div className="text-gray-300 text-sm">Thu nhập khác</div>
@@ -202,46 +101,30 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
             </div>
             <div>
               <div className="text-gray-300 text-sm">Tổng thuế</div>
-              <div className="text-xl font-bold text-red-400 font-mono tabular-nums">{formatCurrency(totalNewTax)}</div>
+              <div className="text-xl font-bold text-red-400 font-mono tabular-nums">{formatCurrency(totalTax)}</div>
             </div>
             <div>
               <div className="text-gray-300 text-sm">Tổng thực nhận</div>
               <div className="text-xl font-bold text-green-400 font-mono tabular-nums">
-                {formatCurrency(newResult.netIncome + otherIncomeTax.totalNet)}
+                {formatCurrency(result.netIncome + otherIncomeTax.totalNet)}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* So sánh chi tiết */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Luật cũ */}
-        <div className="card border-2 border-gray-200">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <h3 className="text-lg font-bold text-gray-800">Luật hiện hành</h3>
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">7 bậc</span>
-          </div>
-          <ResultDetails result={oldResult} colorClass="text-red-600" declaredSalary={declaredSalary} />
+      {/* Kết quả chi tiết */}
+      <div className="card border-2 border-primary-200 bg-primary-50/30">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-3 h-3 rounded-full bg-primary-500"></div>
+          <h3 className="text-lg font-bold text-gray-800">Kết quả tính thuế</h3>
+          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">Luật 109/2025 – 5 bậc</span>
         </div>
-
-        {/* Luật mới */}
-        <div className="card border-2 border-primary-200 bg-primary-50/30">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-3 h-3 rounded-full bg-primary-500"></div>
-            <h3 className="text-lg font-bold text-gray-800">Luật mới 2026</h3>
-            <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">5 bậc</span>
-          </div>
-          <ResultDetails result={newResult} colorClass="text-primary-600" declaredSalary={declaredSalary} />
-        </div>
+        <ResultDetails result={result} colorClass="text-primary-600" declaredSalary={declaredSalary} />
       </div>
 
       {/* Chi tiết biểu thuế */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <TaxBreakdown result={oldResult} title="Chi tiết thuế (Luật cũ)" colorClass="bg-red-500" />
-        <TaxBreakdown result={newResult} title="Chi tiết thuế (Luật mới)" colorClass="bg-primary-500" />
-      </div>
+      <TaxBreakdown result={result} title="Chi tiết các bậc thuế" colorClass="bg-primary-500" />
 
       {/* Biểu đồ dòng tiền (Waterfall Chart) */}
       <Suspense fallback={
@@ -250,7 +133,7 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
           <div className="h-[320px] bg-gray-100 rounded"></div>
         </div>
       }>
-        <IncomeWaterfallChart result={newResult} label="Luật mới" />
+        <IncomeWaterfallChart result={result} label="Thuế TNCN" />
       </Suspense>
     </div>
   );

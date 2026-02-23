@@ -6,10 +6,8 @@ import {
   RegionType,
   getRegionalMinimumWages,
   formatNumber,
-  calculateOldTax,
   calculateNewTax,
   getInsuranceDetailed,
-  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { FreelancerTabState, FreelancerMode } from '@/lib/snapshotTypes';
@@ -57,7 +55,6 @@ export default function FreelancerComparison({
   const [dependents, setDependents] = useState(sharedState?.dependents ?? 0);
   const [hasInsurance, setHasInsurance] = useState(sharedState?.hasInsurance ?? true);
   const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
-  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
   const [inputWarning, setInputWarning] = useState<string | null>(null);
 
   // Sync from shared state
@@ -75,7 +72,6 @@ export default function FreelancerComparison({
     if (tabState) {
       setMode(tabState.mode ?? 'simple');
       setFrequency(tabState.frequency);
-      setUseNewLaw(tabState.useNewLaw);
       setCreatorIncomeSources(tabState.creatorIncomeSources ?? []);
       setExchangeRate(tabState.exchangeRate ?? DEFAULT_USD_EXCHANGE_RATE);
     }
@@ -86,7 +82,7 @@ export default function FreelancerComparison({
     const newState: FreelancerTabState = {
       mode,
       frequency,
-      useNewLaw,
+      useNewLaw: true,
       creatorIncomeSources,
       exchangeRate,
       ...updates,
@@ -102,19 +98,12 @@ export default function FreelancerComparison({
   const freelancerTax = monthlyGross * FREELANCER_TAX_RATE;
   const freelancerNet = monthlyGross - freelancerTax;
 
-  const simpleTaxResult = useNewLaw
-    ? calculateNewTax({
-        grossIncome: monthlyGross,
-        dependents,
-        hasInsurance,
-        region,
-      })
-    : calculateOldTax({
-        grossIncome: monthlyGross,
-        dependents,
-        hasInsurance,
-        region,
-      });
+  const simpleTaxResult = calculateNewTax({
+    grossIncome: monthlyGross,
+    dependents,
+    hasInsurance,
+    region,
+  });
 
   const simpleInsuranceDetail = hasInsurance
     ? getInsuranceDetailed(monthlyGross, region)
@@ -138,10 +127,10 @@ export default function FreelancerComparison({
       exchangeRate,
       dependents,
       region,
-      useNewLaw,
+      useNewLaw: true,
       hasInsurance,
     });
-  }, [mode, creatorIncomeSources, exchangeRate, dependents, region, useNewLaw, hasInsurance]);
+  }, [mode, creatorIncomeSources, exchangeRate, dependents, region, hasInsurance]);
 
   // ===========================================
   // HANDLERS
@@ -184,11 +173,6 @@ export default function FreelancerComparison({
   const handleFrequencyChange = (value: IncomeFrequency) => {
     setFrequency(value);
     saveTabState({ frequency: value });
-  };
-
-  const handleLawChange = (newLaw: boolean) => {
-    setUseNewLaw(newLaw);
-    saveTabState({ useNewLaw: newLaw });
   };
 
   // Creator mode handlers
@@ -270,7 +254,6 @@ export default function FreelancerComparison({
           dependents={dependents}
           hasInsurance={hasInsurance}
           region={region}
-          useNewLaw={useNewLaw}
           regionalMinimumWages={regionalMinimumWages}
           monthlyGross={monthlyGross}
           freelancerTax={freelancerTax}
@@ -285,7 +268,6 @@ export default function FreelancerComparison({
           onDependentsChange={handleDependentsChange}
           onInsuranceChange={handleInsuranceChange}
           onRegionChange={handleRegionChange}
-          onLawChange={handleLawChange}
         />
       )}
 
@@ -297,7 +279,6 @@ export default function FreelancerComparison({
           dependents={dependents}
           hasInsurance={hasInsurance}
           region={region}
-          useNewLaw={useNewLaw}
           regionalMinimumWages={regionalMinimumWages}
           result={creatorResult}
           onAddSource={handleAddIncomeSource}
@@ -307,7 +288,6 @@ export default function FreelancerComparison({
           onDependentsChange={handleDependentsChange}
           onInsuranceChange={handleInsuranceChange}
           onRegionChange={handleRegionChange}
-          onLawChange={handleLawChange}
         />
       )}
     </div>
@@ -323,7 +303,6 @@ interface SimpleModeUIProps {
   dependents: number;
   hasInsurance: boolean;
   region: RegionType;
-  useNewLaw: boolean;
   regionalMinimumWages: ReturnType<typeof getRegionalMinimumWages>;
   monthlyGross: number;
   freelancerTax: number;
@@ -338,7 +317,6 @@ interface SimpleModeUIProps {
   onDependentsChange: (value: number) => void;
   onInsuranceChange: (checked: boolean) => void;
   onRegionChange: (value: RegionType) => void;
-  onLawChange: (newLaw: boolean) => void;
 }
 
 function SimpleModeUI({
@@ -347,7 +325,6 @@ function SimpleModeUI({
   dependents,
   hasInsurance,
   region,
-  useNewLaw,
   regionalMinimumWages,
   monthlyGross,
   freelancerTax,
@@ -362,7 +339,6 @@ function SimpleModeUI({
   onDependentsChange,
   onInsuranceChange,
   onRegionChange,
-  onLawChange,
 }: SimpleModeUIProps) {
   return (
     <>
@@ -430,28 +406,6 @@ function SimpleModeUI({
           />
           <span className="text-sm text-gray-700">NV có đóng BHXH (10.5%)</span>
         </label>
-
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">Biểu thuế:</span>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={!useNewLaw}
-              onChange={() => onLawChange(false)}
-              className="w-4 h-4 text-primary-600"
-            />
-            <span className="text-sm">Hiện hành</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              checked={useNewLaw}
-              onChange={() => onLawChange(true)}
-              className="w-4 h-4 text-primary-600"
-            />
-            <span className="text-sm">Mới 2026</span>
-          </label>
-        </div>
       </div>
 
       {/* Results */}
@@ -496,7 +450,6 @@ interface CreatorModeUIProps {
   dependents: number;
   hasInsurance: boolean;
   region: RegionType;
-  useNewLaw: boolean;
   regionalMinimumWages: ReturnType<typeof getRegionalMinimumWages>;
   result: ReturnType<typeof calculateCreatorTax> | null;
   onAddSource: (type: CreatorIncomeSourceType) => void;
@@ -506,7 +459,6 @@ interface CreatorModeUIProps {
   onDependentsChange: (value: number) => void;
   onInsuranceChange: (checked: boolean) => void;
   onRegionChange: (value: RegionType) => void;
-  onLawChange: (newLaw: boolean) => void;
 }
 
 function CreatorModeUI({
@@ -515,7 +467,6 @@ function CreatorModeUI({
   dependents,
   hasInsurance,
   region,
-  useNewLaw,
   regionalMinimumWages,
   result,
   onAddSource,
@@ -525,7 +476,6 @@ function CreatorModeUI({
   onDependentsChange,
   onInsuranceChange,
   onRegionChange,
-  onLawChange,
 }: CreatorModeUIProps) {
   const [showAddSourceMenu, setShowAddSourceMenu] = useState(false);
 
@@ -572,29 +522,6 @@ function CreatorModeUI({
           </select>
         </div>
 
-        <div className="flex items-end">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Biểu thuế:</span>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={!useNewLaw}
-                onChange={() => onLawChange(false)}
-                className="w-4 h-4 text-primary-600"
-              />
-              <span className="text-sm">Hiện hành</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={useNewLaw}
-                onChange={() => onLawChange(true)}
-                className="w-4 h-4 text-primary-600"
-              />
-              <span className="text-sm">2026</span>
-            </label>
-          </div>
-        </div>
       </div>
 
       {/* Insurance option */}

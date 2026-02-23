@@ -9,7 +9,6 @@ import {
   getRegionalMinimumWages,
   getMaxUnemploymentInsuranceSalary,
   formatNumber,
-  isCurrentlyIn2026,
 } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
@@ -30,20 +29,9 @@ const EMPLOYER_RATES = {
   unionFee: 0.02,
 };
 
-const OLD_DEDUCTIONS = { personal: 11_000_000, dependent: 4_400_000 };
-const NEW_DEDUCTIONS = { personal: 15_500_000, dependent: 6_200_000 };
+const DEDUCTIONS = { personal: 15_500_000, dependent: 6_200_000 };
 
-const OLD_TAX_BRACKETS = [
-  { min: 0, max: 5_000_000, rate: 0.05 },
-  { min: 5_000_000, max: 10_000_000, rate: 0.1 },
-  { min: 10_000_000, max: 18_000_000, rate: 0.15 },
-  { min: 18_000_000, max: 32_000_000, rate: 0.2 },
-  { min: 32_000_000, max: 52_000_000, rate: 0.25 },
-  { min: 52_000_000, max: 80_000_000, rate: 0.3 },
-  { min: 80_000_000, max: Infinity, rate: 0.35 },
-];
-
-const NEW_TAX_BRACKETS = [
+const TAX_BRACKETS = [
   { min: 0, max: 10_000_000, rate: 0.05 },
   { min: 10_000_000, max: 30_000_000, rate: 0.1 },
   { min: 30_000_000, max: 60_000_000, rate: 0.2 },
@@ -74,8 +62,6 @@ export default function EmployerCostCalculator({
     sharedState?.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS
   );
   const [includeUnionFee, setIncludeUnionFee] = useState(tabState?.includeUnionFee ?? false);
-  // Auto-detect based on current date (if in 2026, default to new law)
-  const [useNewLaw, setUseNewLaw] = useState(() => tabState?.useNewLaw ?? isCurrentlyIn2026());
   const [grossWarning, setGrossWarning] = useState<string | null>(null);
   const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
 
@@ -105,9 +91,8 @@ export default function EmployerCostCalculator({
   useEffect(() => {
     if (tabState) {
       setIncludeUnionFee(tabState.includeUnionFee);
-      setUseNewLaw(tabState.useNewLaw);
     }
-  }, [tabState?.includeUnionFee, tabState?.useNewLaw]);
+  }, [tabState?.includeUnionFee]);
 
   // ========== INLINE CALCULATIONS - Recalculate on every render ==========
 
@@ -136,17 +121,14 @@ export default function EmployerCostCalculator({
   const employerInsuranceTotal = employerBhxh + employerBhyt + employerBhtn + employerUnionFee;
 
   // Tax calculation
-  const deductions = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
-  const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
-
-  const personalDeduction = deductions.personal;
-  const dependentDeduction = dependents * deductions.dependent;
+  const personalDeduction = DEDUCTIONS.personal;
+  const dependentDeduction = dependents * DEDUCTIONS.dependent;
   const taxableIncome = Math.max(0, grossSalary - employeeInsuranceTotal - personalDeduction - dependentDeduction);
 
   // Calculate tax using brackets
   let tax = 0;
   let remainingIncome = taxableIncome;
-  for (const bracket of brackets) {
+  for (const bracket of TAX_BRACKETS) {
     if (remainingIncome <= 0) break;
     const bracketWidth = bracket.max - bracket.min;
     const taxableInBracket = Math.min(remainingIncome, bracketWidth);
@@ -210,12 +192,7 @@ export default function EmployerCostCalculator({
 
   const handleUnionFeeChange = (checked: boolean) => {
     setIncludeUnionFee(checked);
-    onTabStateChange?.({ includeUnionFee: checked, useNewLaw });
-  };
-
-  const handleLawChange = (newLaw: boolean) => {
-    setUseNewLaw(newLaw);
-    onTabStateChange?.({ includeUnionFee, useNewLaw: newLaw });
+    onTabStateChange?.({ includeUnionFee: checked, useNewLaw: true });
   };
 
   const handleDeclaredToggle = (checked: boolean) => {
@@ -365,28 +342,6 @@ export default function EmployerCostCalculator({
             <span className="text-sm text-gray-700">Phí công đoàn (DN: 2%)</span>
           </label>
 
-          {/* Tax Law Toggle */}
-          <div className="flex items-center gap-4 pt-2">
-            <span className="text-sm text-gray-600">Biểu thuế:</span>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={!useNewLaw}
-                onChange={() => handleLawChange(false)}
-                className="w-4 h-4 text-primary-600"
-              />
-              <span className="text-sm">Hiện hành (7 bậc)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={useNewLaw}
-                onChange={() => handleLawChange(true)}
-                className="w-4 h-4 text-primary-600"
-              />
-              <span className="text-sm">Mới 2026 (5 bậc)</span>
-            </label>
-          </div>
         </div>
 
         {/* Right: Results */}

@@ -47,8 +47,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
   const [amountWarning, setAmountWarning] = useState<string | null>(null);
   const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
 
-  const [oldResult, setOldResult] = useState<GrossNetResult | null>(null);
-  const [newResult, setNewResult] = useState<GrossNetResult | null>(null);
+  const [result, setResult] = useState<GrossNetResult | null>(null);
 
   // Track if we're the source of the change to prevent sync loops
   const isLocalChange = useRef(false);
@@ -66,17 +65,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
     const effectiveDeclared = getEffectiveDeclaredSalary();
 
-    const oldRes = convertGrossNet({
-      amount: gross,
-      type: 'gross',
-      dependents,
-      hasInsurance,
-      useNewLaw: false,
-      region,
-      declaredSalary: effectiveDeclared,
-      allowances,
-    });
-    const newRes = convertGrossNet({
+    const res = convertGrossNet({
       amount: gross,
       type: 'gross',
       dependents,
@@ -87,11 +76,10 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       allowances,
     });
 
-    setOldResult(oldRes);
-    setNewResult(newRes);
-    setNetValue(newRes.net);
+    setResult(res);
+    setNetValue(res.net);
 
-    return newRes;
+    return res;
   }, [dependents, hasInsurance, region, getEffectiveDeclaredSalary, allowances]);
 
   // Calculate GROSS from NET (only when user inputs NET)
@@ -103,7 +91,7 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
     const effectiveDeclared = getEffectiveDeclaredSalary();
 
-    const newRes = convertGrossNet({
+    const res = convertGrossNet({
       amount: net,
       type: 'net',
       dependents,
@@ -113,28 +101,17 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
       declaredSalary: effectiveDeclared,
       allowances,
     });
-    const oldRes = convertGrossNet({
-      amount: net,
-      type: 'net',
-      dependents,
-      hasInsurance,
-      useNewLaw: false,
-      region,
-      declaredSalary: effectiveDeclared,
-      allowances,
-    });
 
-    setOldResult(oldRes);
-    setNewResult(newRes);
-    setGrossValue(newRes.gross);
+    setResult(res);
+    setGrossValue(res.gross);
 
     // Sync gross to shared state
     if (onStateChange) {
       isLocalChange.current = true;
-      onStateChange({ grossIncome: newRes.gross });
+      onStateChange({ grossIncome: res.gross });
     }
 
-    return newRes;
+    return res;
   }, [dependents, hasInsurance, region, onStateChange, getEffectiveDeclaredSalary, allowances]);
 
   // Initial calculation
@@ -289,7 +266,6 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
   // Current display value based on type
   const displayValue = type === 'gross' ? grossValue : netValue;
-  const savings = oldResult && newResult ? oldResult.tax - newResult.tax : 0;
 
   return (
     <div className="card">
@@ -510,87 +486,34 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
 
         {/* Result */}
         <div className="space-y-4">
-          {newResult && oldResult && (
+          {result && (
             <>
-              {/* Tiết kiệm */}
-              {savings > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="text-sm text-green-700 mb-1">Tiết kiệm với luật mới</div>
-                  <div className="text-2xl font-bold text-green-600 font-mono tabular-nums">
-                    {formatCurrency(savings)}/tháng
+              {/* Kết quả */}
+              <div className="bg-primary-50 rounded-lg p-4">
+                <div className="text-xs text-primary-600 font-medium mb-2">KẾT QUẢ</div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">GROSS:</span>
+                    <span className="font-medium">{formatCurrency(result.gross)}</span>
                   </div>
-                  <div className="text-sm text-green-600">
-                    ({formatCurrency(savings * 12)}/năm)
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bảo hiểm:</span>
+                    <span className="text-gray-500">-{formatCurrency(result.insurance)}</span>
                   </div>
-                </div>
-              )}
-
-              {/* So sánh */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Luật cũ */}
-                <div className="bg-red-50 rounded-lg p-4">
-                  <div className="text-xs text-red-600 font-medium mb-2 flex items-center gap-1">
-                    LUẬT CŨ (7 bậc)
-                    <Tooltip content="Luật thuế hiện hành với 7 bậc thuế lũy tiến">
-                      <span className="text-red-400 hover:text-red-600 cursor-help">
-                        <InfoIcon />
-                      </span>
-                    </Tooltip>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Thuế TNCN:</span>
+                    <span className="text-primary-600 font-medium">-{formatCurrency(result.tax)}</span>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">GROSS:</span>
-                      <span className="font-medium">{formatCurrency(oldResult.gross)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Bảo hiểm:</span>
-                      <span className="text-gray-500">-{formatCurrency(oldResult.insurance)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Thuế TNCN:</span>
-                      <span className="text-red-600 font-medium">-{formatCurrency(oldResult.tax)}</span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between">
-                      <span className="font-medium">NET:</span>
-                      <span className="font-bold text-gray-800 font-mono tabular-nums">{formatCurrency(oldResult.net)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Luật mới */}
-                <div className="bg-primary-50 rounded-lg p-4">
-                  <div className="text-xs text-primary-600 font-medium mb-2 flex items-center gap-1">
-                    LUẬT MỚI (5 bậc)
-                    <Tooltip content="Luật thuế mới 2026 với 5 bậc thuế lũy tiến, giảm thuế cho hầu hết người lao động">
-                      <span className="text-primary-400 hover:text-primary-600 cursor-help">
-                        <InfoIcon />
-                      </span>
-                    </Tooltip>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">GROSS:</span>
-                      <span className="font-medium">{formatCurrency(newResult.gross)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Bảo hiểm:</span>
-                      <span className="text-gray-500">-{formatCurrency(newResult.insurance)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Thuế TNCN:</span>
-                      <span className="text-primary-600 font-medium">-{formatCurrency(newResult.tax)}</span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between">
-                      <span className="font-medium">NET:</span>
-                      <span className="font-bold text-gray-800 font-mono tabular-nums">{formatCurrency(newResult.net)}</span>
-                    </div>
+                  <div className="border-t pt-2 flex justify-between">
+                    <span className="font-medium">NET:</span>
+                    <span className="font-bold text-gray-800 font-mono tabular-nums">{formatCurrency(result.net)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Chi tiết giảm trừ */}
               <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">Chi tiết các khoản giảm trừ (Luật mới)</div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Chi tiết các khoản giảm trừ</div>
                 {useDeclaredSalary && (
                   <div className="mb-2 px-2 py-1 bg-amber-100 rounded text-xs text-amber-700">
                     Bảo hiểm tính trên lương khai báo: {formatCurrency(declaredSalary)}
@@ -599,19 +522,19 @@ export default function GrossNetConverter({ sharedState, onStateChange }: GrossN
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Giảm trừ bản thân:</span>
-                    <span>{formatCurrency(newResult.deductions.personal)}</span>
+                    <span>{formatCurrency(result.deductions.personal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Giảm trừ NPT:</span>
-                    <span>{formatCurrency(newResult.deductions.dependent)}</span>
+                    <span>{formatCurrency(result.deductions.dependent)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">BHXH, BHYT, BHTN:</span>
-                    <span>{formatCurrency(newResult.deductions.insurance)}</span>
+                    <span>{formatCurrency(result.deductions.insurance)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Thu nhập tính thuế:</span>
-                    <span className="font-medium">{formatCurrency(newResult.taxableIncome)}</span>
+                    <span className="font-medium">{formatCurrency(result.taxableIncome)}</span>
                   </div>
                 </div>
               </div>

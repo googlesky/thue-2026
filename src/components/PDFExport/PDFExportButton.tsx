@@ -4,8 +4,7 @@ import { useState, useCallback } from 'react';
 import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult } from '@/lib/taxCalculator';
 
 interface PDFExportButtonProps {
-  oldResult: TaxResultType;
-  newResult: TaxResultType;
+  result: TaxResultType;
   otherIncomeTax?: OtherIncomeTaxResult | null;
   declaredSalary?: number;
   variant?: 'default' | 'minimal' | 'inline';
@@ -13,8 +12,7 @@ interface PDFExportButtonProps {
 }
 
 export default function PDFExportButton({
-  oldResult,
-  newResult,
+  result,
   otherIncomeTax,
   declaredSalary,
   variant = 'default',
@@ -34,14 +32,9 @@ export default function PDFExportButton({
         import('html2canvas'),
       ]);
 
-      const savings = oldResult.taxAmount - newResult.taxAmount;
-      const savingsPercent = oldResult.taxAmount > 0
-        ? ((savings / oldResult.taxAmount) * 100).toFixed(1)
-        : '0';
-
       // Calculate totals including other income
       const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
-      const totalNewTax = newResult.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
+      const totalTax = result.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
 
       // Create a temporary container for the PDF content
       const container = document.createElement('div');
@@ -73,35 +66,35 @@ export default function PDFExportButton({
 
       // Build allowances section if exists
       let allowancesSection = '';
-      if (newResult.allowancesBreakdown && newResult.allowancesBreakdown.total > 0) {
+      if (result.allowancesBreakdown && result.allowancesBreakdown.total > 0) {
         allowancesSection = `
           <div style="margin-bottom: 20px; padding: 15px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #22c55e;">
             <h4 style="margin: 0 0 10px 0; color: #15803d; font-size: 14px;">Phụ cấp</h4>
             <div style="display: flex; justify-content: space-between; font-size: 13px;">
               <span>Tổng phụ cấp:</span>
-              <span style="font-weight: 600;">${formatVND(newResult.allowancesBreakdown.total)}</span>
+              <span style="font-weight: 600;">${formatVND(result.allowancesBreakdown.total)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; color: #15803d;">
               <span>  - Miễn thuế:</span>
-              <span>${formatVND(newResult.allowancesBreakdown.taxExempt)}</span>
+              <span>${formatVND(result.allowancesBreakdown.taxExempt)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; color: #d97706;">
               <span>  - Chịu thuế:</span>
-              <span>${formatVND(newResult.allowancesBreakdown.taxable)}</span>
+              <span>${formatVND(result.allowancesBreakdown.taxable)}</span>
             </div>
           </div>
         `;
       }
 
       // Build insurance detail section
-      const insuranceDetail = newResult.insuranceDetail;
+      const insuranceDetail = result.insuranceDetail;
       let insuranceSection = '';
-      if (newResult.insuranceDeduction > 0) {
+      if (result.insuranceDeduction > 0) {
         insuranceSection = `
           <div style="margin-bottom: 15px;">
             <div style="display: flex; justify-content: space-between; font-size: 13px; color: #64748b;">
               <span>Bảo hiểm:</span>
-              <span>-${formatVND(newResult.insuranceDeduction)}</span>
+              <span>-${formatVND(result.insuranceDeduction)}</span>
             </div>
             ${insuranceDetail.bhxh > 0 ? `
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; padding-left: 15px;">
@@ -125,12 +118,12 @@ export default function PDFExportButton({
         `;
       }
 
-      // Build tax breakdown table for old law
-      const buildTaxBreakdownRows = (result: TaxResultType): string => {
-        if (result.taxBreakdown.length === 0) {
+      // Build tax breakdown table
+      const buildTaxBreakdownRows = (r: TaxResultType): string => {
+        if (r.taxBreakdown.length === 0) {
           return '<tr><td colspan="4" style="text-align: center; padding: 10px; color: #64748b;">Không phải nộp thuế</td></tr>';
         }
-        return result.taxBreakdown.map((item, index) => `
+        return r.taxBreakdown.map((item, index) => `
           <tr style="background: ${index % 2 === 0 ? '#f8fafc' : 'white'};">
             <td style="padding: 8px; border: 1px solid #e2e8f0;">Bậc ${item.bracket}</td>
             <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">${(item.rate * 100).toFixed(0)}%</td>
@@ -163,11 +156,11 @@ export default function PDFExportButton({
           </div>
 
           <div style="margin-top: 20px; padding: 20px; background: #1f2937; border-radius: 8px; color: white;">
-            <h3 style="margin: 0 0 15px 0; font-size: 16px;">Tổng kết tất cả nguồn thu nhập (Luật mới)</h3>
+            <h3 style="margin: 0 0 15px 0; font-size: 16px;">Tổng kết tất cả nguồn thu nhập</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
               <div>
                 <div style="font-size: 12px; color: #9ca3af;">Lương GROSS</div>
-                <div style="font-size: 14px; font-weight: 600;">${formatVND(newResult.grossIncome)}</div>
+                <div style="font-size: 14px; font-weight: 600;">${formatVND(result.grossIncome)}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #9ca3af;">Thu nhập khác</div>
@@ -175,11 +168,11 @@ export default function PDFExportButton({
               </div>
               <div>
                 <div style="font-size: 12px; color: #9ca3af;">Tổng thuế</div>
-                <div style="font-size: 14px; font-weight: 600; color: #f87171;">${formatVND(totalNewTax)}</div>
+                <div style="font-size: 14px; font-weight: 600; color: #f87171;">${formatVND(totalTax)}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #9ca3af;">Tổng thực nhận</div>
-                <div style="font-size: 14px; font-weight: 600; color: #4ade80;">${formatVND(newResult.netIncome + otherIncomeTax.totalNet)}</div>
+                <div style="font-size: 14px; font-weight: 600; color: #4ade80;">${formatVND(result.netIncome + otherIncomeTax.totalNet)}</div>
               </div>
             </div>
           </div>
@@ -187,12 +180,12 @@ export default function PDFExportButton({
       }
 
       // Declared salary notice
-      const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== oldResult.grossIncome;
+      const hasDeclaredSalary = declaredSalary !== undefined && declaredSalary !== result.grossIncome;
       const declaredSalaryNotice = hasDeclaredSalary ? `
         <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
           <p style="margin: 0; font-size: 13px; color: #92400e;">
             <strong>Lưu ý:</strong> Bảo hiểm tính trên lương khai báo <strong>${formatVND(declaredSalary)}</strong>,
-            nhưng thuế TNCN vẫn tính trên lương thực tế <strong>${formatVND(oldResult.grossIncome)}</strong>
+            nhưng thuế TNCN vẫn tính trên lương thực tế <strong>${formatVND(result.grossIncome)}</strong>
           </p>
         </div>
       ` : '';
@@ -202,19 +195,10 @@ export default function PDFExportButton({
           <!-- Header -->
           <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
             <h1 style="margin: 0; font-size: 24px; color: #1e40af;">BÁO CÁO TÍNH THUẾ TNCN</h1>
-            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px;">Ngày tạo: ${dateStr}</p>
+            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 12px;">Theo Luật 109/2025/QH15 – 5 bậc thuế | Ngày tạo: ${dateStr}</p>
           </div>
 
           ${declaredSalaryNotice}
-
-          <!-- Savings Summary -->
-          ${savings > 0 ? `
-            <div style="background: linear-gradient(135deg, #22c55e, #10b981); padding: 20px; border-radius: 12px; color: white; margin-bottom: 25px;">
-              <h2 style="margin: 0 0 10px 0; font-size: 18px;">Bạn tiết kiệm được</h2>
-              <div style="font-size: 32px; font-weight: bold; margin-bottom: 5px;">${formatVND(savings)}/tháng</div>
-              <div style="font-size: 14px; opacity: 0.9;">Tương đương ${formatVND(savings * 12)}/năm (giảm ${savingsPercent}%)</div>
-            </div>
-          ` : ''}
 
           <!-- Input Summary -->
           <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
@@ -222,125 +206,71 @@ export default function PDFExportButton({
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
               <div>
                 <div style="font-size: 12px; color: #64748b;">Thu nhập GROSS</div>
-                <div style="font-size: 16px; font-weight: 600;">${formatVND(newResult.grossIncome)}</div>
+                <div style="font-size: 16px; font-weight: 600;">${formatVND(result.grossIncome)}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Người phụ thuộc</div>
-                <div style="font-size: 16px; font-weight: 600;">${Math.round(newResult.dependentDeduction / 6200000)} người</div>
+                <div style="font-size: 16px; font-weight: 600;">${Math.round(result.dependentDeduction / 6200000)} người</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Giảm trừ bản thân</div>
-                <div style="font-size: 16px; font-weight: 600;">${formatVND(newResult.personalDeduction)}</div>
+                <div style="font-size: 16px; font-weight: 600;">${formatVND(result.personalDeduction)}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Giảm trừ người phụ thuộc</div>
-                <div style="font-size: 16px; font-weight: 600;">${formatVND(newResult.dependentDeduction)}</div>
+                <div style="font-size: 16px; font-weight: 600;">${formatVND(result.dependentDeduction)}</div>
               </div>
             </div>
             ${allowancesSection}
             ${insuranceSection}
           </div>
 
-          <!-- Comparison -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-            <!-- Old Law -->
-            <div style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 20px;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
-                <h3 style="margin: 0; font-size: 16px; color: #334155;">Luật hiện hành (7 bậc)</h3>
+          <!-- Tax Result -->
+          <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; background: #eff6ff; margin-bottom: 25px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
+              <h3 style="margin: 0; font-size: 16px; color: #334155;">Kết quả tính thuế (Luật 109/2025 – 5 bậc)</h3>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                <span style="color: #64748b;">Thu nhập tính thuế:</span>
+                <span style="font-weight: 500;">${formatVND(result.taxableIncome)}</span>
               </div>
-              <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                  <span style="color: #64748b;">Thu nhập tính thuế:</span>
-                  <span style="font-weight: 500;">${formatVND(oldResult.taxableIncome)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                  <span style="color: #64748b;">Thuế suất thực tế:</span>
-                  <span style="font-weight: 500;">${oldResult.effectiveRate.toFixed(2)}%</span>
-                </div>
-              </div>
-              <div style="background: #fef2f2; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 12px; color: #64748b;">Thuế TNCN phải nộp</div>
-                <div style="font-size: 24px; font-weight: bold; color: #dc2626;">${formatVND(oldResult.taxAmount)}</div>
-              </div>
-              <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0; text-align: center;">
-                <div style="font-size: 12px; color: #64748b;">Thu nhập thực nhận</div>
-                <div style="font-size: 20px; font-weight: bold; color: #16a34a;">${formatVND(oldResult.netIncome)}</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                <span style="color: #64748b;">Thuế suất thực tế:</span>
+                <span style="font-weight: 500;">${result.effectiveRate.toFixed(2)}%</span>
               </div>
             </div>
-
-            <!-- New Law -->
-            <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 20px; background: #eff6ff;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
-                <h3 style="margin: 0; font-size: 16px; color: #334155;">Luật mới 2026 (5 bậc)</h3>
-              </div>
-              <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                  <span style="color: #64748b;">Thu nhập tính thuế:</span>
-                  <span style="font-weight: 500;">${formatVND(newResult.taxableIncome)}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                  <span style="color: #64748b;">Thuế suất thực tế:</span>
-                  <span style="font-weight: 500;">${newResult.effectiveRate.toFixed(2)}%</span>
-                </div>
-              </div>
-              <div style="background: #dbeafe; padding: 15px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 12px; color: #64748b;">Thuế TNCN phải nộp</div>
-                <div style="font-size: 24px; font-weight: bold; color: #1d4ed8;">${formatVND(newResult.taxAmount)}</div>
-              </div>
-              <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #bfdbfe; text-align: center;">
-                <div style="font-size: 12px; color: #64748b;">Thu nhập thực nhận</div>
-                <div style="font-size: 20px; font-weight: bold; color: #16a34a;">${formatVND(newResult.netIncome)}</div>
-              </div>
+            <div style="background: #dbeafe; padding: 15px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 12px; color: #64748b;">Thuế TNCN phải nộp</div>
+              <div style="font-size: 24px; font-weight: bold; color: #1d4ed8;">${formatVND(result.taxAmount)}</div>
+            </div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #bfdbfe; text-align: center;">
+              <div style="font-size: 12px; color: #64748b;">Thu nhập thực nhận</div>
+              <div style="font-size: 20px; font-weight: bold; color: #16a34a;">${formatVND(result.netIncome)}</div>
             </div>
           </div>
 
-          <!-- Tax Breakdown Tables -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-            <!-- Old Law Breakdown -->
-            <div>
-              <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #334155;">Chi tiết thuế (Luật cũ)</h4>
-              <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                <thead>
-                  <tr style="background: #fee2e2;">
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">Bậc</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế suất</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thu nhập</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${buildTaxBreakdownRows(oldResult)}
-                  <tr style="background: #fef2f2; font-weight: 600;">
-                    <td colspan="3" style="padding: 8px; border: 1px solid #e2e8f0;">Tổng thuế</td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">${formatVND(oldResult.taxAmount)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- New Law Breakdown -->
-            <div>
-              <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #334155;">Chi tiết thuế (Luật mới)</h4>
-              <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                <thead>
-                  <tr style="background: #dbeafe;">
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">Bậc</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế suất</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thu nhập</th>
-                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${buildTaxBreakdownRows(newResult)}
-                  <tr style="background: #dbeafe; font-weight: 600;">
-                    <td colspan="3" style="padding: 8px; border: 1px solid #e2e8f0;">Tổng thuế</td>
-                    <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">${formatVND(newResult.taxAmount)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <!-- Tax Breakdown Table -->
+          <div style="margin-bottom: 25px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #334155;">Chi tiết các bậc thuế</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: #dbeafe;">
+                  <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">Bậc</th>
+                  <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế suất</th>
+                  <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thu nhập</th>
+                  <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Thuế</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${buildTaxBreakdownRows(result)}
+                <tr style="background: #dbeafe; font-weight: 600;">
+                  <td colspan="3" style="padding: 8px; border: 1px solid #e2e8f0;">Tổng thuế</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">${formatVND(result.taxAmount)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           ${otherIncomeSection}
@@ -404,7 +334,7 @@ export default function PDFExportButton({
     } finally {
       setIsGenerating(false);
     }
-  }, [oldResult, newResult, otherIncomeTax, declaredSalary]);
+  }, [result, otherIncomeTax, declaredSalary]);
 
   // Different button styles based on variant
   const getButtonClasses = () => {

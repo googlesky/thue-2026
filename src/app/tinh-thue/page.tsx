@@ -59,7 +59,6 @@ const MonthlyPlanner = lazy(() => import('@/components/MonthlyPlanner'));
 const MortgageCalculator = lazy(() => import('@/components/MortgageCalculator').then(m => ({ default: m.MortgageCalculator })));
 import Footer from '@/components/Footer';
 import {
-  calculateOldTax,
   calculateNewTax,
   TaxResult as TaxResultType,
   TaxInput as TaxInputType,
@@ -193,9 +192,6 @@ export default function Home() {
   const [mortgageState, setMortgageState] = useState<MortgageTabState>(DEFAULT_MORTGAGE_STATE);
 
   // Tax calculation results
-  const [oldResult, setOldResult] = useState<TaxResultType>(() =>
-    calculateOldTax(sharedState)
-  );
   const [newResult, setNewResult] = useState<TaxResultType>(() =>
     calculateNewTax(sharedState)
   );
@@ -359,7 +355,6 @@ export default function Home() {
           region: newState.region,
           allowances: newState.allowances,
         };
-        setOldResult(calculateOldTax(taxInput));
         setNewResult(calculateNewTax(taxInput));
 
         // Clear URL params after loading (cleaner URL)
@@ -423,7 +418,6 @@ export default function Home() {
       };
 
       // Recalculate tax results
-      setOldResult(calculateOldTax(taxInput));
       setNewResult(calculateNewTax(taxInput));
 
       return newState;
@@ -550,7 +544,6 @@ export default function Home() {
     setMortgageState(DEFAULT_MORTGAGE_STATE);
 
     // Recalculate with default values
-    setOldResult(calculateOldTax(defaultSharedState));
     setNewResult(calculateNewTax(defaultSharedState));
 
     // Clear URL
@@ -582,22 +575,16 @@ export default function Home() {
                 Tính Thuế TNCN 2026
               </h1>
               <p className="text-blue-200/80 text-sm sm:text-base">
-                So sánh luật cũ (7 bậc) và mới (5 bậc) từ 1/1/2026
+                Theo Luật 109/2025/QH15 – 5 bậc thuế, áp dụng từ kỳ thuế 2026
               </p>
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-1.5 sm:gap-3 text-xs mr-1 sm:mr-2">
-                <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-red-500/20 text-red-200 rounded-full border border-red-500/30">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-400"></span>
-                  <span className="text-[10px] sm:text-xs">7 bậc</span>
-                </span>
-                <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400"></span>
-                  <span className="text-[10px] sm:text-xs">5 bậc</span>
-                </span>
-              </div>
+              <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30 text-xs mr-1 sm:mr-2">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-[10px] sm:text-xs">5 bậc</span>
+              </span>
               <button
                 onClick={handleGoHome}
                 aria-label="Đặt lại các giá trị mặc định"
@@ -659,8 +646,7 @@ export default function Home() {
               </div>
               <div className="lg:col-span-2">
                 <TaxResult
-                  oldResult={oldResult}
-                  newResult={newResult}
+                  result={newResult}
                   otherIncomeTax={otherIncomeTax}
                   declaredSalary={sharedState.declaredSalary}
                 />
