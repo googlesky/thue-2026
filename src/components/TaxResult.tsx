@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, lazy, Suspense } from 'react';
 import {
   TaxResult as TaxResultType,
   formatCurrency,
@@ -11,6 +11,8 @@ import {
   EFFECTIVE_DATES,
 } from '@/lib/taxCalculator';
 import { PDFExportButton } from '@/components/PDFExport';
+
+const IncomeWaterfallChart = lazy(() => import('@/components/IncomeWaterfallChart'));
 
 interface TaxResultProps {
   oldResult: TaxResultType;
@@ -240,6 +242,16 @@ function TaxResultComponent({ oldResult, newResult, otherIncomeTax, declaredSala
         <TaxBreakdown result={oldResult} title="Chi tiết thuế (Luật cũ)" colorClass="bg-red-500" />
         <TaxBreakdown result={newResult} title="Chi tiết thuế (Luật mới)" colorClass="bg-primary-500" />
       </div>
+
+      {/* Biểu đồ dòng tiền (Waterfall Chart) */}
+      <Suspense fallback={
+        <div className="card mt-6 animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+          <div className="h-[320px] bg-gray-100 rounded"></div>
+        </div>
+      }>
+        <IncomeWaterfallChart result={newResult} label="Luật mới" />
+      </Suspense>
     </div>
   );
 }

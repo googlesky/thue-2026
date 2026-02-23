@@ -244,7 +244,7 @@ export const DEFAULT_ALLOWANCES: AllowancesState = {
 // Giới hạn phụ cấp miễn thuế
 export const ALLOWANCE_LIMITS = {
   clothingYearlyMax: 5_000_000,   // 5tr/năm (Thông tư 111/2013)
-  clothingMonthlyMax: 416_667,    // ~417k/tháng
+  clothingMonthlyMax: 416_666,    // ~416.6k/tháng (5tr/12 làm tròn xuống)
 };
 
 // Tính toán phụ cấp miễn thuế và chịu thuế
