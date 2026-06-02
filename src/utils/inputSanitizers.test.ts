@@ -59,6 +59,38 @@ describe("parseCurrencyInput", () => {
     });
   });
 
+  describe("số định dạng en-US (dấu ',' là nhóm hàng nghìn, dấu '.' là thập phân)", () => {
+    it("'1,234' là nhóm hàng nghìn -> 1234, không phải thập phân", () => {
+      const { value, issues } = parseCurrencyInput("1,234");
+      expect(value).toBe(1234);
+      expect(issues.decimal).toBe(false);
+    });
+
+    it("'12,345' -> 12345, không phải thập phân", () => {
+      const { value, issues } = parseCurrencyInput("12,345");
+      expect(value).toBe(12345);
+      expect(issues.decimal).toBe(false);
+    });
+
+    it("'1,234,567' -> 1234567, không phải thập phân", () => {
+      const { value, issues } = parseCurrencyInput("1,234,567");
+      expect(value).toBe(1234567);
+      expect(issues.decimal).toBe(false);
+    });
+
+    it("'1,234.56' (nhóm hàng nghìn ',' + thập phân '.') -> 1234, decimal=true", () => {
+      const { value, issues } = parseCurrencyInput("1,234.56");
+      expect(value).toBe(1234);
+      expect(issues.decimal).toBe(true);
+    });
+
+    it("'1,234,567.89' -> 1234567, decimal=true", () => {
+      const { value, issues } = parseCurrencyInput("1,234,567.89");
+      expect(value).toBe(1234567);
+      expect(issues.decimal).toBe(true);
+    });
+  });
+
   describe("số thập phân thật (dấu ',' trong vi-VN) bị bỏ phần lẻ và được cảnh báo", () => {
     it("'1,5' -> 1, decimal=true", () => {
       const { value, issues } = parseCurrencyInput("1,5");
