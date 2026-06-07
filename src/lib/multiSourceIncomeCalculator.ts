@@ -7,7 +7,7 @@
  * - Thông tư 111/2013/TT-BTC
  */
 
-import { getPerTransactionThreshold, getMaxSocialInsuranceSalary } from './taxCalculator';
+import { getPerTransactionThreshold, getMaxSocialInsuranceSalary, NEW_TAX_BRACKETS, NEW_DEDUCTIONS } from './taxCalculator';
 
 // ===== TYPES =====
 
@@ -127,20 +127,16 @@ export const INCOME_TAX_RATES: Record<IncomeSourceType, {
 /**
  * Biểu thuế lũy tiến 5 bậc (từ 1/7/2026)
  */
-export const PROGRESSIVE_TAX_BRACKETS_2026 = [
-  { min: 0, max: 10_000_000, rate: 0.05 },
-  { min: 10_000_000, max: 30_000_000, rate: 0.10 },
-  { min: 30_000_000, max: 60_000_000, rate: 0.20 },
-  { min: 60_000_000, max: 100_000_000, rate: 0.30 },
-  { min: 100_000_000, max: Infinity, rate: 0.35 },
-];
+// Tái dùng biểu thuế 5 bậc trung tâm (tránh duplicate sai lệch)
+export const PROGRESSIVE_TAX_BRACKETS_2026 = NEW_TAX_BRACKETS;
 
 /**
  * Giảm trừ gia cảnh (từ 1/7/2026)
  */
+// Tái dùng mức giảm trừ gia cảnh trung tâm (NQ 110/2025/UBTVQH15)
 export const DEDUCTIONS_2026 = {
-  personal: 15_500_000,      // 15.5 triệu/tháng (Nghị quyết 110/2025/UBTVQH15)
-  dependent: 6_200_000,       // 6.2 triệu/tháng/người phụ thuộc
+  personal: NEW_DEDUCTIONS.personal,
+  dependent: NEW_DEDUCTIONS.dependent,
 };
 
 /**
