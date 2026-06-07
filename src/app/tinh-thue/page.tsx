@@ -53,6 +53,7 @@ const CoupleTaxOptimizer = lazy(() => import('@/components/CoupleTaxOptimizer').
 const ContentCreatorTax = lazy(() => import('@/components/ContentCreatorTax').then(m => ({ default: m.ContentCreatorTax })));
 const CryptoTax = lazy(() => import('@/components/CryptoTax').then(m => ({ default: m.CryptoTax })));
 const GoldTaxCalculator = lazy(() => import('@/components/GoldTaxCalculator').then(m => ({ default: m.GoldTaxCalculator })));
+const SpecialIncomeTaxCalculator = lazy(() => import('@/components/SpecialIncomeTaxCalculator').then(m => ({ default: m.SpecialIncomeTaxCalculator })));
 const TaxDeadlineManager = lazy(() => import('@/components/TaxDeadlineManager'));
 const IncomeSummaryDashboard = lazy(() => import('@/components/IncomeSummaryDashboard'));
 const RegionComparison = lazy(() => import('@/components/RegionComparison'));
@@ -141,7 +142,7 @@ const VALID_TABS: TabType[] = [
   'tax-treaty', 'couple-optimizer', 'pension', 'employer-cost', 'freelancer',
   'salary-compare', 'yearly', 'insurance', 'other-income', 'table', 'tax-history',
   'tax-calendar', 'salary-slip', 'exemption-checker', 'late-payment', 'business-form', 'severance',
-  'tax-document', 'content-creator', 'crypto-tax', 'gold-tax', 'tax-deadline', 'income-summary',
+  'tax-document', 'content-creator', 'crypto-tax', 'gold-tax', 'special-income', 'tax-deadline', 'income-summary',
   'region-compare', 'monthly-planner', 'mua-nha'
 ];
 
@@ -985,6 +986,14 @@ export default function Home() {
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
               <GoldTaxCalculator />
+            </Suspense>
+          </div>
+        )}
+
+        {activeTab === 'special-income' && (
+          <div className="mb-8">
+            <Suspense fallback={<TabLoadingSkeleton />}>
+              <SpecialIncomeTaxCalculator />
             </Suspense>
           </div>
         )}
