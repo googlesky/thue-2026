@@ -154,9 +154,9 @@ export const DOCUMENT_TYPE_INFO: Record<DocumentType, {
 
 // Personal deduction amounts
 const PERSONAL_DEDUCTION_2025 = 11_000_000;
-const PERSONAL_DEDUCTION_2026 = 15_100_000; // From July 2026
+const PERSONAL_DEDUCTION_2026 = 15_500_000; // Từ kỳ tính thuế 2026 (NQ 110/2025/UBTVQH15)
 const DEPENDENT_DEDUCTION_2025 = 4_400_000;
-const DEPENDENT_DEDUCTION_2026 = 7_000_000; // From July 2026
+const DEPENDENT_DEDUCTION_2026 = 6_200_000; // Từ kỳ tính thuế 2026 (NQ 110/2025/UBTVQH15)
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -442,11 +442,13 @@ export function getDocumentTypes(): Array<{ id: DocumentType; label: string; des
 /**
  * Get deduction amounts based on year
  */
-export function getDeductionAmounts(year: number, isSecondHalf2026: boolean = false): {
+export function getDeductionAmounts(year: number, _isSecondHalf2026: boolean = false): {
   personalDeduction: number;
   dependentDeduction: number;
 } {
-  if (year >= 2026 && isSecondHalf2026) {
+  // Mức giảm trừ mới (15.5tr/6.2tr) áp dụng từ kỳ tính thuế 2026 (01/01/2026),
+  // không phụ thuộc nửa đầu/nửa sau năm.
+  if (year >= 2026) {
     return {
       personalDeduction: PERSONAL_DEDUCTION_2026,
       dependentDeduction: DEPENDENT_DEDUCTION_2026,
