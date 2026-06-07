@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, memo, useCallback } from "react";
+import { flushSync } from "react-dom";
 import {
   formatNumber,
   RegionType,
@@ -222,56 +223,62 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
   const handleIncomeChange = (value: string) => {
     const hasDigits = /\d/.test(value);
     if (!hasDigits) {
-      if (inputMode === "net") {
-        setNetIncome("");
-      } else {
-        setGrossIncome("");
-      }
+      // flushSync: commit đồng bộ để DOM cập nhật trước phím kế tiếp,
+      // tránh race làm mất chữ số khi gõ nhanh (controlled input reformat).
+      flushSync(() => {
+        if (inputMode === "net") {
+          setNetIncome("");
+        } else {
+          setGrossIncome("");
+        }
+      });
       setGrossWarning(null);
       return;
     }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    if (inputMode === "net") {
-      setNetIncome(parsed.value.toString());
-    } else {
-      setGrossIncome(parsed.value.toString());
-    }
+    flushSync(() => {
+      if (inputMode === "net") {
+        setNetIncome(parsed.value.toString());
+      } else {
+        setGrossIncome(parsed.value.toString());
+      }
+    });
     setGrossWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleDeclaredSalaryChange = (value: string) => {
     const hasDigits = /\d/.test(value);
     if (!hasDigits) {
-      setDeclaredSalary("");
+      flushSync(() => setDeclaredSalary(""));
       setDeclaredWarning(null);
       return;
     }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    setDeclaredSalary(parsed.value.toString());
+    flushSync(() => setDeclaredSalary(parsed.value.toString()));
     setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handleOtherDeductionsChange = (value: string) => {
     const hasDigits = /\d/.test(value);
     if (!hasDigits) {
-      setOtherDeductions("");
+      flushSync(() => setOtherDeductions(""));
       setOtherDeductionWarning(null);
       return;
     }
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    setOtherDeductions(parsed.value.toString());
+    flushSync(() => setOtherDeductions(parsed.value.toString()));
     setOtherDeductionWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
   const handlePensionChange = (value: string) => {
     const hasDigits = /\d/.test(value);
     if (!hasDigits) {
-      setPensionContribution("");
+      flushSync(() => setPensionContribution(""));
       setPensionWarning(null);
       return;
     }
     const parsed = parseCurrencyInput(value, { max: 1_000_000 });
-    setPensionContribution(parsed.value.toString());
+    flushSync(() => setPensionContribution(parsed.value.toString()));
     setPensionWarning(buildWarning(parsed.issues, 1_000_000));
   };
 
@@ -287,10 +294,12 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
     value: string,
   ) => {
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    setAllowances((prev) => ({
-      ...prev,
-      [field]: parsed.value,
-    }));
+    flushSync(() =>
+      setAllowances((prev) => ({
+        ...prev,
+        [field]: parsed.value,
+      })),
+    );
     setAllowanceWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
