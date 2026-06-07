@@ -8,13 +8,11 @@ import {
   DEFAULT_INSURANCE_OPTIONS,
   getRegionalMinimumWages,
   getMaxUnemploymentInsuranceSalary,
+  getMaxSocialInsuranceSalary,
   formatNumber,
 } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
-
-// Constants - inline to avoid dependency issues
-const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000;
 
 const INSURANCE_RATES = {
   socialInsurance: 0.08,
@@ -99,12 +97,13 @@ export default function EmployerCostCalculator({
   // Get date-aware constants (uses browser's current date)
   const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
   const maxUnemploymentInsuranceSalary = useMemo(() => getMaxUnemploymentInsuranceSalary(new Date()), []);
+  const maxSocialInsuranceSalary = useMemo(() => getMaxSocialInsuranceSalary(new Date()), []);
 
   // Base for insurance calculation
   const insuranceBase = (useDeclaredSalary && declaredSalary > 0) ? declaredSalary : grossSalary;
 
   // Employee insurance (deducted from salary)
-  const bhxhBhytBase = Math.min(insuranceBase, MAX_SOCIAL_INSURANCE_SALARY);
+  const bhxhBhytBase = Math.min(insuranceBase, maxSocialInsuranceSalary);
   const maxBhtn = maxUnemploymentInsuranceSalary[region];
   const bhtnBase = Math.min(insuranceBase, maxBhtn);
 

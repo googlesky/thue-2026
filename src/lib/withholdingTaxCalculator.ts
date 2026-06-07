@@ -7,6 +7,8 @@
  * - Nghị định 65/2013/NĐ-CP
  */
 
+import { getPerTransactionThreshold } from './taxCalculator';
+
 // ===== CONSTANTS =====
 
 /**
@@ -264,6 +266,9 @@ export interface WHTComparison {
 export function calculateWithholdingTax(input: WHTInput): WHTResult {
   const { paymentAmount, incomeType, residencyStatus, isFamilyMember } = input;
 
+  // Ngưỡng chịu thuế theo từng lần phát sinh (date-aware: 10M, 20M từ 01/7/2026)
+  const perTxThreshold = getPerTransactionThreshold();
+
   // Mặc định
   let appliedRate: number | 'progressive' = 0;
   let withholdingAmount = 0;
@@ -343,16 +348,16 @@ export function calculateWithholdingTax(input: WHTInput): WHTResult {
         break;
 
       case 'lottery':
-        if (paymentAmount <= RESIDENT_WHT_RATES.lottery.threshold) {
+        if (paymentAmount <= perTxThreshold) {
           requiresWithholding = false;
-          exemptReason = `Trúng thưởng ≤ ${formatCurrency(RESIDENT_WHT_RATES.lottery.threshold)} - không khấu trừ.`;
+          exemptReason = `Trúng thưởng ≤ ${formatCurrency(perTxThreshold)} - không khấu trừ.`;
           appliedRate = 0;
         } else {
           appliedRate = RESIDENT_WHT_RATES.lottery.rate;
-          const taxableAmount = paymentAmount - RESIDENT_WHT_RATES.lottery.threshold;
+          const taxableAmount = paymentAmount - perTxThreshold;
           withholdingAmount = Math.round(taxableAmount * appliedRate);
         }
-        legalNote = 'Trúng thưởng: 10% trên phần vượt 10 triệu (Điều 15 Luật Thuế TNCN).';
+        legalNote = `Trúng thưởng: 10% trên phần vượt ${formatCurrency(perTxThreshold)} (Điều 15 Luật Thuế TNCN).`;
         break;
 
       case 'inheritance':
@@ -361,16 +366,16 @@ export function calculateWithholdingTax(input: WHTInput): WHTResult {
           exemptReason = 'Thừa kế từ thành viên gia đình được miễn thuế.';
           appliedRate = 0;
           legalNote = 'Miễn thuế theo Điều 4 Luật Thuế TNCN.';
-        } else if (paymentAmount <= RESIDENT_WHT_RATES.inheritance.threshold) {
+        } else if (paymentAmount <= perTxThreshold) {
           requiresWithholding = false;
-          exemptReason = `Thừa kế ≤ ${formatCurrency(RESIDENT_WHT_RATES.inheritance.threshold)} - không khấu trừ.`;
+          exemptReason = `Thừa kế ≤ ${formatCurrency(perTxThreshold)} - không khấu trừ.`;
           appliedRate = 0;
           legalNote = 'Dưới ngưỡng chịu thuế (Điều 16 Luật Thuế TNCN).';
         } else {
           appliedRate = RESIDENT_WHT_RATES.inheritance.rate;
-          const taxableAmount = paymentAmount - RESIDENT_WHT_RATES.inheritance.threshold;
+          const taxableAmount = paymentAmount - perTxThreshold;
           withholdingAmount = Math.round(taxableAmount * appliedRate);
-          legalNote = 'Thừa kế từ người ngoài gia đình: 10% trên phần vượt 10 triệu (Điều 16 Luật Thuế TNCN).';
+          legalNote = `Thừa kế từ người ngoài gia đình: 10% trên phần vượt ${formatCurrency(perTxThreshold)} (Điều 16 Luật Thuế TNCN).`;
         }
         break;
 

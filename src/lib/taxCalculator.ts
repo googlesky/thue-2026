@@ -1,16 +1,35 @@
 // ===== DATE-AWARE CONSTANTS =====
 
 // Ngày hiệu lực các quy định
+// Dùng local-time construction new Date(Y, M, D) để so sánh nhất quán với
+// các ngày được tạo theo local trong app (tránh lệch múi giờ ở biên tháng).
 export const EFFECTIVE_DATES = {
   // Lương tối thiểu vùng 2026 (Nghị định 293/2025/NĐ-CP)
-  REGIONAL_MINIMUM_WAGE_2026: new Date('2026-01-01'),
+  REGIONAL_MINIMUM_WAGE_2026: new Date(2026, 0, 1),
   // Luật thuế TNCN mới - Thu nhập từ tiền lương, tiền công
   // (5 bậc, giảm trừ 15.5M) - áp dụng từ kỳ tính thuế năm 2026
   // Theo điều khoản chuyển tiếp Luật Thuế TNCN sửa đổi 2025
-  NEW_TAX_LAW_2026: new Date('2026-01-01'),
+  NEW_TAX_LAW_2026: new Date(2026, 0, 1),
   // Thuế chuyển nhượng vàng miếng 0.1% (Luật Thuế TNCN sửa đổi 2025)
-  GOLD_TRANSFER_TAX_2026: new Date('2026-07-01'),
+  GOLD_TRANSFER_TAX_2026: new Date(2026, 6, 1),
+  // Lương cơ sở/mức tham chiếu tăng 2.34M -> 2.53M từ 01/7/2026
+  // -> trần đóng BHXH, BHYT (20 lần) tăng 46.8M -> 50.6M
+  BASE_SALARY_2026: new Date(2026, 6, 1),
+  // Ngưỡng chịu thuế theo từng lần phát sinh (trúng thưởng, thừa kế, quà tặng,
+  // nhượng quyền...) tăng 10M -> 20M từ 01/7/2026 (Luật Thuế TNCN sửa đổi 2025)
+  PER_TRANSACTION_THRESHOLD_2026: new Date(2026, 6, 1),
 };
+
+// Ngưỡng chịu thuế theo từng lần phát sinh (Điều 23 Luật Thuế TNCN)
+export const PER_TRANSACTION_THRESHOLD = 10_000_000; // đến 30/6/2026
+export const PER_TRANSACTION_THRESHOLD_2026 = 20_000_000; // từ 01/7/2026
+
+// Lấy ngưỡng chịu thuế theo từng lần phát sinh theo ngày
+export function getPerTransactionThreshold(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.PER_TRANSACTION_THRESHOLD_2026
+    ? PER_TRANSACTION_THRESHOLD_2026
+    : PER_TRANSACTION_THRESHOLD;
+}
 
 // Mức lương tối thiểu vùng 2025 (đến 31/12/2025)
 export const REGIONAL_MINIMUM_WAGES_2025 = {
@@ -42,7 +61,13 @@ export function getRegionalMinimumWages(date: Date = new Date()) {
 }
 
 // Lương cơ sở (dùng để tính mức đóng BHXH tối đa)
-export const BASE_SALARY = 2_340_000; // Lương cơ sở từ 01/07/2024
+export const BASE_SALARY = 2_340_000; // Lương cơ sở từ 01/07/2024 (đến 30/6/2026)
+export const BASE_SALARY_2026 = 2_530_000; // Lương cơ sở từ 01/7/2026 (mức tham chiếu - Luật BHXH 2024)
+
+// Lấy lương cơ sở (mức tham chiếu) theo ngày
+export function getBaseSalary(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.BASE_SALARY_2026 ? BASE_SALARY_2026 : BASE_SALARY;
+}
 
 // Biểu thuế HIỆN HÀNH (7 bậc)
 export const OLD_TAX_BRACKETS = [
@@ -177,8 +202,16 @@ export const EMPLOYER_INSURANCE_RATES = {
   unionFee: 0.02, // Công đoàn 2%
 };
 
-// Mức lương tối đa đóng BHXH, BHYT (20 lần lương cơ sở)
-export const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000; // 20 * 2.340.000 (lương cơ sở từ 01/07/2024)
+// Mức lương tối đa đóng BHXH, BHYT (20 lần lương cơ sở/mức tham chiếu)
+export const MAX_SOCIAL_INSURANCE_SALARY = 46_800_000; // 20 * 2.340.000 (đến 30/6/2026)
+export const MAX_SOCIAL_INSURANCE_SALARY_2026 = 50_600_000; // 20 * 2.530.000 (từ 01/7/2026)
+
+// Lấy mức trần đóng BHXH, BHYT theo ngày
+export function getMaxSocialInsuranceSalary(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.BASE_SALARY_2026
+    ? MAX_SOCIAL_INSURANCE_SALARY_2026
+    : MAX_SOCIAL_INSURANCE_SALARY;
+}
 
 // Mức lương tối đa đóng BHTN 2025 (20 lần lương tối thiểu vùng)
 export const MAX_UNEMPLOYMENT_INSURANCE_SALARY_2025 = {
@@ -343,7 +376,7 @@ export const OTHER_INCOME_TAX_RATES = {
 export const OTHER_INCOME_THRESHOLDS = {
   lottery: 10_000_000,  // Trúng thưởng miễn thuế dưới 10 triệu
   rental2025: 100_000_000,  // Cho thuê tài sản dưới 100 triệu/năm (đến 31/12/2025)
-  rental2026: 500_000_000,  // Cho thuê tài sản dưới 500 triệu/năm (từ 01/01/2026)
+  rental2026: 1_000_000_000,  // Cho thuê tài sản dưới 1 tỷ/năm (Nghị định 141/2026/NĐ-CP, từ 01/01/2026)
 };
 
 export function getRentalIncomeThreshold(date: Date = new Date()): number {
@@ -412,7 +445,7 @@ function calculateInsuranceDetailed(
   date: Date = new Date()
 ): InsuranceDetail {
   // BHXH và BHYT tính trên mức tối đa 20 lần lương cơ sở
-  const bhxhBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
+  const bhxhBase = Math.min(grossIncome, getMaxSocialInsuranceSalary(date));
   const bhxh = options.bhxh ? bhxhBase * INSURANCE_RATES.socialInsurance : 0;
   const bhyt = options.bhyt ? bhxhBase * INSURANCE_RATES.healthInsurance : 0;
 
@@ -761,7 +794,7 @@ export function calculateOtherIncomeTax(
 
   // 2. Thu nhập từ cho thuê tài sản
   // 2025: áp dụng khi doanh thu > 100 triệu/năm, tính trên toàn bộ doanh thu
-  // 2026: áp dụng khi doanh thu > 500 triệu/năm, PIT trên phần vượt ngưỡng
+  // 2026: áp dụng khi doanh thu > 1 tỷ/năm (NĐ 141/2026), PIT trên phần vượt ngưỡng
   const rentalThreshold = getRentalIncomeThreshold(calculationDate);
   const isRentalTaxable = otherIncome.rental > rentalThreshold;
   const rentalPITBase = isRentalTaxable
@@ -779,8 +812,9 @@ export function calculateOtherIncomeTax(
   const transferTax = otherIncome.transfer * OTHER_INCOME_TAX_RATES.transfer;
 
   // 5. Thu nhập từ trúng thưởng
-  // Thuế suất: 10% phần vượt 10 triệu
-  const lotteryTaxable = Math.max(0, otherIncome.lottery - OTHER_INCOME_THRESHOLDS.lottery);
+  // Thuế suất: 10% phần vượt ngưỡng (date-aware: 10tr, 20tr từ 01/7/2026)
+  const lotteryThreshold = getPerTransactionThreshold(calculationDate);
+  const lotteryTaxable = Math.max(0, otherIncome.lottery - lotteryThreshold);
   const lotteryTax = lotteryTaxable * OTHER_INCOME_TAX_RATES.lottery;
 
   const totalIncome = otherIncome.freelance + otherIncome.rental +
@@ -825,7 +859,7 @@ export function calculateOtherIncomeTax(
       taxableAmount: lotteryTaxable,
       tax: lotteryTax,
       rate: OTHER_INCOME_TAX_RATES.lottery * 100,
-      note: `10% phần vượt ${formatNumber(OTHER_INCOME_THRESHOLDS.lottery)}`,
+      note: `10% phần vượt ${formatNumber(lotteryThreshold)}`,
     },
     totalIncome,
     totalTax,
@@ -863,8 +897,8 @@ export function calculateEmployerInsurance(
   includeUnionFee: boolean = false,
   date: Date = new Date()
 ): EmployerInsuranceDetail {
-  // BHXH và BHYT giới hạn ở 20 lần lương cơ sở
-  const bhxhBhytBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
+  // BHXH và BHYT giới hạn ở 20 lần lương cơ sở (date-aware)
+  const bhxhBhytBase = Math.min(grossIncome, getMaxSocialInsuranceSalary(date));
   const bhxh = options.bhxh ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.socialInsurance : 0;
   const bhyt = options.bhyt ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.healthInsurance : 0;
 

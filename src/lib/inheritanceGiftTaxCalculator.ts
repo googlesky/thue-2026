@@ -10,7 +10,7 @@
  * - Nghị định 65/2013/NĐ-CP hướng dẫn chi tiết
  */
 
-import { formatNumber } from '@/lib/taxCalculator';
+import { formatNumber, getPerTransactionThreshold } from '@/lib/taxCalculator';
 
 // ===== CONSTANTS =====
 
@@ -88,6 +88,7 @@ export interface InheritanceGiftTaxResult {
   totalValue: number;
   isExempt: boolean;
   exemptReason?: string;
+  threshold: number; // Ngưỡng miễn thuế áp dụng (date-aware: 10M, 20M từ 01/7/2026)
   taxableAmount: number;
   taxAmount: number;
   effectiveRate: number;
@@ -238,12 +239,16 @@ export function calculateInheritanceGiftTax(
   // Tổng giá trị tài sản
   const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
 
+  // Ngưỡng chịu thuế theo từng lần phát sinh (date-aware: 10M, 20M từ 01/7/2026)
+  const threshold = getPerTransactionThreshold(transactionDate);
+
   // Kiểm tra miễn thuế do quan hệ gia đình
   if (isExemptRelationship(relationship)) {
     return {
       totalValue,
       isExempt: true,
       exemptReason: `Miễn thuế theo Điều 4, Khoản 4 Luật Thuế TNCN: Thu nhập từ ${getTransactionTypeLabel(transactionType).toLowerCase()} giữa ${getRelationshipLabel(relationship).toLowerCase()} được miễn thuế hoàn toàn.`,
+      threshold,
       taxableAmount: 0,
       taxAmount: 0,
       effectiveRate: 0,
@@ -264,11 +269,12 @@ export function calculateInheritanceGiftTax(
   }
 
   // Kiểm tra miễn thuế do dưới ngưỡng
-  if (totalValue <= INHERITANCE_GIFT_TAX_THRESHOLD) {
+  if (totalValue <= threshold) {
     return {
       totalValue,
       isExempt: true,
-      exemptReason: `Miễn thuế theo Điều 23 Luật Thuế TNCN: Giá trị ${formatNumber(totalValue)} VNĐ không vượt quá ngưỡng ${formatNumber(INHERITANCE_GIFT_TAX_THRESHOLD)} VNĐ.`,
+      exemptReason: `Miễn thuế theo Điều 23 Luật Thuế TNCN: Giá trị ${formatNumber(totalValue)} VNĐ không vượt quá ngưỡng ${formatNumber(threshold)} VNĐ.`,
+      threshold,
       taxableAmount: 0,
       taxAmount: 0,
       effectiveRate: 0,
@@ -288,13 +294,14 @@ export function calculateInheritanceGiftTax(
   }
 
   // Tính thuế: 10% trên phần vượt ngưỡng
-  const taxableAmount = totalValue - INHERITANCE_GIFT_TAX_THRESHOLD;
+  const taxableAmount = totalValue - threshold;
   const taxAmount = Math.round(taxableAmount * INHERITANCE_GIFT_TAX_RATE);
   const effectiveRate = (taxAmount / totalValue) * 100;
 
   return {
     totalValue,
     isExempt: false,
+    threshold,
     taxableAmount,
     taxAmount,
     effectiveRate,
@@ -307,7 +314,7 @@ export function calculateInheritanceGiftTax(
       assets.map((a) => a.type)
     ),
     notes: [
-      `Thuế = (${formatNumber(totalValue)} - ${formatNumber(INHERITANCE_GIFT_TAX_THRESHOLD)}) × 10% = ${formatNumber(taxAmount)} VNĐ`,
+      `Thuế = (${formatNumber(totalValue)} - ${formatNumber(threshold)}) × 10% = ${formatNumber(taxAmount)} VNĐ`,
       'Thời hạn khai thuế: 10 ngày kể từ ngày phát sinh',
       'Thời hạn nộp thuế: 10 ngày kể từ ngày có thông báo thuế',
       'Nộp tại Chi cục Thuế quận/huyện nơi có tài sản hoặc nơi cư trú',

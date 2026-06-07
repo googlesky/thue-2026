@@ -2,11 +2,11 @@
  * Household Business Tax Calculator for Vietnam
  * Reference: Luật Thuế TNCN số 109/2025/QH15
  *
- * Key Changes in 2026:
- * - Revenue threshold increased from 100M to 500M VND/year
+ * Key Changes in 2026 (Nghị định 141/2026/NĐ-CP, từ 01/01/2026):
+ * - Revenue threshold increased from 100M to 1 tỷ VND/year
  * - Below threshold: No PIT, no VAT, no business registration required
  * - Above threshold: Two methods available:
- *   1. Khoán (Revenue-based): % × (Revenue - 500M threshold)
+ *   1. Khoán (Revenue-based): % × (Revenue - 1 tỷ threshold)
  *   2. Thu nhập (Income-based): 15%/17%/20% × (Revenue - Expenses)
  * - VAT calculated on entire revenue when above threshold (not deductible)
  */
@@ -21,7 +21,7 @@ export type BusinessCategory =
 // Tax calculation method for 2026
 // Reference: Điều 7 Luật 109/2025/QH15
 export type TaxMethod =
-  | 'khoan'             // Phương pháp khoán: % × (Doanh thu - Ngưỡng 500tr)
+  | 'khoan'             // Phương pháp khoán: % × (Doanh thu - Ngưỡng 1 tỷ)
   | 'income';           // Phương pháp thu nhập: 15%/17%/20% × (Doanh thu - Chi phí)
 
 // Business type
@@ -33,7 +33,7 @@ export interface HouseholdBusiness {
   monthlyExpenses: number; // Chi phí hàng tháng (cho phương pháp thu nhập)
   operatingMonths: number; // Số tháng hoạt động trong năm (1-12)
   hasBusinessLicense: boolean;
-  applyThresholdDeduction: boolean; // Áp dụng trừ ngưỡng 500tr cho hoạt động này
+  applyThresholdDeduction: boolean; // Áp dụng trừ ngưỡng 1 tỷ cho hoạt động này
   notes?: string;
 }
 
@@ -80,17 +80,17 @@ export interface HouseholdBusinessTaxResult {
     businessesBelowThreshold: number;
     businessesAboveThreshold: number;
     threshold: number;
-    thresholdUsed: number; // Tổng ngưỡng đã sử dụng (max 500tr)
+    thresholdUsed: number; // Tổng ngưỡng đã sử dụng (max 1 tỷ)
     year: number;
     taxMethod: TaxMethod;
   };
 }
 
 // Revenue thresholds by year (ngưỡng doanh thu miễn thuế)
-// Reference: Luật Thuế TNCN sửa đổi 2025, Nghị quyết 198/2025/QH15
+// Reference: Luật Thuế TNCN sửa đổi 2025; Nghị định 141/2026/NĐ-CP nâng lên 1 tỷ
 export const REVENUE_THRESHOLDS = {
-  2025: 100_000_000,  // 100 triệu/năm
-  2026: 500_000_000,  // 500 triệu/năm (từ 01/01/2026)
+  2025: 100_000_000,    // 100 triệu/năm
+  2026: 1_000_000_000,  // 1 tỷ/năm (Nghị định 141/2026/NĐ-CP, từ 01/01/2026)
 };
 
 // Tax rates by business category (PIT)
@@ -113,7 +113,7 @@ export const VAT_RATES: Record<BusinessCategory, number> = {
 // Income tax brackets for 2026 (phương pháp thu nhập)
 // Reference: Điều 7, khoản 2 Luật 109/2025/QH15
 export const INCOME_TAX_BRACKETS_2026 = [
-  { min: 500_000_000, max: 3_000_000_000, rate: 0.15 },   // 500tr - 3 tỷ: 15%
+  { min: 1_000_000_000, max: 3_000_000_000, rate: 0.15 },  // 1 tỷ - 3 tỷ: 15%
   { min: 3_000_000_000, max: 50_000_000_000, rate: 0.17 }, // 3 tỷ - 50 tỷ: 17%
   { min: 50_000_000_000, max: Infinity, rate: 0.20 },      // Trên 50 tỷ: 20%
 ];
@@ -126,7 +126,7 @@ export const TAX_METHOD_LABELS: Record<TaxMethod, string> = {
 
 // Tax method descriptions
 export const TAX_METHOD_DESCRIPTIONS: Record<TaxMethod, string> = {
-  khoan: 'Thuế TNCN = (Doanh thu - 500 triệu) × Thuế suất ngành (0.5% - 5%). Không cần chứng từ chi phí.',
+  khoan: 'Thuế TNCN = (Doanh thu - 1 tỷ) × Thuế suất ngành (0.5% - 5%). Không cần chứng từ chi phí.',
   income: 'Thuế TNCN = (Doanh thu - Chi phí) × 15%/17%/20%. Cần có hóa đơn, chứng từ chi phí hợp lệ.',
 };
 
@@ -174,11 +174,11 @@ export function getIncomeTaxRate2026(annualRevenue: number): number {
  * Get income tax bracket label
  */
 export function getIncomeTaxBracketLabel(annualRevenue: number): string {
-  if (annualRevenue <= 500_000_000) {
+  if (annualRevenue <= 1_000_000_000) {
     return 'Dưới ngưỡng - Miễn thuế';
   }
   if (annualRevenue <= 3_000_000_000) {
-    return '500 triệu - 3 tỷ: 15%';
+    return '1 tỷ - 3 tỷ: 15%';
   }
   if (annualRevenue <= 50_000_000_000) {
     return '3 tỷ - 50 tỷ: 17%';
@@ -202,7 +202,7 @@ export function calculateBusinessTax(
   year: 2025 | 2026,
   totalAnnualRevenue: number,
   taxMethod: TaxMethod = 'khoan',
-  thresholdDeduction: number = 0 // Phần ngưỡng 500tr được trừ cho hoạt động này
+  thresholdDeduction: number = 0 // Phần ngưỡng 1 tỷ được trừ cho hoạt động này
 ): BusinessTaxResult {
   const annualRevenue = business.monthlyRevenue * business.operatingMonths;
   const annualExpenses = business.monthlyExpenses * business.operatingMonths;
@@ -232,7 +232,7 @@ export function calculateBusinessTax(
         pitAmount = Math.round(taxableIncome * pitRate);
         recommendation = 'Phương pháp thu nhập: Cần lưu giữ hóa đơn, chứng từ chi phí hợp lệ';
       } else {
-        // Phương pháp khoán: Thuế = (Doanh thu - Ngưỡng 500tr) × Thuế suất ngành
+        // Phương pháp khoán: Thuế = (Doanh thu - Ngưỡng 1 tỷ) × Thuế suất ngành
         // Reference: Điều 7, khoản 3 Luật 109/2025/QH15
         pitRate = PIT_RATES[business.category];
         taxableIncome = Math.max(0, annualRevenue - thresholdDeduction);
@@ -306,8 +306,8 @@ export function calculateHouseholdBusinessTax(
   const isAboveThreshold = totalAnnualRevenue > threshold;
 
   // Calculate threshold deduction for each business
-  // Luật cho phép người nộp thuế TỰ CHỌN hoạt động nào được trừ ngưỡng 500tr
-  // Tổng không quá 500tr cho tất cả hoạt động
+  // Luật cho phép người nộp thuế TỰ CHỌN hoạt động nào được trừ ngưỡng 1 tỷ
+  // Tổng không quá 1 tỷ cho tất cả hoạt động
   let remainingThreshold = isAboveThreshold && year === 2026 && taxMethod === 'khoan'
     ? threshold
     : 0;
@@ -584,7 +584,7 @@ export function compareTaxMethods2026(
 
   // Check if income method is available (revenue > 500M to 3B)
   const totalRevenue = khoanResult.summary.totalAnnualRevenue;
-  if (totalRevenue <= 500_000_000) {
+  if (totalRevenue <= 1_000_000_000) {
     explanation = 'Doanh thu dưới ngưỡng - Miễn thuế hoàn toàn.';
   } else if (totalRevenue > 3_000_000_000) {
     explanation = `Doanh thu trên 3 tỷ - Phương pháp khoán không khả dụng, bắt buộc dùng phương pháp thu nhập.`;

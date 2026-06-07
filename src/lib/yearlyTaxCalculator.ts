@@ -5,7 +5,7 @@ import {
   OLD_DEDUCTIONS,
   NEW_DEDUCTIONS,
   INSURANCE_RATES,
-  MAX_SOCIAL_INSURANCE_SALARY,
+  getMaxSocialInsuranceSalary,
   getMaxUnemploymentInsuranceSalary,
   RegionType,
   formatCurrency,
@@ -91,14 +91,16 @@ function calculateInsuranceDetailed(
     return { bhxh: 0, bhyt: 0, bhtn: 0, total: 0 };
   }
 
-  // BHXH và BHYT: tối đa 20 lần lương cơ sở
-  const bhxhBhytBase = Math.min(grossIncome, MAX_SOCIAL_INSURANCE_SALARY);
+  // Ngày hiệu lực để xác định trần đóng bảo hiểm (month is 1-indexed)
+  // Trần BHXH/BHYT đổi từ 01/7/2026; lương tối thiểu vùng 2026 từ 01/01/2026
+  const effectiveDate = new Date(year, month - 1, 1);
+
+  // BHXH và BHYT: tối đa 20 lần lương cơ sở (date-aware)
+  const bhxhBhytBase = Math.min(grossIncome, getMaxSocialInsuranceSalary(effectiveDate));
   const bhxh = bhxhBhytBase * INSURANCE_RATES.socialInsurance;
   const bhyt = bhxhBhytBase * INSURANCE_RATES.healthInsurance;
 
   // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
-  // Lương tối thiểu vùng 2026 có hiệu lực từ 01/01/2026
-  const effectiveDate = new Date(year, month - 1, 1); // month is 1-indexed
   const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(effectiveDate);
   const maxBhtn = maxBhtnByRegion[region];
   const bhtnBase = Math.min(grossIncome, maxBhtn);

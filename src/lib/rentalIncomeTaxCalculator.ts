@@ -99,9 +99,10 @@ export const RENTAL_TAX_RATES = {
 };
 
 // Revenue thresholds by year
+// 2026: Nghị định 141/2026/NĐ-CP nâng ngưỡng miễn thuế lên 1 tỷ/năm (từ 01/01/2026)
 export const RENTAL_THRESHOLDS = {
   2025: 100_000_000,
-  2026: 500_000_000,
+  2026: 1_000_000_000,
 };
 
 export function getRentalThreshold(year: 2025 | 2026): number {

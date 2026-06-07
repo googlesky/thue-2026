@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, MAX_SOCIAL_INSURANCE_SALARY, getMaxUnemploymentInsuranceSalary, RegionType, getRegionalMinimumWages, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, getMaxSocialInsuranceSalary, getMaxUnemploymentInsuranceSalary, RegionType, getRegionalMinimumWages, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
 interface InsuranceBreakdownProps {
   grossIncome: number;
@@ -18,9 +18,10 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
   const currentDate = new Date();
   const regionalMinimumWages = getRegionalMinimumWages(currentDate);
   const maxUnemploymentInsuranceSalary = getMaxUnemploymentInsuranceSalary(currentDate);
+  const maxSocialInsuranceSalary = getMaxSocialInsuranceSalary(currentDate);
 
-  // BHXH và BHYT: tối đa 20 lần lương cơ sở
-  const bhxhBhytBase = Math.min(insuranceBaseSalary, MAX_SOCIAL_INSURANCE_SALARY);
+  // BHXH và BHYT: tối đa 20 lần lương cơ sở (date-aware)
+  const bhxhBhytBase = Math.min(insuranceBaseSalary, maxSocialInsuranceSalary);
 
   // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
   const maxBhtn = maxUnemploymentInsuranceSalary[region];
@@ -76,9 +77,9 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           <span className="text-gray-600">Mức lương đóng BHXH, BHYT:</span>
           <span className="font-semibold">{formatCurrency(bhxhBhytBase)}</span>
         </div>
-        {grossIncome > MAX_SOCIAL_INSURANCE_SALARY && (
+        {grossIncome > maxSocialInsuranceSalary && (
           <p className="text-sm text-orange-600">
-            * Tối đa 20 lần lương cơ sở ({formatCurrency(MAX_SOCIAL_INSURANCE_SALARY)})
+            * Tối đa 20 lần lương cơ sở ({formatCurrency(maxSocialInsuranceSalary)})
           </p>
         )}
         <div className="flex justify-between items-center">

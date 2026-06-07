@@ -110,7 +110,7 @@ export const TAX_LAW_MILESTONES: TaxLawMilestone[] = [
       'Biểu thuế lũy tiến 5 bậc mới có hiệu lực (theo điều khoản chuyển tiếp)',
       'Áp dụng mức giảm trừ mới: 15.5 triệu/tháng + 6.2 triệu/NPT',
       'Lương tối thiểu vùng mới theo Nghị định 293/2025/NĐ-CP',
-      'Ngưỡng doanh thu không chịu thuế cho hộ kinh doanh: 500 triệu/năm',
+      'Ngưỡng doanh thu không chịu thuế cho hộ kinh doanh, cá nhân kinh doanh: 1 tỷ/năm (Nghị định 141/2026/NĐ-CP)',
     ],
   },
   {

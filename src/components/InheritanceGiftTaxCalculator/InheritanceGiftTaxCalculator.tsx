@@ -15,10 +15,9 @@ import {
   getTransactionTypeLabel,
   getAllRelationships,
   getAllAssetTypes,
-  INHERITANCE_GIFT_TAX_THRESHOLD,
   INHERITANCE_GIFT_TAX_RATE,
 } from '@/lib/inheritanceGiftTaxCalculator';
-import { formatNumber } from '@/lib/taxCalculator';
+import { formatNumber, getPerTransactionThreshold } from '@/lib/taxCalculator';
 
 // ===== ICONS =====
 
@@ -250,7 +249,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
         <div className="p-3 bg-white rounded-lg border border-gray-200">
           <div className="text-xs text-gray-500">Ngưỡng miễn thuế</div>
           <div className="font-semibold text-gray-800">
-            {formatNumber(INHERITANCE_GIFT_TAX_THRESHOLD)} VNĐ
+            {formatNumber(result.threshold)} VNĐ
           </div>
         </div>
         <div className="p-3 bg-white rounded-lg border border-gray-200">
@@ -548,7 +547,7 @@ function InheritanceGiftTaxCalculatorComponent() {
                 • <strong>Miễn thuế hoàn toàn:</strong> Tài sản từ vợ/chồng, cha mẹ-con cái, ông bà-cháu, anh chị em ruột
               </li>
               <li>
-                • <strong>Ngưỡng miễn thuế:</strong> {formatNumber(INHERITANCE_GIFT_TAX_THRESHOLD)} VNĐ cho quan hệ khác
+                • <strong>Ngưỡng miễn thuế:</strong> {formatNumber(getPerTransactionThreshold(transactionDate ? new Date(transactionDate) : undefined))} VNĐ cho quan hệ khác
               </li>
               <li>
                 • <strong>Thuế suất:</strong> {INHERITANCE_GIFT_TAX_RATE * 100}% trên phần vượt ngưỡng

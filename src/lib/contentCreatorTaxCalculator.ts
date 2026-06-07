@@ -124,7 +124,7 @@ export const CONTENT_CREATOR_TAX_CONFIG = {
   // Ngưỡng miễn thuế
   thresholds: {
     year2025: 100_000_000, // 100 triệu/năm (trước 2026)
-    year2026: 500_000_000, // 500 triệu/năm (từ 2026)
+    year2026: 1_000_000_000, // 1 tỷ/năm (Nghị định 141/2026/NĐ-CP, từ 01/01/2026)
   },
 
   // Thuế suất cho cá nhân kinh doanh

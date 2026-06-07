@@ -7,6 +7,8 @@
  * - Thông tư 111/2013/TT-BTC
  */
 
+import { getPerTransactionThreshold, getMaxSocialInsuranceSalary } from './taxCalculator';
+
 // ===== TYPES =====
 
 /**
@@ -127,9 +129,9 @@ export const INCOME_TAX_RATES: Record<IncomeSourceType, {
  */
 export const PROGRESSIVE_TAX_BRACKETS_2026 = [
   { min: 0, max: 10_000_000, rate: 0.05 },
-  { min: 10_000_000, max: 25_000_000, rate: 0.10 },
-  { min: 25_000_000, max: 50_000_000, rate: 0.15 },
-  { min: 50_000_000, max: 100_000_000, rate: 0.25 },
+  { min: 10_000_000, max: 30_000_000, rate: 0.10 },
+  { min: 30_000_000, max: 60_000_000, rate: 0.20 },
+  { min: 60_000_000, max: 100_000_000, rate: 0.30 },
   { min: 100_000_000, max: Infinity, rate: 0.35 },
 ];
 
@@ -137,8 +139,8 @@ export const PROGRESSIVE_TAX_BRACKETS_2026 = [
  * Giảm trừ gia cảnh (từ 1/7/2026)
  */
 export const DEDUCTIONS_2026 = {
-  personal: 18_000_000,      // 18 triệu/tháng
-  dependent: 7_200_000,       // 7.2 triệu/tháng/người phụ thuộc
+  personal: 15_500_000,      // 15.5 triệu/tháng (Nghị quyết 110/2025/UBTVQH15)
+  dependent: 6_200_000,       // 6.2 triệu/tháng/người phụ thuộc
 };
 
 /**
@@ -269,6 +271,12 @@ function calculateSourceTax(source: IncomeSource, input: MultiSourceInput): Sour
   const rateInfo = INCOME_TAX_RATES[source.type];
   const notes: string[] = [];
 
+  // Ngưỡng chịu thuế theo từng lần phát sinh (date-aware: 10M, 20M từ 01/7/2026)
+  const perTxThreshold = getPerTransactionThreshold(
+    new Date(input.taxYear, input.isSecondHalf2026 ? 6 : 0, 1)
+  );
+  const perTxThresholdText = `${perTxThreshold / 1_000_000} triệu`;
+
   let taxableAmount = annualAmount;
   let taxAmount = 0;
   let effectiveRate = 0;
@@ -280,9 +288,10 @@ function calculateSourceTax(source: IncomeSource, input: MultiSourceInput): Sour
       // Tính thu nhập chịu thuế
       const monthlyGross = source.frequency === 'monthly' ? source.amount : source.amount / 12;
 
-      // Giảm trừ BHXH
+      // Giảm trừ BHXH: 10.5% lương, trần = 20 lần lương cơ sở (date-aware)
+      const insuranceCap = getMaxSocialInsuranceSalary(new Date(input.taxYear, input.isSecondHalf2026 ? 6 : 0, 1));
       const monthlyInsurance = input.hasInsurance
-        ? Math.min(monthlyGross * 0.105, 46800000 * 0.105 / 12) // 10.5% lương, max trên mức lương cơ sở
+        ? Math.min(monthlyGross, insuranceCap) * 0.105
         : (input.insuranceAmount || 0) / 12;
 
       // Giảm trừ gia cảnh
@@ -372,16 +381,15 @@ function calculateSourceTax(source: IncomeSource, input: MultiSourceInput): Sour
     }
 
     case 'lottery': {
-      // 10% trên phần vượt 10 triệu
-      const threshold = INCOME_TAX_RATES.lottery.threshold!;
-      if (annualAmount <= threshold) {
+      // 10% trên phần vượt ngưỡng (date-aware: 10tr, 20tr từ 01/7/2026)
+      if (annualAmount <= perTxThreshold) {
         taxAmount = 0;
         taxableAmount = 0;
-        notes.push('Trúng thưởng ≤ 10 triệu - không chịu thuế');
+        notes.push(`Trúng thưởng ≤ ${perTxThresholdText} - không chịu thuế`);
       } else {
-        taxableAmount = annualAmount - threshold;
+        taxableAmount = annualAmount - perTxThreshold;
         taxAmount = Math.round(taxableAmount * 0.10);
-        notes.push('Thuế 10% trên phần vượt 10 triệu');
+        notes.push(`Thuế 10% trên phần vượt ${perTxThresholdText}`);
       }
       appliedRate = 0.10;
       method = '10% trên phần vượt ngưỡng';
@@ -394,15 +402,14 @@ function calculateSourceTax(source: IncomeSource, input: MultiSourceInput): Sour
         taxableAmount = 0;
         notes.push('Thừa kế/quà tặng từ gia đình được miễn thuế');
       } else {
-        const threshold = INCOME_TAX_RATES.inheritance.threshold!;
-        if (annualAmount <= threshold) {
+        if (annualAmount <= perTxThreshold) {
           taxAmount = 0;
           taxableAmount = 0;
-          notes.push('Giá trị ≤ 10 triệu - không chịu thuế');
+          notes.push(`Giá trị ≤ ${perTxThresholdText} - không chịu thuế`);
         } else {
-          taxableAmount = annualAmount - threshold;
+          taxableAmount = annualAmount - perTxThreshold;
           taxAmount = Math.round(taxableAmount * 0.10);
-          notes.push('Thuế 10% trên phần vượt 10 triệu');
+          notes.push(`Thuế 10% trên phần vượt ${perTxThresholdText}`);
         }
       }
       appliedRate = source.isFromFamily ? 0 : 0.10;
@@ -552,7 +559,7 @@ function generateOptimizationTips(input: MultiSourceInput, results: SourceTaxRes
   const rentalResults = results.filter(r => r.source.type === 'rental');
   const rentalIncome = rentalResults.reduce((sum, r) => sum + r.annualAmount, 0);
 
-  if (rentalIncome > 500_000_000) {
+  if (rentalIncome > 1_000_000_000) {
     tips.push('Thu nhập cho thuê cao - cân nhắc đăng ký hộ kinh doanh để được khấu trừ chi phí.');
   }
 

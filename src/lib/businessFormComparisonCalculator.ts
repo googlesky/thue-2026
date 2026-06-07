@@ -9,7 +9,7 @@
  * - Thông tư 100/2021/TT-BTC - Thuế với cá nhân kinh doanh
  */
 
-import { calculateNewTax, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, RegionType } from './taxCalculator';
+import { calculateNewTax, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, RegionType, getMaxSocialInsuranceSalary } from './taxCalculator';
 import { calculateHouseholdBusinessTax, BusinessCategory, BUSINESS_CATEGORY_LABELS } from './householdBusinessTaxCalculator';
 
 /**
@@ -142,7 +142,7 @@ function calculateEmployeeTax(
   const annualInsuranceEmployee = monthlyInsuranceEmployee * 12;
 
   // Bảo hiểm công ty đóng (ước tính 21.5% lương đóng BH)
-  const insurableSalary = Math.min(monthlyGross, 46_800_000); // Trần BHXH 2026
+  const insurableSalary = Math.min(monthlyGross, getMaxSocialInsuranceSalary()); // Trần BHXH (date-aware: 46.8M, 50.6M từ 01/7/2026)
   const employerInsuranceRate = 0.215; // 17.5% BHXH + 3% BHYT + 1% BHTN
   const annualInsuranceEmployer = insurableSalary * employerInsuranceRate * 12;
 
@@ -227,9 +227,9 @@ function calculateFreelancerTax(
 }
 
 /**
- * Ngưỡng miễn thuế hộ kinh doanh năm 2026 (500 triệu)
+ * Ngưỡng miễn thuế hộ kinh doanh năm 2026 (Nghị định 141/2026/NĐ-CP: 1 tỷ)
  */
-const HOUSEHOLD_EXEMPT_THRESHOLD_2026 = 500_000_000;
+const HOUSEHOLD_EXEMPT_THRESHOLD_2026 = 1_000_000_000;
 
 /**
  * Tính thuế cho Hộ kinh doanh
@@ -241,7 +241,7 @@ function calculateHouseholdTax(
 ): HouseholdBusinessResult {
   const selfInsurance = hasSelfInsurance ? SELF_INSURANCE_ANNUAL : 0;
 
-  // Kiểm tra miễn thuế (dưới ngưỡng 500 triệu năm 2026)
+  // Kiểm tra miễn thuế (dưới ngưỡng 1 tỷ năm 2026 - Nghị định 141/2026)
   const isExempt = annualRevenue <= HOUSEHOLD_EXEMPT_THRESHOLD_2026;
 
   if (isExempt) {
@@ -255,7 +255,7 @@ function calculateHouseholdTax(
       isExempt: true,
       prosCons: {
         pros: [
-          'Miễn thuế hoàn toàn (doanh thu ≤ 500 triệu/năm)',
+          'Miễn thuế hoàn toàn (doanh thu ≤ 1 tỷ/năm)',
           'Thủ tục đơn giản',
           'Không cần kế toán phức tạp',
           'Phù hợp kinh doanh nhỏ lẻ',
@@ -303,7 +303,7 @@ function calculateHouseholdTax(
     isExempt: false,
     prosCons: {
       pros: [
-        'Thuế suất thấp (chỉ đóng trên phần vượt ngưỡng 500tr)',
+        'Thuế suất thấp (chỉ đóng trên phần vượt ngưỡng 1 tỷ)',
         'Được xuất hóa đơn, ký hợp đồng chính thức',
         'Tự chủ kinh doanh hoàn toàn',
         'Có thể thuê nhân viên',

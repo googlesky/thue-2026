@@ -604,7 +604,7 @@ export default function ContentCreatorTax({
               <li>Luật Thuế TNCN 2025 (có hiệu lực từ 1/7/2026)</li>
               <li>Thông tư 111/2013/TT-BTC về thuế TNCN</li>
               <li>Nghị định 125/2020/NĐ-CP về xử phạt vi phạm thuế</li>
-              <li>Ngưỡng miễn thuế: 500 triệu/năm (từ 2026), 100 triệu/năm (2025)</li>
+              <li>Ngưỡng miễn thuế: 1 tỷ/năm (từ 2026 - NĐ 141/2026), 100 triệu/năm (2025)</li>
             </ul>
           </div>
         </>

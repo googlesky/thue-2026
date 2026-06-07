@@ -210,7 +210,7 @@ export function HouseholdBusinessTaxCalculator() {
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="py-3 px-3 font-medium">≤ 500 triệu</td>
+                  <td className="py-3 px-3 font-medium">≤ 1 tỷ</td>
                   <td className="text-center py-3 px-3">
                     <span className="px-2 py-1 rounded bg-green-50 text-green-700 font-medium">0%</span>
                   </td>
@@ -285,7 +285,7 @@ export function HouseholdBusinessTaxCalculator() {
             </table>
             {year === 2026 && (
               <p className="mt-2 text-xs text-gray-500">
-                Lưu ý năm 2026: TNCN tính trên (Doanh thu - 500 triệu), GTGT tính trên toàn bộ doanh thu.
+                Lưu ý năm 2026: TNCN tính trên (Doanh thu - 1 tỷ), GTGT tính trên toàn bộ doanh thu.
               </p>
             )}
           </div>
@@ -464,7 +464,7 @@ export function HouseholdBusinessTaxCalculator() {
                         htmlFor={`threshold-${business.id}`}
                         className="text-sm text-gray-700"
                       >
-                        Áp dụng trừ ngưỡng 500tr
+                        Áp dụng trừ ngưỡng 1 tỷ
                       </label>
                     </div>
                   )}
@@ -485,10 +485,10 @@ export function HouseholdBusinessTaxCalculator() {
             <div className="flex items-start gap-2">
               <span className="text-yellow-600">⚠️</span>
               <div>
-                <strong className="text-yellow-800">Phân bổ ngưỡng 500 triệu:</strong>
+                <strong className="text-yellow-800">Phân bổ ngưỡng 1 tỷ:</strong>
                 <p className="text-yellow-700 mt-1">
-                  Theo Luật 109/2025/QH15, bạn có thể chọn hoạt động nào được trừ ngưỡng 500 triệu.
-                  Tổng mức trừ không quá 500 triệu cho tất cả hoạt động.
+                  Theo Luật 109/2025/QH15, bạn có thể chọn hoạt động nào được trừ ngưỡng 1 tỷ.
+                  Tổng mức trừ không quá 1 tỷ cho tất cả hoạt động.
                 </p>
                 <p className="text-yellow-600 mt-1">
                   Ngưỡng đã sử dụng: {formatCurrency(result.summary.thresholdUsed)} / {formatCurrency(threshold)}
@@ -801,7 +801,7 @@ export function HouseholdBusinessTaxCalculator() {
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Phương pháp khoán:</strong> TNCN = (Doanh thu - 500tr) × Thuế suất ngành. Không cần chứng từ chi phí.
+              <strong>Phương pháp khoán:</strong> TNCN = (Doanh thu - 1 tỷ) × Thuế suất ngành. Không cần chứng từ chi phí.
             </span>
           </li>
           <li className="flex items-start gap-2">
@@ -813,13 +813,13 @@ export function HouseholdBusinessTaxCalculator() {
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Thuế GTGT:</strong> Tính trên toàn bộ doanh thu khi vượt ngưỡng (không được trừ 500tr).
+              <strong>Thuế GTGT:</strong> Tính trên toàn bộ doanh thu khi vượt ngưỡng (không được trừ 1 tỷ).
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Nhiều hoạt động:</strong> Có thể chọn hoạt động nào được trừ ngưỡng 500tr (tổng không quá 500tr).
+              <strong>Nhiều hoạt động:</strong> Có thể chọn hoạt động nào được trừ ngưỡng 1 tỷ (tổng không quá 1 tỷ).
             </span>
           </li>
           <li className="flex items-start gap-2">
