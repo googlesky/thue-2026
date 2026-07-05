@@ -12,20 +12,26 @@ const config: Config = {
       // COLOR PALETTE
       // ============================================
       colors: {
-        // Primary - Blue (#3b82f6 base)
+        // Primary - Mực navy (#223349 base): màu "văn bản" của hệ giao diện bảng lương
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#F3F5F8',
+          100: '#E5EAF0',
+          200: '#C6CFDB',
+          300: '#93A2B7',
+          400: '#5D7089',
+          500: '#3A4C68',
+          600: '#223349',
+          700: '#182230',
+          800: '#111A26',
+          900: '#0B121C',
+          950: '#070D14',
         },
+        // Nền giấy + kẻ hairline ấm của hệ "bảng lương"
+        paper: '#FBFBF9',
+        line: '#E7E5DE',
+        // Đỏ con dấu (mốc hiệu lực, giảm) & xanh tăng (chuẩn VN: xanh = tăng)
+        seal: '#B42318',
+        rise: '#067647',
         // Secondary - Violet (#8b5cf6 base)
         secondary: {
           50: '#f5f3ff',
@@ -103,31 +109,22 @@ const config: Config = {
       // ============================================
       fontFamily: {
         sans: [
-          'Inter',
+          'var(--font-sans)',
+          'Be Vietnam Pro',
           'system-ui',
           '-apple-system',
-          'BlinkMacSystemFont',
           'Segoe UI',
           'Roboto',
-          'Helvetica Neue',
           'Arial',
-          'Noto Sans',
           'sans-serif',
-          'Apple Color Emoji',
-          'Segoe UI Emoji',
-          'Segoe UI Symbol',
-          'Noto Color Emoji',
         ],
         mono: [
-          'JetBrains Mono',
-          'Fira Code',
+          'var(--font-mono)',
+          'IBM Plex Mono',
           'ui-monospace',
           'SFMono-Regular',
           'Menlo',
-          'Monaco',
           'Consolas',
-          'Liberation Mono',
-          'Courier New',
           'monospace',
         ],
       },
@@ -191,17 +188,17 @@ const config: Config = {
         'inner': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
         'inner-lg': 'inset 0 4px 8px 0 rgb(0 0 0 / 0.08)',
 
-        // Glow effects
-        'glow-sm': '0 0 10px -3px rgb(59 130 246 / 0.3)',
-        'glow': '0 0 20px -5px rgb(59 130 246 / 0.4)',
-        'glow-lg': '0 0 30px -5px rgb(59 130 246 / 0.5)',
-        'glow-xl': '0 0 50px -10px rgb(59 130 246 / 0.6)',
+        // Glow effects (mực navy, rất kín đáo)
+        'glow-sm': '0 0 10px -3px rgb(34 51 73 / 0.25)',
+        'glow': '0 0 20px -5px rgb(34 51 73 / 0.3)',
+        'glow-lg': '0 0 30px -5px rgb(34 51 73 / 0.35)',
+        'glow-xl': '0 0 50px -10px rgb(34 51 73 / 0.4)',
 
-        // Colored shadows for primary
-        'primary-sm': '0 1px 3px 0 rgb(59 130 246 / 0.2), 0 1px 2px -1px rgb(59 130 246 / 0.2)',
-        'primary': '0 4px 6px -1px rgb(59 130 246 / 0.25), 0 2px 4px -2px rgb(59 130 246 / 0.2)',
-        'primary-lg': '0 10px 15px -3px rgb(59 130 246 / 0.3), 0 4px 6px -4px rgb(59 130 246 / 0.25)',
-        'primary-xl': '0 20px 25px -5px rgb(59 130 246 / 0.3), 0 8px 10px -6px rgb(59 130 246 / 0.25)',
+        // Colored shadows for primary (mực navy)
+        'primary-sm': '0 1px 3px 0 rgb(34 51 73 / 0.15), 0 1px 2px -1px rgb(34 51 73 / 0.15)',
+        'primary': '0 4px 6px -1px rgb(34 51 73 / 0.18), 0 2px 4px -2px rgb(34 51 73 / 0.15)',
+        'primary-lg': '0 10px 15px -3px rgb(34 51 73 / 0.2), 0 4px 6px -4px rgb(34 51 73 / 0.18)',
+        'primary-xl': '0 20px 25px -5px rgb(34 51 73 / 0.2), 0 8px 10px -6px rgb(34 51 73 / 0.18)',
 
         // Colored shadows for accent
         'accent-sm': '0 1px 3px 0 rgb(6 182 212 / 0.2), 0 1px 2px -1px rgb(6 182 212 / 0.2)',
@@ -578,7 +575,7 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'shimmer': 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-        'gradient-primary': 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        'gradient-primary': 'linear-gradient(135deg, #223349 0%, #182230 100%)',
         'gradient-secondary': 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
         'gradient-accent': 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
         'gradient-success': 'linear-gradient(135deg, #10b981 0%, #059669 100%)',

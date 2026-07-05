@@ -3,24 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 249, 250, 251;
-  --background-end-rgb: 255, 255, 255;
+  /* Hệ "bảng lương": giấy - mực - con dấu - kẻ hairline */
+  --paper: #fbfbf9;
+  --ink: #182230;
+  --ink-strong: #223349;
+  --ink-soft: #5d6b7e;
+  --seal: #b42318;
+  --rise: #067647;
+  --line: #e7e5de;
 
   /* Animation timings */
   --transition-fast: 150ms;
   --transition-normal: 300ms;
   --transition-slow: 500ms;
-
-  /* Light mode specific */
-  --card-bg: 255, 255, 255;
-  --card-border: 243, 244, 246;
-  --text-primary: 17, 24, 39;
-  --text-secondary: 75, 85, 99;
-  --text-muted: 156, 163, 175;
-  --input-bg: 255, 255, 255;
-  --input-border: 209, 213, 219;
-  --hover-bg: 249, 250, 251;
 }
 
 
@@ -38,7 +33,7 @@
 
 /* Enhanced focus indicators for accessibility (WCAG 2.4.7) */
 :focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ink-strong);
   outline-offset: 2px;
 }
 
@@ -52,52 +47,57 @@ button:focus-visible,
 a:focus-visible,
 [role="button"]:focus-visible,
 [role="menuitem"]:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ink-strong);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 4px rgba(34, 51, 73, 0.15);
 }
 
 /* Enhanced focus for form inputs */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ink-strong);
   outline-offset: 2px;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  border-color: var(--ink-strong);
+  box-shadow: 0 0 0 4px rgba(34, 51, 73, 0.15);
 }
 
 /* Checkbox and radio specific focus */
 input[type="checkbox"]:focus-visible,
 input[type="radio"]:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ink-strong);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 4px rgba(34, 51, 73, 0.15);
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--ink);
+  background: var(--paper);
   min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @layer utilities {
   .input-field {
-    @apply w-full max-w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors box-border;
+    @apply w-full max-w-full px-4 py-3 bg-white border border-line rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors box-border;
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100;
+    @apply bg-white rounded-[10px] shadow-xs p-6 border border-line;
   }
 
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors;
+  }
+
+  /* Chữ số liệu: mono + tabular cho mọi số tiền */
+  .font-data {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Eyebrow label: nhãn mục theo kiểu biểu mẫu */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-primary-400;
   }
 
   /* Touch-friendly interactive element sizes (WCAG 2.5.5 Target Size) */
@@ -114,6 +114,48 @@ body {
   .checkbox-touch {
     @apply w-5 h-5 cursor-pointer;
   }
+}
+
+/* ===== Chữ ký hệ "bảng lương" ===== */
+
+/* Hàng phiếu lương: nhãn ..... số tiền (leader dots như phiếu lương in) */
+.leader-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.leader-row .leader-label {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.leader-row .leader-dots {
+  flex: 1 1 auto;
+  min-width: 12px;
+  border-bottom: 2px dotted var(--line);
+  transform: translateY(-4px);
+}
+
+/* Con dấu ngày hiệu lực: viền đỏ, chữ mono, xoay nhẹ như dấu mộc */
+.stamp {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1.5px solid var(--seal);
+  border-radius: 4px;
+  color: var(--seal);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+
+.stamp-flat {
+  transform: none;
 }
 
 /* Dropdown animation */
@@ -189,35 +231,6 @@ body {
   box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.12);
 }
 
-/* ===== Scroll Reveal ===== */
-
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
-}
-
-.reveal.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.reveal-stagger > * {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-}
-
-.reveal-stagger.revealed > *:nth-child(1) { transition-delay: 0ms; }
-.reveal-stagger.revealed > *:nth-child(2) { transition-delay: 80ms; }
-.reveal-stagger.revealed > *:nth-child(3) { transition-delay: 160ms; }
-.reveal-stagger.revealed > *:nth-child(4) { transition-delay: 240ms; }
-
-.reveal-stagger.revealed > * {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 /* ===== Modern Scrollbar ===== */
 
 .scrollbar-modern::-webkit-scrollbar {
@@ -231,12 +244,12 @@ body {
 }
 
 .scrollbar-modern::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(34, 51, 73, 0.25);
   border-radius: 4px;
 }
 
 .scrollbar-modern::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(34, 51, 73, 0.45);
 }
 
 /* Number counter animation support */
@@ -251,7 +264,7 @@ html {
 
 /* Selection color */
 ::selection {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(34, 51, 73, 0.18);
   color: inherit;
 }
 

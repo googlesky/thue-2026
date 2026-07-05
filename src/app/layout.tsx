@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Be_Vietnam_Pro, IBM_Plex_Mono } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { ThemeProvider, themeScript } from '@/contexts/ThemeContext';
@@ -7,11 +7,22 @@ import { PWAProvider } from '@/components/ui';
 
 const GA_MEASUREMENT_ID = 'G-E2MGYR8HY4';
 
-const inter = Inter({
+// Chữ chính: Be Vietnam Pro - thiết kế cho tiếng Việt, dấu thanh chuẩn
+const beVietnam = Be_Vietnam_Pro({
   subsets: ['latin', 'vietnamese'],
-  display: 'optional', // Prevent FOUT - use fallback if font not cached
-  adjustFontFallback: true, // Reduce CLS by adjusting fallback font metrics
-  preload: true, // Preload font files
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-sans',
+  preload: true,
+});
+
+// Chữ số liệu: IBM Plex Mono - số tiền, số hiệu văn bản (chất sổ kế toán)
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-mono',
+  preload: false,
 });
 
 const baseUrl = 'https://thue.1devops.io';
@@ -302,7 +313,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${beVietnam.variable} ${plexMono.variable} font-sans`}>
         <ThemeProvider>
           <PWAProvider>
             {/* Skip to main content link for keyboard users */}
