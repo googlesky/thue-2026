@@ -1,1123 +1,313 @@
-'use client';
-
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useScrollReveal } from '@/hooks';
+import HeroCompare from '@/components/HeroCompare';
+import { TAB_GROUPS } from '@/lib/tabCatalog';
 
-// Type definitions
-interface FeatureItem {
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  href: string;
-  color: string;
-  bgColor: string;
-  highlight?: boolean;
-  badge?: string;
-}
+/**
+ * Trang chủ - "Luật đổi. Lương bạn đổi bao nhiêu?"
+ *
+ * Việc duy nhất của trang: cho người lao động thấy ngay luật nào vừa/sắp đổi
+ * và thực nhận của họ thay đổi thế nào - trước khi mời dùng công cụ chi tiết.
+ */
 
-interface FeatureCategory {
-  category: string;
-  description: string;
-  items: FeatureItem[];
-}
-
-// Animated counter component
-function AnimatedCounter({
-  end,
-  duration = 2000,
-  suffix = '',
-  prefix = '',
-  delay = 0,
-}: {
-  end: number;
-  duration?: number;
-  suffix?: string;
-  prefix?: string;
-  delay?: number;
-}) {
-  const [count, setCount] = useState(0);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Handle SSR - only run on client
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const element = ref.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasStarted) {
-          setHasStarted(true);
-        }
-      },
-      { threshold: 0.3, rootMargin: '50px' }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.unobserve(element);
-      observer.disconnect();
-    };
-  }, [isMounted, hasStarted]);
-
-  useEffect(() => {
-    if (!hasStarted || !isMounted) return;
-
-    let startTime: number | null = null;
-    let animationId: number;
-    let delayTimeout: ReturnType<typeof setTimeout>;
-    const startValue = 0;
-
-    const animate = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const newCount = Math.floor(easeOutQuart * (end - startValue) + startValue);
-      setCount(newCount);
-
-      if (progress < 1) {
-        animationId = requestAnimationFrame(animate);
-      }
-    };
-
-    if (delay > 0) {
-      delayTimeout = setTimeout(() => {
-        animationId = requestAnimationFrame(animate);
-      }, delay);
-    } else {
-      animationId = requestAnimationFrame(animate);
-    }
-
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-      if (delayTimeout) clearTimeout(delayTimeout);
-    };
-  }, [hasStarted, isMounted, end, duration, delay]);
-
-  // Show final value during SSR and before animation starts
-  if (!isMounted) {
-    return (
-      <div className="counter">
-        {prefix}
-        {end}
-        {suffix}
-      </div>
-    );
-  }
-
-  return (
-    <div ref={ref} className="counter">
-      {prefix}
-      {count}
-      {suffix}
-    </div>
-  );
-}
-
-// Feature categories with enhanced styling
-const features: FeatureCategory[] = [
+// Sổ thay đổi luật: nội dung thật, đã đối chiếu văn bản (xem chú nguồn cuối trang)
+const LAW_CHANGES: {
+  effective: string;
+  stampLabel: string;
+  status: string;
+  items: { label: string; before: string; after: string; affects: string; href?: string }[];
+}[] = [
   {
-    category: 'Tính toán',
-    description: 'Công cụ tính thuế chính xác theo luật mới nhất',
+    effective: '01/01/2026',
+    stampLabel: 'Từ 01/01/2026',
+    status: 'Đang áp dụng từ đầu năm',
     items: [
       {
-        name: 'Tính thuế TNCN',
-        description:
-          'So sánh thuế thu nhập cá nhân giữa luật cũ (7 bậc) và luật mới 2026 (5 bậc)',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#calculator',
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50 group-hover:bg-blue-100',
-        highlight: true,
-      },
-      {
-        name: 'GROSS - NET',
-        description:
-          'Quy đổi nhanh giữa lương GROSS và lương NET thực nhận',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#gross-net',
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-50 group-hover:bg-emerald-100',
-      },
-      {
-        name: 'Tính lương tăng ca',
-        description: 'Tính tiền lương làm thêm giờ theo quy định pháp luật',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#overtime',
-        color: 'text-orange-600',
-        bgColor: 'bg-orange-50 group-hover:bg-orange-100',
-      },
-      {
-        name: 'Quyết toán thuế năm',
-        description:
-          'Tính thuế phải nộp hoặc hoàn lại khi quyết toán cuối năm',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#annual-settlement',
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50 group-hover:bg-purple-100',
-      },
-      {
-        name: 'Thuế thưởng Tết',
-        description:
-          'Tính thuế thưởng Tết, lương tháng 13 và các khoản thưởng khác',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#bonus-calculator',
-        color: 'text-red-600',
-        bgColor: 'bg-red-50 group-hover:bg-red-100',
-      },
-      {
-        name: 'Thuế ESOP/Cổ phiếu',
-        description:
-          'Tính thuế khi nhận cổ phiếu ưu đãi từ công ty (ESOP)',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#esop-calculator',
-        color: 'text-indigo-600',
-        bgColor: 'bg-indigo-50 group-hover:bg-indigo-100',
-      },
-      {
-        name: 'Lương hưu',
-        description: 'Ước tính lương hưu dựa trên thời gian đóng BHXH',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#pension',
-        color: 'text-cyan-600',
-        bgColor: 'bg-cyan-50 group-hover:bg-cyan-100',
-      },
-    ],
-  },
-  {
-    category: 'So sánh',
-    description: 'Phân tích và so sánh thu nhập giữa các phương án',
-    items: [
-      {
-        name: 'Chi phí nhà tuyển dụng',
-        description:
-          'Tính tổng chi phí mà doanh nghiệp phải trả cho một nhân viên',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#employer-cost',
-        color: 'text-slate-600',
-        bgColor: 'bg-slate-50 group-hover:bg-slate-100',
-      },
-      {
-        name: 'Freelancer vs Hợp đồng',
-        description:
-          'So sánh thu nhập giữa làm việc tự do và ký hợp đồng lao động',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#freelancer',
-        color: 'text-teal-600',
-        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
-      },
-      {
-        name: 'So sánh offer lương',
-        description:
-          'So sánh thu nhập thực tế giữa nhiều công ty và offers',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#salary-compare',
-        color: 'text-pink-600',
-        bgColor: 'bg-pink-50 group-hover:bg-pink-100',
-      },
-      {
-        name: 'So sánh theo năm',
-        description: 'Xem biến động thuế và thu nhập qua các năm',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#yearly',
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-50 group-hover:bg-amber-100',
-      },
-    ],
-  },
-  {
-    category: 'Tham khảo',
-    description: 'Tra cứu thông tin và biểu thuế chi tiết',
-    items: [
-      {
-        name: 'Biểu thuế lũy tiến',
-        description: 'Tra cứu bảng thuế suất theo từng bậc thu nhập',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-            />
-          </svg>
-        ),
+        label: 'Biểu thuế lũy tiến',
+        before: '7 bậc, 35% từ 80tr',
+        after: '5 bậc, 35% từ 100tr',
+        affects: 'Mọi người làm công ăn lương',
         href: '/tinh-thue#table',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-50 group-hover:bg-gray-100',
       },
       {
-        name: 'Chi tiết bảo hiểm',
-        description:
-          'Xem chi tiết các khoản BHXH, BHYT, BHTN phải đóng',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-            />
-          </svg>
-        ),
+        label: 'Giảm trừ bản thân',
+        before: '11.000.000 đ/tháng',
+        after: '15.500.000 đ/tháng',
+        affects: 'Mọi người nộp thuế TNCN',
+      },
+      {
+        label: 'Giảm trừ người phụ thuộc',
+        before: '4.400.000 đ/người',
+        after: '6.200.000 đ/người',
+        affects: 'Người nuôi con, cha mẹ già',
+      },
+      {
+        label: 'Lương tối thiểu vùng I',
+        before: '4.960.000 đ',
+        after: '5.310.000 đ',
+        affects: 'Lao động lương thấp; trần BHTN tăng theo',
         href: '/tinh-thue#insurance',
-        color: 'text-green-600',
-        bgColor: 'bg-green-50 group-hover:bg-green-100',
       },
       {
-        name: 'Thu nhập khác',
-        description:
-          'Tính thuế cho thu nhập ngoài lương (đầu tư, cho thuê...)',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#other-income',
-        color: 'text-violet-600',
-        bgColor: 'bg-violet-50 group-hover:bg-violet-100',
-      },
-      {
-        name: 'Lịch sử Luật thuế',
-        description: 'Xem các mốc thay đổi của Luật thuế TNCN qua các năm',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#tax-history',
-        color: 'text-stone-600',
-        bgColor: 'bg-stone-50 group-hover:bg-stone-100',
+        label: 'Hộ, cá nhân kinh doanh',
+        before: 'Miễn thuế đến 500tr/năm',
+        after: 'Miễn thuế đến 1 tỷ/năm',
+        affects: 'Hộ kinh doanh, bán hàng online, cho thuê nhà',
+        href: '/tinh-thue#household-business',
       },
     ],
   },
   {
-    category: 'Công cụ mới',
-    description: 'Tính năng mới được cập nhật gần đây',
+    effective: '01/07/2026',
+    stampLabel: 'Từ 01/07/2026',
+    status: 'Vừa có hiệu lực',
     items: [
       {
-        name: 'Mẹo tối ưu thuế',
-        description:
-          'Gợi ý cách giảm thuế hợp pháp dựa trên thu nhập của bạn',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#calculator',
-        color: 'text-yellow-600',
-        bgColor: 'bg-yellow-50 group-hover:bg-yellow-100',
-        badge: 'Mới',
+        label: 'Trần đóng BHXH, BHYT',
+        before: '46,8tr (lương cơ sở 2,34tr)',
+        after: '50,6tr (lương cơ sở 2,53tr)',
+        affects: 'Ai lương trên 46,8tr/tháng: đóng thêm, thực nhận giảm',
+        href: '/tinh-thue#insurance',
       },
       {
-        name: 'Phiếu lương',
-        description:
-          'Tạo phiếu lương chi tiết với đầy đủ các khoản thu và khấu trừ',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#salary-slip',
-        color: 'text-rose-600',
-        bgColor: 'bg-rose-50 group-hover:bg-rose-100',
-        badge: 'Mới',
+        label: 'Ngưỡng thuế theo từng lần nhận',
+        before: 'Miễn phần dưới 10tr',
+        after: 'Miễn phần dưới 20tr',
+        affects: 'Trúng thưởng, thừa kế, quà tặng, bản quyền',
+        href: '/tinh-thue#other-income',
       },
       {
-        name: 'Lịch thuế',
-        description:
-          'Theo dõi các mốc thời gian nộp thuế quan trọng trong năm',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#tax-calendar',
-        color: 'text-sky-600',
-        bgColor: 'bg-sky-50 group-hover:bg-sky-100',
-        badge: 'Mới',
+        label: 'Vàng miếng, tài sản số',
+        before: 'Chưa thu thuế chuyển nhượng',
+        after: '0,1% giá trị mỗi lần bán',
+        affects: 'Người bán vàng miếng, crypto',
+        href: '/tinh-thue#gold-tax',
       },
       {
-        name: 'Xuất PDF',
-        description:
-          'Xuất báo cáo tính thuế chi tiết ra file PDF để lưu trữ',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#calculator',
-        color: 'text-fuchsia-600',
-        bgColor: 'bg-fuchsia-50 group-hover:bg-fuchsia-100',
-        badge: 'Mới',
-      },
-      {
-        name: 'Thuế người nước ngoài',
-        description:
-          'Tính thuế TNCN cho người nước ngoài (Expatriate Tax), quy chế cư trú 183 ngày, hiệp định tránh đánh thuế hai lần',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#foreigner-tax',
-        color: 'text-teal-600',
-        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
-        badge: 'Mới',
-      },
-      {
-        name: 'Thuế chứng khoán',
-        description:
-          'Tính thuế chuyển nhượng CK niêm yết (0.1%), cổ tức (5%), lãi trái phiếu, quỹ đầu tư',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#securities',
-        color: 'text-indigo-600',
-        bgColor: 'bg-indigo-50 group-hover:bg-indigo-100',
-        badge: 'Mới',
-      },
-      {
-        name: 'Thuế cho thuê nhà',
-        description:
-          'Tính thuế TNCN từ cho thuê bất động sản: 5% PIT + 5% VAT (nếu > 100 triệu/năm), so sánh chi phí thực tế và khoán',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#rental',
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-50 group-hover:bg-amber-100',
-        badge: 'Mới',
-      },
-      {
-        name: 'Thuế hộ kinh doanh',
-        description:
-          'Tính thuế hộ kinh doanh cá thể, ngưỡng doanh thu 500 triệu/năm (từ 2026), thuế suất 0.5% - 5% theo ngành nghề',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#household-business',
-        color: 'text-orange-600',
-        bgColor: 'bg-orange-50 group-hover:bg-orange-100',
-        badge: '2026',
-      },
-      {
-        name: 'Thuế chuyển nhượng BĐS',
-        description:
-          'Tính thuế chuyển nhượng bất động sản: 2% TNCN + 0.5% lệ phí trước bạ, kiểm tra miễn thuế gia đình',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#real-estate',
-        color: 'text-teal-600',
-        bgColor: 'bg-teal-50 group-hover:bg-teal-100',
-        badge: 'Mới',
-      },
-      {
-        name: 'Kiểm tra miễn thuế',
-        description:
-          'Kiểm tra 21 khoản thu nhập được miễn thuế TNCN, bao gồm 5 khoản mới theo Luật sửa đổi 2025',
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-        href: '/tinh-thue#exemption-checker',
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50 group-hover:bg-purple-100',
-        badge: '2026',
+        label: 'Tên miền .vn, tín chỉ carbon, biển số đấu giá',
+        before: 'Chưa quy định riêng',
+        after: '5% phần vượt 20tr mỗi lần',
+        affects: 'Người chuyển nhượng các tài sản này',
+        href: '/tinh-thue#special-income',
       },
     ],
   },
 ];
 
-// Feature category block component with scroll-reveal
-function FeatureCategoryBlock({
-  category,
-  categoryIndex,
-  expandedCategories,
-  setExpandedCategories,
-}: {
-  category: FeatureCategory;
-  categoryIndex: number;
-  expandedCategories: Record<number, boolean>;
-  setExpandedCategories: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
-}) {
-  const { ref, isVisible } = useScrollReveal();
-  const COLLAPSE_THRESHOLD = 8;
-  const shouldCollapse = category.items.length > COLLAPSE_THRESHOLD;
-  const isExpanded = expandedCategories[categoryIndex];
-  const visibleItems = shouldCollapse && !isExpanded
-    ? category.items.slice(0, 4)
-    : category.items;
-  const hiddenCount = category.items.length - 4;
-
-  return (
-    <div ref={ref} className={`mb-16 last:mb-0 reveal ${isVisible ? 'revealed' : ''}`}>
-      {/* Category Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-1.5 h-8 bg-blue-600 rounded-full" />
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              {category.category}
-            </h3>
-            <p className="text-sm text-gray-500">{category.description}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Feature Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {visibleItems.map((feature) => (
-          <Link
-            key={feature.name}
-            href={feature.href}
-            className={`group relative bg-white rounded-2xl p-5 sm:p-6 transition-shadow duration-300 hover:shadow-md border border-gray-100 hover:border-gray-200 h-full flex flex-col ${
-              feature.highlight
-                ? 'ring-2 ring-blue-500/20 shadow-lg shadow-blue-500/5'
-                : ''
-            }`}
-          >
-            {feature.badge && (
-              <span className="absolute top-4 right-4 text-xs font-semibold bg-gradient-to-r from-orange-500 to-rose-500 text-white px-2.5 py-1 rounded-full shadow-sm">
-                {feature.badge}
-              </span>
-            )}
-            <div
-              className={`w-12 h-12 rounded-xl ${feature.bgColor} ${feature.color} flex items-center justify-center mb-4 transition-colors duration-300`}
-            >
-              {feature.icon}
-            </div>
-            <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-              {feature.name}
-            </h4>
-            <p className="text-sm text-gray-500 line-clamp-2 sm:line-clamp-3 leading-relaxed flex-grow">
-              {feature.description}
-            </p>
-            <div className="flex items-center gap-1.5 text-blue-600 text-sm font-medium opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-1 mt-auto pt-4">
-              <span>Sử dụng ngay</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {shouldCollapse && (
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={() => setExpandedCategories(prev => ({ ...prev, [categoryIndex]: !isExpanded }))}
-            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all duration-200"
-          >
-            {isExpanded ? (
-              <>
-                Thu gọn
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </>
-            ) : (
-              <>
-                Xem thêm {hiddenCount} công cụ khác
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </>
-            )}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'Vì sao thực nhận của tôi tăng từ 2026?',
+    a: 'Luật 109/2025/QH15 nâng giảm trừ bản thân từ 11 lên 15,5 triệu/tháng và giãn biểu thuế còn 5 bậc. Phần lớn người làm công ăn lương nộp thuế ít hơn, nên thực nhận tăng.',
+  },
+  {
+    q: 'Vì sao từ 01/07/2026 lương tôi lại giảm nhẹ?',
+    a: 'Lương cơ sở tăng lên 2,53 triệu kéo trần đóng BHXH, BHYT từ 46,8 lên 50,6 triệu. Nếu lương bạn trên 46,8 triệu/tháng, phần đóng bảo hiểm tăng nên thực nhận giảm một chút; đổi lại mức hưởng BHXH sau này tính trên nền cao hơn.',
+  },
+  {
+    q: 'Số liệu ở đây lấy từ đâu?',
+    a: 'Toàn bộ công thức bám theo văn bản gốc: Luật 109/2025/QH15, Nghị quyết 110/2025/UBTVQH15, Nghị định 293/2025/NĐ-CP, Nghị định 141/2026/NĐ-CP. Mỗi mốc hiệu lực được tính đúng theo ngày.',
+  },
+  {
+    q: 'Tôi cần khai gì để dùng công cụ?',
+    a: 'Không cần đăng ký hay nhập thông tin cá nhân. Mọi phép tính chạy ngay trên trình duyệt của bạn.',
+  },
+];
 
 export default function HomePage() {
-  const [mounted, setMounted] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({});
-  const statsReveal = useScrollReveal();
-  const featuresHeaderReveal = useScrollReveal();
-  const faqReveal = useScrollReveal();
-  const ctaReveal = useScrollReveal();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-paper">
       <Header variant="solid" showSpacer={true} />
 
-      {/* Hero Section - Clean white, bold typography */}
-      <section className="bg-white pt-12 sm:pt-20 lg:pt-28 pb-16 sm:pb-24 lg:pb-32">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          {/* Badge */}
-          <div
-            className={`inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-full text-sm text-emerald-700 font-medium mb-8 transition-opacity duration-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}
-          >
-            <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-            Cập nhật Luật Thuế TNCN mới nhất – có hiệu lực từ 1/1/2026
-          </div>
+      {/* ===== Hero: luận đề + phiếu so sánh ===== */}
+      <section className="border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+            <div className="max-w-xl">
+              <p className="font-data text-xs font-semibold tracking-[0.08em] text-seal uppercase mb-5">
+                Luật 109/2025/QH15 · NĐ 141/2026/NĐ-CP
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight text-primary-700 leading-[1.08] mb-6">
+                Luật đổi.
+                <br />
+                Lương bạn đổi bao nhiêu?
+              </h1>
+              <p className="text-lg text-primary-500 leading-relaxed mb-8">
+                Năm 2026 có hai đợt thay đổi chạm vào lương của người lao động:
+                thuế giảm từ 01/01 và trần bảo hiểm tăng từ 01/07. Nhập lương
+                của bạn để thấy chênh lệch thực nhận qua từng mốc — tính đúng
+                theo văn bản luật, không cần đăng ký.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/tinh-thue"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
+                >
+                  Tính chi tiết trường hợp của bạn
+                </Link>
+                <a
+                  href="#thay-doi"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 text-primary-600 font-semibold rounded-lg border border-line hover:border-primary-300 bg-white transition-colors"
+                >
+                  Xem điều gì thay đổi
+                </a>
+              </div>
 
-          {/* Main Title */}
-          <h1
-            className={`text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-gray-900 tracking-tight mb-6 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          >
-            Tính Thuế TNCN{' '}
-            <span className="text-blue-600">2026</span>
-          </h1>
+              {/* Ba con số cốt lõi của đợt đổi luật */}
+              <ul className="mt-10 pt-6 border-t border-line space-y-3 max-w-md">
+                {[
+                  { label: 'Giảm trừ bản thân', value: '11tr → 15,5tr đ/tháng' },
+                  { label: 'Biểu thuế lũy tiến', value: '7 bậc → 5 bậc' },
+                  { label: 'Trần BHXH · BHYT (từ 01/07)', value: '46,8tr → 50,6tr đ' },
+                ].map((row) => (
+                  <li key={row.label} className="leader-row">
+                    <span className="leader-label text-sm text-primary-500">{row.label}</span>
+                    <span className="leader-dots" aria-hidden />
+                    <span className="font-data text-sm font-semibold text-primary-700 whitespace-nowrap">
+                      {row.value}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Subtitle */}
-          <p
-            className={`text-xl sm:text-2xl text-gray-500 font-light mb-6 transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          >
-            Miễn phí &middot; Chính xác &middot; Dễ sử dụng
-          </p>
-
-          {/* Description */}
-          <p
-            className={`text-lg text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-          >
-            Công cụ tính thuế thu nhập cá nhân toàn diện nhất Việt Nam. So sánh luật cũ và luật mới 2026, quy đổi GROSS–NET, quyết toán thuế năm, và nhiều hơn nữa.
-          </p>
-
-          {/* CTA */}
-          <div className={`transition-all duration-700 delay-[400ms] ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <Link
-              href="/tinh-thue"
-              className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-colors duration-200 text-lg"
-            >
-              Bắt đầu tính thuế
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
+            <HeroCompare />
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            ref={statsReveal.ref}
-            className={`grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 reveal-stagger ${statsReveal.isVisible ? 'revealed' : ''}`}
-          >
-            {[
-              {
-                value: 20,
-                suffix: '+',
-                label: 'Công cụ tính thuế',
-                color: 'text-blue-600',
-                bgColor: 'bg-blue-50',
-                duration: 1500,
-                icon: (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                ),
-              },
-              {
-                value: 100,
-                suffix: '%',
-                label: 'Miễn phí',
-                color: 'text-emerald-600',
-                bgColor: 'bg-emerald-50',
-                duration: 1500,
-                icon: (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ),
-              },
-              {
-                value: 2026,
-                suffix: '',
-                label: 'Cập nhật luật mới',
-                color: 'text-purple-600',
-                bgColor: 'bg-purple-50',
-                duration: 500,
-                icon: (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                ),
-              },
-              {
-                prefix: '24/',
-                value: 7,
-                suffix: '',
-                label: 'Truy cập mọi lúc',
-                color: 'text-orange-600',
-                bgColor: 'bg-orange-50',
-                duration: 1500,
-                icon: (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ),
-              },
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className={`text-center p-4 sm:p-6 rounded-2xl ${stat.bgColor}`}
-              >
-                <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${stat.bgColor} ${stat.color} mb-2 opacity-60`}>
-                  {stat.icon}
+      {/* ===== Sổ thay đổi luật ===== */}
+      <section id="thay-doi" className="border-b border-line scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="max-w-2xl mb-10">
+            <p className="eyebrow mb-3">Sổ thay đổi</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary-700 mb-3">
+              Điều gì thay đổi trong 2026?
+            </h2>
+            <p className="text-primary-500">
+              Từng khoản mục, trước và sau, kèm nhóm người bị ảnh hưởng — đối
+              chiếu trực tiếp từ văn bản luật.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {LAW_CHANGES.map((milestone) => (
+              <div key={milestone.effective} className="card p-0 overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-line bg-primary-50/50">
+                  <span className="stamp">{milestone.stampLabel}</span>
+                  <span className="text-xs text-primary-400">{milestone.status}</span>
                 </div>
-                <div className={`text-3xl xs:text-4xl sm:text-5xl font-bold ${stat.color} mb-1 sm:mb-2`}>
-                  <AnimatedCounter
-                    end={stat.value}
-                    suffix={stat.suffix}
-                    prefix={stat.prefix || ''}
-                    duration={stat.duration}
-                    delay={index * 200}
-                  />
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600 font-medium">
-                  {stat.label}
-                </div>
+                <ul className="divide-y divide-line">
+                  {milestone.items.map((item) => (
+                    <li key={item.label} className="px-5 sm:px-6 py-4">
+                      <div className="flex items-baseline justify-between gap-x-3 gap-y-1 flex-wrap">
+                        <p className="font-semibold text-primary-700 text-sm">
+                          {item.href ? (
+                            <Link
+                              href={item.href}
+                              className="hover:underline underline-offset-4 decoration-primary-200"
+                            >
+                              {item.label}
+                            </Link>
+                          ) : (
+                            item.label
+                          )}
+                        </p>
+                        <p className="font-data text-[13px] text-primary-600">
+                          <span className="text-primary-400 line-through decoration-seal/40">
+                            {item.before}
+                          </span>{' '}
+                          <span aria-hidden>→</span>{' '}
+                          <span className="font-semibold">{item.after}</span>
+                        </p>
+                      </div>
+                      <p className="text-xs text-primary-400 mt-1.5">
+                        Ảnh hưởng: {item.affects}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 sm:py-28 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section Header */}
-          <div
-            ref={featuresHeaderReveal.ref}
-            className={`text-center mb-16 reveal ${featuresHeaderReveal.isVisible ? 'revealed' : ''}`}
-          >
-            <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full mb-4">
-              Tính năng
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Tất cả công cụ bạn cần
+      {/* ===== Danh mục công cụ ===== */}
+      <section id="cong-cu" className="border-b border-line scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="max-w-2xl mb-10">
+            <p className="eyebrow mb-3">Bộ công cụ</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary-700 mb-3">
+              Tính cho đúng trường hợp của bạn
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Từ tính thuế cơ bản đến các công cụ chuyên sâu cho doanh nghiệp và cá nhân
+            <p className="text-primary-500">
+              {TAB_GROUPS.reduce((n, g) => n + g.tabs.length, 0)} công cụ dùng
+              chung một nguồn công thức, chia theo việc bạn cần làm.
             </p>
           </div>
 
-          {/* Feature Categories */}
-          {features.map((category, categoryIndex) => (
-            <FeatureCategoryBlock
-              key={category.category}
-              category={category}
-              categoryIndex={categoryIndex}
-              expandedCategories={expandedCategories}
-              setExpandedCategories={setExpandedCategories}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            ref={faqReveal.ref}
-            className={`reveal ${faqReveal.isVisible ? 'revealed' : ''}`}
-          >
-            {/* Section Header */}
-            <div className="text-center mb-12">
-              <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full mb-4">
-                FAQ
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-                Câu hỏi thường gặp
-              </h2>
-              <p className="text-lg text-gray-600">
-                Giải đáp nhanh các thắc mắc phổ biến về thuế TNCN 2026
-              </p>
-            </div>
-
-            {/* FAQ Accordion */}
-            <div className="space-y-3">
-              {[
-                {
-                  q: 'Luật thuế TNCN mới 2026 có gì khác so với luật cũ?',
-                  a: 'Luật thuế mới giảm từ 7 bậc xuống 5 bậc, tăng giảm trừ gia cảnh lên 15,5 triệu/tháng cho bản thân và 6,2 triệu/tháng cho người phụ thuộc. Mức thuế suất cao nhất giảm từ 35% xuống 30%.',
-                },
-                {
-                  q: 'Khi nào luật thuế TNCN mới có hiệu lực?',
-                  a: 'Luật Thuế TNCN sửa đổi được Quốc hội thông qua ngày 10/12/2025, có hiệu lực từ 1/7/2026. Tuy nhiên, đối với thu nhập từ tiền lương, tiền công, biểu thuế mới (5 bậc, giảm trừ 15,5 triệu) áp dụng từ kỳ tính thuế năm 2026 (tức từ 1/1/2026) theo điều khoản chuyển tiếp.',
-                },
-                {
-                  q: 'GROSS và NET trong lương là gì?',
-                  a: 'GROSS là tổng lương trước khi trừ thuế và bảo hiểm. NET là lương thực nhận sau khi đã trừ thuế TNCN, BHXH, BHYT, BHTN. Công cụ này giúp quy đổi giữa GROSS và NET một cách chính xác.',
-                },
-                {
-                  q: 'Thuế ESOP và cổ phiếu được tính như thế nào?',
-                  a: 'Thuế ESOP được tính trên chênh lệch giữa giá thị trường và giá mua ưu đãi. Công cụ ESOP Calculator giúp tính thuế chính xác cho các trường hợp nhận cổ phiếu từ công ty.',
-                },
-                {
-                  q: 'Làm sao để tối ưu thuế thưởng Tết?',
-                  a: 'Sử dụng Bonus Calculator để tính thuế thưởng Tết, lương tháng 13. Công cụ này giúp so sánh các phương án tính thuế để tối ưu hóa số tiền thực nhận.',
-                },
-                {
-                  q: 'Người nước ngoài làm việc tại Việt Nam đóng thuế như thế nào?',
-                  a: 'Người nước ngoài có thể là cư trú hoặc không cư trú thuế tại Việt Nam. Nếu ở từ 183 ngày trở lên trong năm, áp dụng thuế suất lũy tiến từ 5-35%. Nếu dưới 183 ngày, áp dụng thuế suất cố định 20%. Việt Nam có hiệp định tránh đánh thuế hai lần với hơn 70 quốc gia.',
-                },
-              ].map((faq, index) => (
-                <details
-                  key={index}
-                  className="group bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden transition-all duration-200 hover:border-gray-200"
-                >
-                  <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-medium text-gray-900 select-none [&::-webkit-details-marker]:hidden">
-                    <span>{faq.q}</span>
-                    <svg
-                      className="w-5 h-5 text-gray-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </summary>
-                  <div className="px-6 pb-5 text-gray-600 leading-relaxed border-t border-gray-100 pt-4">
-                    {faq.a}
-                  </div>
-                </details>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-10">
+            {TAB_GROUPS.map((group) => (
+              <div key={group.id}>
+                <p className="eyebrow pb-3 border-b border-line mb-1">
+                  {group.label}
+                  <span className="font-data text-primary-300 ml-2">
+                    {String(group.tabs.length).padStart(2, '0')}
+                  </span>
+                </p>
+                <ul>
+                  {group.tabs.map((tab) => (
+                    <li key={tab.id}>
+                      <Link
+                        href={`/tinh-thue#${tab.id}`}
+                        className="group flex items-baseline justify-between gap-3 py-2.5 border-b border-line/60 hover:border-primary-300 transition-colors"
+                      >
+                        <span className="text-sm font-medium text-primary-600 group-hover:text-primary-700">
+                          {tab.label}
+                        </span>
+                        <span className="text-xs text-primary-300 text-right hidden sm:block">
+                          {tab.description}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section - Clean, minimal */}
-      <section className="py-20 sm:py-28 bg-gray-50">
-        <div
-          ref={ctaReveal.ref}
-          className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal ${ctaReveal.isVisible ? 'revealed' : ''}`}
-        >
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-            Sẵn sàng tính thuế?
-          </h2>
-          <p className="text-lg sm:text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
-            Chỉ cần nhập thu nhập, hệ thống sẽ tự động tính toán và so sánh thuế TNCN theo cả luật cũ và luật mới cho bạn.
-          </p>
-          <Link
-            href="/tinh-thue"
-            className="inline-flex items-center gap-3 px-10 py-5 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 transition-colors duration-200 text-lg"
-          >
-            Bắt đầu ngay – Miễn phí
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
+      {/* ===== Hỏi nhanh + nguồn ===== */}
+      <section className="border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div>
+              <p className="eyebrow mb-3">Hỏi nhanh</p>
+              <h2 className="text-3xl font-extrabold tracking-tight text-primary-700">
+                Người lao động hay hỏi
+              </h2>
+            </div>
+            <div className="lg:col-span-2">
+              <ul className="divide-y divide-line">
+                {FAQ.map((item) => (
+                  <li key={item.q} className="py-5 first:pt-0">
+                    <p className="font-semibold text-primary-700 mb-1.5">{item.q}</p>
+                    <p className="text-sm text-primary-500 leading-relaxed">{item.a}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-8 text-xs text-primary-400 leading-relaxed">
+                Căn cứ:{' '}
+                <span className="font-data">Luật 109/2025/QH15</span> ·{' '}
+                <span className="font-data">NQ 110/2025/UBTVQH15</span> ·{' '}
+                <span className="font-data">NĐ 293/2025/NĐ-CP</span> ·{' '}
+                <span className="font-data">NĐ 141/2026/NĐ-CP</span>. Công cụ
+                mang tính tham khảo, không thay thế tư vấn thuế chính thức.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

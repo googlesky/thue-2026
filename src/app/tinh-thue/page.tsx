@@ -569,31 +569,22 @@ export default function Home() {
       {/* Shared Header */}
       <Header variant="solid" />
 
-      {/* Hero Banner - Visual connection to homepage */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 overflow-hidden">
-        {/* Background decorations - grid only */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-        </div>
-
+      {/* Band tiêu đề - mực phẳng, số hiệu luật kiểu văn bản */}
+      <div className="relative bg-primary-700 overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Title Section */}
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                Tính Thuế TNCN 2026
-              </h1>
-              <p className="text-blue-200/80 text-sm sm:text-base">
-                Theo Luật 109/2025/QH15 – 5 bậc thuế, áp dụng từ kỳ thuế 2026
+              <p className="font-data text-[11px] font-semibold tracking-[0.08em] uppercase text-primary-300 mb-2">
+                Luật 109/2025/QH15 · 5 bậc · kỳ thuế 2026
               </p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                Tính thuế TNCN 2026
+              </h1>
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-emerald-500/20 text-emerald-200 rounded-full border border-emerald-500/30 text-xs mr-1 sm:mr-2">
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400"></span>
-                <span className="text-[10px] sm:text-xs">5 bậc</span>
-              </span>
               <button
                 onClick={handleGoHome}
                 aria-label="Đặt lại các giá trị mặc định"
@@ -626,7 +617,7 @@ export default function Home() {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-gray-50 min-h-screen">
+      <div className="bg-paper min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Tab Navigation */}
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />

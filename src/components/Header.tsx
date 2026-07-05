@@ -74,28 +74,28 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
 
   const isHomePage = pathname === '/';
   const isCalculatorPage = pathname === '/tinh-thue';
-  const isGuidePage = pathname === '/huong-dan' || pathname?.includes('#features');
+  const isGuidePage = pathname === '/huong-dan';
 
   // Dynamic header styles based on variant and scroll state
   const headerBaseStyles = variant === 'transparent' && !isScrolled
     ? 'bg-transparent'
-    : 'bg-white/80 backdrop-blur-xl shadow-lg shadow-gray-900/5 border-b border-gray-200/50';
+    : 'bg-paper/95 backdrop-blur-sm border-b border-line';
 
   const logoTextStyles = variant === 'transparent' && !isScrolled
     ? 'text-white'
-    : 'text-gray-900';
+    : 'text-primary-700';
 
   const navLinkBaseStyles = variant === 'transparent' && !isScrolled
     ? 'text-white/90 hover:text-white hover:bg-white/10 focus:ring-2 focus:ring-white/30 focus:outline-none'
-    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 focus:ring-2 focus:ring-primary-500/30 focus:outline-none';
+    : 'text-primary-500 hover:text-primary-700 hover:bg-primary-50 focus:ring-2 focus:ring-primary-500/30 focus:outline-none';
 
   const navLinkActiveStyles = variant === 'transparent' && !isScrolled
     ? 'text-white bg-white/20 ring-1 ring-white/30'
-    : 'text-primary-600 bg-primary-50 ring-1 ring-primary-500/20';
+    : 'text-primary-700 bg-primary-50';
 
   const mobileMenuButtonStyles = variant === 'transparent' && !isScrolled
     ? 'text-white hover:bg-white/10 focus:ring-2 focus:ring-white/30'
-    : 'text-gray-600 hover:bg-gray-100 focus:ring-2 focus:ring-primary-500/30';
+    : 'text-primary-500 hover:bg-primary-50 focus:ring-2 focus:ring-primary-500/30';
 
   return (
     <>
@@ -119,30 +119,18 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-primary-500/50 rounded-xl p-1 -ml-1"
               aria-label="Thue2026 - Trang chủ"
             >
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 via-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary-500/30">
-                {/* Gradient overlay for extra depth */}
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-tr from-white/20 to-transparent" />
-                <svg
-                  className="w-5 h-5 text-white relative z-10 transition-transform duration-300 group-hover:scale-110"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
+              <span
+                className="w-9 h-9 rounded-md bg-primary-600 text-white font-data text-[13px] font-semibold flex items-center justify-center tracking-tight"
+                aria-hidden="true"
+              >
+                26
+              </span>
               <div className="flex flex-col">
-                <span className={`font-bold text-lg transition-colors duration-300 ${logoTextStyles}`}>
-                  Thue<span className="text-primary-500 group-hover:text-primary-400 transition-colors">2026</span>
+                <span className={`font-bold text-lg leading-tight transition-colors duration-300 ${logoTextStyles}`}>
+                  Thuế<span className="text-primary-400">2026</span>
                 </span>
-                <span className={`hidden sm:block text-xs transition-colors duration-300 ${variant === 'transparent' && !isScrolled ? 'text-white/70' : 'text-gray-500'}`}>
-                  Tính thuế TNCN
+                <span className={`hidden sm:block text-[11px] leading-tight transition-colors duration-300 ${variant === 'transparent' && !isScrolled ? 'text-white/70' : 'text-primary-300'}`}>
+                  Thuế TNCN & lương
                 </span>
               </div>
             </Link>
@@ -174,12 +162,12 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
                 )}
               </Link>
               <Link
-                href="/#features"
+                href="/#thay-doi"
                 className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                   isGuidePage ? navLinkActiveStyles : navLinkBaseStyles
                 }`}
               >
-                <span className="relative z-10">Hướng dẫn</span>
+                <span className="relative z-10">Thay đổi 2026</span>
               </Link>
             </nav>
 
@@ -188,22 +176,9 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               {!isCalculatorPage && (
                 <Link
                   href="/tinh-thue"
-                  className="group relative px-5 py-2.5 bg-gradient-to-r from-primary-500 via-primary-500 to-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/35 transition-all duration-300 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 overflow-hidden"
+                  className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
                 >
-                  {/* Shimmer effect */}
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  <span className="relative z-10 flex items-center gap-2">
-                    Tính thuế ngay
-                    <svg
-                      className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </span>
+                  Tính thuế ngay
                 </Link>
               )}
             </div>
@@ -295,13 +270,13 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               Tính thuế TNCN
             </Link>
             <Link
-              href="/#features"
+              href="/#thay-doi"
               className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100/80 active:bg-gray-200/80 transition-all duration-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Hướng dẫn
+              Thay đổi 2026
             </Link>
 
             {/* Mobile CTA */}
@@ -309,11 +284,8 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               <div className="pt-3">
                 <Link
                   href="/tinh-thue"
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3.5 bg-gradient-to-r from-primary-500 via-primary-500 to-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary-500/25 active:scale-[0.98] transition-all duration-200"
+                  className="flex items-center justify-center w-full px-4 py-3.5 bg-primary-600 text-white text-sm font-semibold rounded-lg active:scale-[0.98] transition-all duration-200"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
                   Tính thuế ngay
                 </Link>
               </div>

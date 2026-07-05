@@ -215,19 +215,23 @@ export default function Footer() {
               className="inline-flex items-center gap-3 group mb-4"
               aria-label="Trang chủ Thue2026"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/20 transition-transform group-hover:scale-105">
-                <CalculatorIcon className="w-5 h-5 text-white" />
-              </div>
+              <span
+                className="w-9 h-9 rounded-md bg-white/10 text-white font-data text-[13px] font-semibold flex items-center justify-center"
+                aria-hidden="true"
+              >
+                26
+              </span>
               <div>
                 <span className="font-bold text-lg text-white">
-                  Thue<span className="text-primary-400">2026</span>
+                  Thuế<span className="text-primary-300">2026</span>
                 </span>
               </div>
             </Link>
 
             {/* Description */}
             <p className="text-sm text-slate-300 leading-relaxed mb-6 max-w-xs">
-              Công cụ tính thuế TNCN trực tuyến miễn phí, hỗ trợ tính lương GROSS-NET và quyết toán thuế năm.
+              Theo dõi thay đổi luật thuế, bảo hiểm và tính đúng thực nhận của
+              người lao động qua từng mốc hiệu lực.
             </p>
 
             {/* Social Links */}
@@ -298,20 +302,15 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <div className="flex items-center gap-2 text-sm text-slate-400">
-              <span>&copy; 2024-{currentYear} Thue2026</span>
+              <span>&copy; 2024-{currentYear} Thuế2026</span>
               <span className="hidden sm:inline">|</span>
               <span className="hidden sm:inline">Tất cả quyền được bảo lưu</span>
             </div>
 
-            {/* Center - Made in Vietnam Badge */}
+            {/* Center - Làm tại Việt Nam */}
             <div className="flex items-center gap-2 text-sm text-slate-300">
-              <span>Made with</span>
-              <span className="text-red-500" aria-label="tình yêu">&#10084;</span>
-              <span>in</span>
-              <span className="inline-flex items-center gap-1.5">
-                <VietnamFlag className="w-5 h-3.5 rounded-sm" />
-                <span className="font-medium text-slate-300">Vietnam</span>
-              </span>
+              <VietnamFlag className="w-5 h-3.5 rounded-sm" />
+              <span>Làm tại Việt Nam, cho người lao động Việt Nam</span>
             </div>
 
             {/* Version */}

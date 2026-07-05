@@ -31,7 +31,7 @@ export default function SaveShareButton({ snapshot, onLoadSnapshot }: SaveShareB
     <div ref={buttonRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
+        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-white/10 hover:bg-white/20 text-white border border-white/25 rounded-lg font-medium transition-colors"
         aria-label="Lưu và Chia sẻ"
         aria-expanded={isOpen}
       >

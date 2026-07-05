@@ -220,8 +220,8 @@ export default function TaxCalendar() {
 
           {/* Filter (show in calendar and list views) */}
           {(viewMode === 'calendar' || viewMode === 'list') && (
-            <div className="flex items-center gap-2 ml-auto">
-              <label htmlFor="deadline-filter" className="text-sm text-gray-500">
+            <div className="flex items-center gap-2 ml-auto min-w-0 max-w-full">
+              <label htmlFor="deadline-filter" className="text-sm text-gray-500 flex-shrink-0">
                 Lọc:
               </label>
               <select
@@ -229,7 +229,7 @@ export default function TaxCalendar() {
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as ApplicableTo)}
                 aria-label="Lọc theo đối tượng áp dụng"
-                className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-0 max-w-full"
               >
                 {Object.entries(APPLICABLE_TO_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
