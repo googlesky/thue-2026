@@ -105,24 +105,16 @@ export function calculateCompanyOffer(
   const monthlyInsuranceDetail = getInsuranceDetailed(insuranceBase, region, insOptions);
   const monthlyInsurance = monthlyInsuranceDetail.total;
 
-  // Tính thuế hàng tháng
-  const taxResult = useNewLaw
-    ? calculateNewTax({
-        grossIncome: grossSalary,
-        declaredSalary,
-        dependents,
-        hasInsurance,
-        insuranceOptions: insOptions,
-        region,
-      })
-    : calculateOldTax({
-        grossIncome: grossSalary,
-        declaredSalary,
-        dependents,
-        hasInsurance,
-        insuranceOptions: insOptions,
-        region,
-      });
+  // Tính thuế hàng tháng (tháng không có thưởng)
+  const calculateTax = useNewLaw ? calculateNewTax : calculateOldTax;
+  const taxInput = {
+    declaredSalary: insuranceBase, // BH chỉ tính trên lương, không tính trên thưởng
+    dependents,
+    hasInsurance,
+    insuranceOptions: insOptions,
+    region,
+  };
+  const taxResult = calculateTax({ ...taxInput, grossIncome: grossSalary });
 
   const monthlyTax = taxResult.taxAmount;
   const monthlyNet = taxResult.netIncome;
@@ -137,37 +129,12 @@ export function calculateCompanyOffer(
   // Bảo hiểm năm (chỉ tính trên lương cơ bản, không tính thưởng)
   const annualInsurance = monthlyInsurance * 12;
 
-  // Thuế năm - cần tính cả thưởng
-  // Thưởng được tính thuế như thu nhập tháng nhận thưởng
-  let annualTax = monthlyTax * 12;
-
-  // Tính thuế cho từng tháng thưởng
-  for (let i = 0; i < bonusMonths; i++) {
-    // Tháng có thưởng: thu nhập = lương + thưởng
-    const bonusMonthIncome = grossSalary + grossSalary; // lương + 1 tháng thưởng
-    const bonusInsuranceBase = declaredSalary ?? grossSalary;
-    const bonusTaxResult = useNewLaw
-      ? calculateNewTax({
-          grossIncome: bonusMonthIncome,
-          declaredSalary: bonusInsuranceBase,
-          dependents,
-          hasInsurance,
-          insuranceOptions: insOptions,
-          region,
-        })
-      : calculateOldTax({
-          grossIncome: bonusMonthIncome,
-          declaredSalary: bonusInsuranceBase,
-          dependents,
-          hasInsurance,
-          insuranceOptions: insOptions,
-          region,
-        });
-
-    // Thuế thêm từ thưởng = thuế tháng có thưởng - thuế tháng bình thường
-    const bonusTax = bonusTaxResult.taxAmount - monthlyTax;
-    annualTax += bonusTax;
-  }
+  // Thuế năm theo quyết toán (Luật 109 Điều 8, 9): thưởng gộp vào thu nhập cả năm, biểu tháng áp
+  // trên bình quân tháng rồi × 12. Tháng nhận thưởng công ty có thể khấu trừ tạm nhiều hơn,
+  // phần chênh được hoàn/bù trừ khi quyết toán nên không làm đổi thuế năm.
+  const annualTax = Math.round(
+    calculateTax({ ...taxInput, grossIncome: grossSalary + annualBonus / 12 }).taxAmount * 12
+  );
 
   const annualNet = annualTotalGross - annualInsurance - annualTax;
 

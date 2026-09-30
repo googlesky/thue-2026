@@ -13,31 +13,19 @@ import {
 import {
   formatCurrency,
   formatNumber,
+  parseCurrency,
   RegionType,
   SharedTaxState,
-  REGIONAL_MINIMUM_WAGES_2026,
+  calculateNewTax,
+  getRegionalMinimumWages,
+  getMaxUnemploymentInsuranceSalary,
 } from '@/lib/taxCalculator';
-import { grossToNet, GrossNetResult } from '@/lib/grossNetCalculator';
-import { parseCurrency } from '@/lib/taxCalculator';
+import { GrossNetResult } from '@/lib/grossNetCalculator';
 
 interface RegionComparisonProps {
   sharedState: SharedTaxState;
   onStateChange: (updates: Partial<SharedTaxState>) => void;
 }
-
-const REGION_NAMES: Record<RegionType, string> = {
-  1: 'Vùng I',
-  2: 'Vùng II',
-  3: 'Vùng III',
-  4: 'Vùng IV',
-};
-
-const REGION_DESCRIPTIONS: Record<RegionType, string> = {
-  1: 'Hà Nội, TP.HCM, Hải Phòng, Đà Nẵng...',
-  2: 'TP thuộc tỉnh, huyện ngoại thành...',
-  3: 'Thị xã, huyện thuộc tỉnh...',
-  4: 'Huyện miền núi, vùng sâu vùng xa...',
-};
 
 const REGION_COLORS: Record<RegionType, { main: string; bg: string; light: string; text: string }> = {
   1: { main: '#3b82f6', bg: 'bg-blue-50', light: 'bg-blue-100', text: 'text-blue-700' },
@@ -49,6 +37,7 @@ const REGION_COLORS: Record<RegionType, { main: string; bg: string; light: strin
 interface RegionResult {
   region: RegionType;
   name: string;
+  description: string;
   minimumWage: number;
   result: GrossNetResult;
 }
@@ -87,7 +76,7 @@ function NetChartTooltip({ active, payload }: {
         </div>
         <div className="pt-1 border-t border-gray-100 flex justify-between gap-4">
           <span className="text-gray-500">Tỷ lệ NET/GROSS</span>
-          <span className="font-mono tabular-nums font-medium">{netPercent.toFixed(1)}%</span>
+          <span className="font-mono tabular-nums font-medium">{netPercent.toFixed(1).replace('.', ',')}%</span>
         </div>
       </div>
     </div>
@@ -118,27 +107,46 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
     }
   }, [customGross]);
 
-  // Calculate for all 4 regions
+  // Lương tối thiểu vùng, trần BHTN theo ngày hiện tại
+  const regionalWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
+  const bhtnCaps = useMemo(() => getMaxUnemploymentInsuranceSalary(new Date()), []);
+  const paysBhtn = sharedState.hasInsurance && sharedState.insuranceOptions.bhtn;
+
+  // Calculate for all 4 regions (engine trung tâm: tắt từng loại bảo hiểm, lương đóng BH khai báo)
   const regionResults = useMemo<RegionResult[]>(() => {
     const regions: RegionType[] = [1, 2, 3, 4];
     return regions.map(region => {
-      const result = grossToNet({
-        amount: grossIncome,
-        type: 'gross',
+      const t = calculateNewTax({
+        grossIncome,
+        // Lương đóng BH khai báo chỉ áp cho GROSS đang dùng chung (không áp cho GROSS thử nghiệm)
+        declaredSalary: useCustomGross ? undefined : sharedState.declaredSalary,
         dependents: sharedState.dependents,
-        hasInsurance: sharedState.hasInsurance,
-        useNewLaw: true,
+        insuranceOptions: sharedState.hasInsurance
+          ? sharedState.insuranceOptions
+          : { bhxh: false, bhyt: false, bhtn: false },
         region,
       });
 
       return {
         region,
-        name: REGION_NAMES[region],
-        minimumWage: REGIONAL_MINIMUM_WAGES_2026[region].wage,
-        result,
+        name: regionalWages[region].name,
+        description: regionalWages[region].description,
+        minimumWage: regionalWages[region].wage,
+        result: {
+          gross: grossIncome,
+          net: t.netIncome,
+          insurance: t.insuranceDeduction,
+          tax: t.taxAmount,
+          deductions: {
+            personal: t.personalDeduction,
+            dependent: t.dependentDeduction,
+            insurance: t.insuranceDeduction,
+          },
+          taxableIncome: t.taxableIncome,
+        },
       };
     });
-  }, [grossIncome, sharedState.dependents, sharedState.hasInsurance]);
+  }, [grossIncome, useCustomGross, sharedState.declaredSalary, sharedState.dependents, sharedState.hasInsurance, sharedState.insuranceOptions, regionalWages]);
 
   // Chart data - NET only with region colors
   const chartData = useMemo(() => {
@@ -183,7 +191,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-800">So sánh lương theo vùng</h2>
-              <p className="text-sm text-gray-500">Cùng GROSS, NET khác nhau do mức đóng bảo hiểm khác nhau</p>
+              <p className="text-sm text-gray-500">Cùng GROSS, NET chỉ khác khi lương đóng BHTN vượt trần 20 lần lương tối thiểu vùng</p>
             </div>
           </div>
 
@@ -273,7 +281,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
                 )}
               </div>
 
-              <p className="text-xs text-gray-500 mb-3 line-clamp-1">{REGION_DESCRIPTIONS[r.region]}</p>
+              <p className="text-xs text-gray-500 mb-3 line-clamp-1" title={r.description}>{r.description}</p>
 
               {/* NET highlight */}
               <div className="mb-3">
@@ -281,7 +289,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
                   {formatCurrency(r.result.net)}
                 </div>
                 <div className="text-[11px] text-gray-400 font-mono tabular-nums">
-                  {netPercent.toFixed(1)}% GROSS
+                  {netPercent.toFixed(1).replace('.', ',')}% GROSS
                 </div>
               </div>
 
@@ -312,6 +320,16 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
           );
         })}
       </div>
+
+      {/* NET như nhau: chưa vượt trần BHTN của vùng thấp nhất hoặc không đóng BHTN */}
+      {netDifference === 0 && grossIncome > 0 && (
+        <p className="text-sm text-gray-600 px-1">
+          NET như nhau ở cả 4 vùng:{' '}
+          {paysBhtn
+            ? `lương đóng BHTN chưa vượt trần thấp nhất ${formatCurrency(bhtnCaps[4])} (20 lần lương tối thiểu Vùng IV).`
+            : 'không đóng BHTN nên trần theo vùng không ảnh hưởng.'}
+        </p>
+      )}
 
       {/* Highlight difference */}
       {netDifference > 0 && (
@@ -355,7 +373,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
                 tickFormatter={(v: number) => {
                   if (v >= 1_000_000) {
                     const m = v / 1_000_000;
-                    return m % 1 === 0 ? `${m}tr` : `${m.toFixed(1)}tr`;
+                    return m % 1 === 0 ? `${m}tr` : `${m.toFixed(1).replace('.', ',')}tr`;
                   }
                   return formatNumber(v);
                 }}
@@ -403,7 +421,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
                 ))}
               </tr>
               <tr className="border-b border-gray-100">
-                <td className="py-2.5 px-2 text-gray-600">Bảo hiểm (10,5%)</td>
+                <td className="py-2.5 px-2 text-gray-600">Bảo hiểm (NLĐ đóng)</td>
                 {regionResults.map(r => (
                   <td key={r.region} className="py-2.5 px-2 text-right font-mono tabular-nums text-orange-600">
                     -{formatCurrency(r.result.insurance)}
@@ -448,7 +466,7 @@ function RegionComparisonComponent({ sharedState, onStateChange }: RegionCompari
                   const rate = r.result.gross > 0 ? (r.result.tax / r.result.gross) * 100 : 0;
                   return (
                     <td key={r.region} className="py-2.5 px-2 text-right text-xs font-medium text-gray-500">
-                      {rate.toFixed(2)}%
+                      {rate.toFixed(2).replace('.', ',')}%
                     </td>
                   );
                 })}

@@ -12,6 +12,7 @@ import {
 interface KeyboardShortcutsProps {
   onTabChange?: (tabIndex: number) => void;
   onSave?: () => void;
+  /** Không còn dùng (đã bỏ chế độ tối) — giữ để tương thích nơi gọi */
   onToggleDarkMode?: () => void;
   totalTabs?: number;
 }
@@ -23,7 +24,6 @@ interface KeyboardShortcutsProps {
 export function KeyboardShortcuts({
   onTabChange,
   onSave,
-  onToggleDarkMode,
   totalTabs = 9,
 }: KeyboardShortcutsProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,13 +39,17 @@ export function KeyboardShortcuts({
         category: SHORTCUT_CATEGORIES.GENERAL,
         action: () => setIsOpen((prev) => !prev),
       },
-      {
+    ];
+
+    // Esc chỉ bắt khi bảng đang mở — không chặn Escape của hộp thoại/ô nhập khác trên trang
+    if (isOpen) {
+      list.push({
         key: 'Escape',
         description: 'Đóng bảng phím tắt',
         category: SHORTCUT_CATEGORIES.GENERAL,
         action: () => setIsOpen(false),
-      },
-    ];
+      });
+    }
 
     // Tab navigation shortcuts (1-9)
     if (onTabChange) {
@@ -70,19 +74,8 @@ export function KeyboardShortcuts({
       });
     }
 
-    if (onToggleDarkMode) {
-      list.push({
-        key: 'd',
-        ctrl: true,
-        shift: true,
-        description: 'Chuyển đổi chế độ tối/sáng',
-        category: SHORTCUT_CATEGORIES.ACTIONS,
-        action: onToggleDarkMode,
-      });
-    }
-
     return list;
-  }, [onTabChange, onSave, onToggleDarkMode, totalTabs]);
+  }, [onTabChange, onSave, totalTabs, isOpen]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts(shortcuts);
@@ -125,6 +118,7 @@ export function KeyboardShortcuts({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -136,6 +130,7 @@ export function KeyboardShortcuts({
             Phím tắt
           </h2>
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Đóng"
@@ -145,6 +140,7 @@ export function KeyboardShortcuts({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -245,7 +241,8 @@ export function ShortcutHelpHint() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-white rounded-lg shadow-lg border border-gray-200 text-sm text-gray-600 animate-fade-in">
+    // Chỉ hiện trên màn hình lớn có chuột/bàn phím (ẩn trên cảm ứng/màn hình nhỏ)
+    <div className="hidden md:[@media(pointer:fine)]:block fixed bottom-4 right-4 z-50 px-4 py-2 bg-white rounded-lg shadow-lg border border-gray-200 text-sm text-gray-600 animate-fade-in">
       Nhấn{' '}
       <kbd className="px-1.5 py-0.5 font-mono bg-gray-100 text-gray-700 rounded">
         ?

@@ -1,13 +1,13 @@
 // ===== FOREIGNER TAX CALCULATOR =====
 // Tính thuế TNCN cho người nước ngoài làm việc tại Việt Nam
-// Thuế thu nhập cá nhân expatriate / non-resident tax Vietnam
+// Căn cứ: Luật Thuế TNCN 109/2025/QH15 Điều 2 (cư trú), Điều 21 (không cư trú 20%);
+// NĐ 253/2026/NĐ-CP Điều 4 (cư trú), Điều 8 (tiền nhà ≤ 15%, khoản không tính vào TN chịu thuế), Điều 64.
 
 import {
   OLD_TAX_BRACKETS,
   NEW_TAX_BRACKETS,
   OLD_DEDUCTIONS,
   NEW_DEDUCTIONS,
-  EFFECTIVE_DATES,
   RegionType,
   InsuranceOptions,
   DEFAULT_INSURANCE_OPTIONS,
@@ -18,14 +18,25 @@ import {
 
 // ===== CONSTANTS =====
 
-// Thuế suất cho người không cư trú (Non-resident flat rate)
+// Thuế suất cho người không cư trú (Luật 109/2025/QH15 Điều 21)
 export const NON_RESIDENT_TAX_RATE = 0.20; // 20% flat
 
 // Số ngày để xác định cư trú thuế (183 ngày/năm)
 export const RESIDENCY_DAYS_THRESHOLD = 183;
 
+// Tiền nhà NSDLĐ trả thay: tính vào TN chịu thuế tối đa 15% tổng TN chịu thuế tại đơn vị
+// (chưa gồm tiền nhà) — NĐ 253/2026/NĐ-CP Điều 8.2.h; áp dụng cả không cư trú (Điều 64.2)
+export const HOUSING_TAXABLE_CAP_RATE = 0.15;
+
+export interface TreatyCountry {
+  code: string;
+  name: string;
+  year: number; // Năm có hiệu lực (hiệp định chưa có hiệu lực: năm ký)
+  pending?: boolean; // Đã ký nhưng chưa có hiệu lực → không áp dụng ưu đãi
+}
+
 // Danh sách các nước có Hiệp định tránh đánh thuế hai lần với Việt Nam
-export const DOUBLE_TAX_TREATY_COUNTRIES = [
+export const DOUBLE_TAX_TREATY_COUNTRIES: TreatyCountry[] = [
   { code: 'AU', name: 'Úc (Australia)', year: 1992 },
   { code: 'AT', name: 'Áo (Austria)', year: 2009 },
   { code: 'BY', name: 'Belarus', year: 1997 },
@@ -92,7 +103,8 @@ export const DOUBLE_TAX_TREATY_COUNTRIES = [
   { code: 'UA', name: 'Ukraine', year: 1996 },
   { code: 'AE', name: 'UAE', year: 2009 },
   { code: 'GB', name: 'Anh (United Kingdom)', year: 1994 },
-  { code: 'US', name: 'Hoa Kỳ (United States)', year: 2016 },
+  // Ký 07/7/2015, đến nay CHƯA có hiệu lực
+  { code: 'US', name: 'Hoa Kỳ (United States)', year: 2015, pending: true },
   { code: 'UZ', name: 'Uzbekistan', year: 1996 },
   { code: 'VE', name: 'Venezuela', year: 2009 },
 ];
@@ -102,11 +114,11 @@ export const DOUBLE_TAX_TREATY_COUNTRIES = [
 export type ResidencyStatus = 'resident' | 'non-resident' | 'unknown';
 
 export interface ForeignerAllowances {
-  housing: number;           // Phụ cấp nhà ở
-  schoolFees: number;        // Học phí cho con
-  homeLeaveFare: number;     // Vé máy bay về nước
-  relocation: number;        // Chi phí chuyển chỗ ở
-  languageTraining: number;  // Đào tạo ngôn ngữ
+  housing: number;           // Tiền nhà công ty trả thay (tính tối đa 15%)
+  schoolFees: number;        // Học phí cho con từ mầm non đến THPT (không tính — Điều 8.4.g)
+  homeLeaveFare: number;     // Vé máy bay về phép 1 lần/năm (không tính — Điều 8.4.e)
+  relocation: number;        // Trợ cấp chuyển vùng 1 lần (không tính — Điều 8.3.l)
+  languageTraining: number;  // Đào tạo ngôn ngữ (không tính nếu phù hợp công việc — Điều 8.4.i)
   other: number;             // Phụ cấp khác
 }
 
@@ -122,9 +134,8 @@ export const DEFAULT_FOREIGNER_ALLOWANCES: ForeignerAllowances = {
 export interface ForeignerTaxInput {
   // Thông tin cá nhân
   nationality: string;              // Quốc tịch
-  arrivalDate?: Date;               // Ngày đến Việt Nam
-  daysInVietnam?: number;           // Số ngày ở VN (nếu không có arrivalDate)
-  hasPermanentResidence: boolean;   // Có nơi ở thường trú không
+  daysInVietnam?: number;           // Số ngày có mặt (năm dương lịch hoặc 12 tháng liên tục)
+  hasPermanentResidence: boolean;   // Có nơi ở thường xuyên (NĐ 253 Điều 4.2)
 
   // Thu nhập
   grossIncome: number;              // Thu nhập từ VN
@@ -132,6 +143,7 @@ export interface ForeignerTaxInput {
 
   // Phụ cấp
   allowances: ForeignerAllowances;
+  languageTrainingJobRelated?: boolean; // Đào tạo phù hợp công việc/theo kế hoạch NSDLĐ
 
   // Bảo hiểm
   hasVietnameseInsurance: boolean;
@@ -143,7 +155,6 @@ export interface ForeignerTaxInput {
 
   // Năm tính thuế
   taxYear: 2025 | 2026;
-  isSecondHalf2026?: boolean;       // Deprecated: Luật mới áp dụng từ 01/01/2026 cho toàn năm
 }
 
 export interface ForeignerTaxResult {
@@ -182,67 +193,52 @@ export interface ForeignerTaxResult {
 
   // Thông tin bổ sung
   hasTreatyWithCountry: boolean;
-  treatyInfo?: { code: string; name: string; year: number };
+  treatyInfo?: TreatyCountry;
   notes: string[];
 }
 
 // ===== HELPER FUNCTIONS =====
 
 /**
- * Tính số ngày từ ngày đến đến cuối năm
- */
-export function calculateDaysInVietnam(arrivalDate: Date, taxYear: number): number {
-  const yearStart = new Date(taxYear, 0, 1);
-  const yearEnd = new Date(taxYear, 11, 31);
-
-  // Nếu đến trước năm tính thuế, tính từ đầu năm
-  const effectiveStart = arrivalDate < yearStart ? yearStart : arrivalDate;
-
-  // Tính số ngày
-  const today = new Date();
-  const endDate = today < yearEnd ? today : yearEnd;
-
-  if (effectiveStart > endDate) return 0;
-
-  const diffTime = Math.abs(endDate.getTime() - effectiveStart.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-  return diffDays;
-}
-
-/**
- * Xác định trạng thái cư trú thuế
+ * Xác định trạng thái cư trú thuế (Luật 109/2025/QH15 Điều 2.2; NĐ 253/2026/NĐ-CP Điều 4)
  */
 export function determineResidencyStatus(
   daysInVietnam: number,
   hasPermanentResidence: boolean
 ): ResidencyStatus {
-  // Có nơi ở thường trú tại VN = cư trú
+  // Có nơi ở thường xuyên tại VN = cư trú
   if (hasPermanentResidence) return 'resident';
 
-  // Ở VN >= 183 ngày/năm = cư trú
+  // Có mặt >= 183 ngày (năm dương lịch hoặc 12 tháng liên tục) = cư trú
   if (daysInVietnam >= RESIDENCY_DAYS_THRESHOLD) return 'resident';
 
-  // Ở VN < 183 ngày = không cư trú
   return 'non-resident';
 }
 
 /**
- * Kiểm tra quốc gia có hiệp định thuế với VN không
+ * Hiệp định ĐANG CÓ HIỆU LỰC với quốc gia (hiệp định đã ký nhưng chưa hiệu lực → undefined)
  */
-export function checkDoubleTaxTreaty(nationalityCode: string): { code: string; name: string; year: number } | undefined {
-  return DOUBLE_TAX_TREATY_COUNTRIES.find(
+export function checkDoubleTaxTreaty(nationalityCode: string): TreatyCountry | undefined {
+  const country = DOUBLE_TAX_TREATY_COUNTRIES.find(
     c => c.code.toLowerCase() === nationalityCode.toLowerCase()
   );
+  return country && !country.pending ? country : undefined;
 }
 
 /**
- * Tính phụ cấp chịu thuế và miễn thuế
+ * Phân loại các khoản phụ cấp/lợi ích: tính vào thu nhập chịu thuế hay không.
+ * Tiền nhà trả thay chỉ tính tối đa 15% × (thu nhập chịu thuế tại đơn vị chưa gồm tiền nhà).
  */
-export function calculateForeignerAllowances(allowances: ForeignerAllowances): {
+export function calculateForeignerAllowances(
+  allowances: ForeignerAllowances,
+  grossIncome: number,
+  languageTrainingJobRelated = false
+): {
   total: number;
   taxable: number;
   exempt: number;
+  housingTaxable: number;
+  housingCap: number;
 } {
   const total =
     allowances.housing +
@@ -252,19 +248,36 @@ export function calculateForeignerAllowances(allowances: ForeignerAllowances): {
     allowances.languageTraining +
     allowances.other;
 
-  // Phụ cấp miễn thuế cho người nước ngoài:
-  // - Học phí cho con (schoolFees)
-  // - Vé máy bay về nước 1 lần/năm (homeLeaveFare)
-  // - Chi phí chuyển chỗ ở (relocation) - chỉ 1 lần
-  const exempt = allowances.schoolFees + allowances.homeLeaveFare + allowances.relocation;
+  // Đào tạo phù hợp công việc/theo kế hoạch NSDLĐ: không tính (NĐ 253 Điều 8.4.i)
+  const otherTaxable = allowances.other + (languageTrainingJobRelated ? 0 : allowances.languageTraining);
+  const housingCap = Math.round(HOUSING_TAXABLE_CAP_RATE * (grossIncome + otherTaxable));
+  const housingTaxable = Math.min(allowances.housing, housingCap);
 
-  // Phụ cấp chịu thuế:
-  // - Nhà ở (housing) - chịu thuế 100%
-  // - Đào tạo ngôn ngữ (languageTraining) - chịu thuế nếu không phục vụ công việc
-  // - Phụ cấp khác (other)
-  const taxable = allowances.housing + allowances.languageTraining + allowances.other;
+  // Không tính: học phí con (mầm non–THPT), vé máy bay về phép 1 lần/năm, trợ cấp chuyển vùng 1 lần,
+  // phần tiền nhà vượt 15%, đào tạo phù hợp công việc
+  const taxable = housingTaxable + otherTaxable;
+  return { total, taxable, exempt: total - taxable, housingTaxable, housingCap };
+}
 
-  return { total, taxable, exempt };
+/** Ghi chú về hiệp định theo tình trạng cư trú (hiệp định chưa hiệu lực: không áp dụng) */
+function getTreatyNotes(nationality: string, resident: boolean): string[] {
+  const country = DOUBLE_TAX_TREATY_COUNTRIES.find(c => c.code === nationality.toUpperCase());
+  if (!country) return [];
+  if (country.pending) {
+    return [`Hiệp định giữa Việt Nam và ${country.name} ký năm ${country.year} nhưng chưa có hiệu lực: chưa được áp dụng ưu đãi hiệp định.`];
+  }
+  return [
+    resident
+      ? `Có Hiệp định tránh đánh thuế hai lần với ${country.name}: thuế đã nộp ở nước ngoài đối với thu nhập phát sinh ở nước ngoài được trừ vào số thuế phải nộp tại Việt Nam (tối đa bằng số thuế tính theo biểu thuế Việt Nam cho phần thu nhập đó).`
+      : `Có Hiệp định tránh đánh thuế hai lần với ${country.name}: tiền lương có thể được miễn thuế tại Việt Nam nếu có mặt không quá 183 ngày, không do chủ lao động là đối tượng cư trú Việt Nam trả và không do cơ sở thường trú tại Việt Nam chịu (xem tab Hiệp định thuế).`,
+  ];
+}
+
+function getHousingNote(allowances: ForeignerAllowances, calc: { housingTaxable: number; housingCap: number }): string[] {
+  if (allowances.housing <= calc.housingTaxable) return [];
+  return [
+    `Tiền nhà công ty trả thay chỉ tính vào thu nhập chịu thuế tối đa 15% tổng thu nhập chịu thuế tại đơn vị (${new Intl.NumberFormat('vi-VN').format(calc.housingCap)} VNĐ); phần vượt ${new Intl.NumberFormat('vi-VN').format(allowances.housing - calc.housingTaxable)} VNĐ không tính (NĐ 253/2026/NĐ-CP Điều 8.2.h).`,
+  ];
 }
 
 // ===== MAIN CALCULATION =====
@@ -273,14 +286,14 @@ export function calculateForeignerAllowances(allowances: ForeignerAllowances): {
  * Tính thuế cho người không cư trú (Non-resident)
  */
 function calculateNonResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
-  const { grossIncome, allowances, nationality } = input;
+  const { grossIncome, allowances, nationality, languageTrainingJobRelated } = input;
 
-  const allowanceCalc = calculateForeignerAllowances(allowances);
+  const allowanceCalc = calculateForeignerAllowances(allowances, grossIncome, languageTrainingJobRelated);
 
-  // Non-resident: Thuế = 20% × (Thu nhập từ VN + phụ cấp chịu thuế)
-  // Không được giảm trừ gia cảnh, không được giảm trừ bảo hiểm
+  // Non-resident: Thuế = 20% × (Thu nhập từ VN + các khoản tính vào thu nhập chịu thuế)
+  // Không được giảm trừ gia cảnh, không được giảm trừ bảo hiểm (Luật 109 Điều 21; NĐ 253 Điều 64)
   const taxableIncome = grossIncome + allowanceCalc.taxable;
-  const taxAmount = taxableIncome * NON_RESIDENT_TAX_RATE;
+  const taxAmount = Math.round(taxableIncome * NON_RESIDENT_TAX_RATE);
 
   const totalIncome = grossIncome + allowanceCalc.total;
   const netIncome = totalIncome - taxAmount;
@@ -289,13 +302,11 @@ function calculateNonResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
   const treatyInfo = checkDoubleTaxTreaty(nationality);
 
   const notes: string[] = [
-    'Người không cư trú chịu thuế 20% trên thu nhập phát sinh tại Việt Nam.',
+    'Người không cư trú chịu thuế 20% trên toàn bộ tiền lương, tiền công nhận được do làm việc tại Việt Nam, không phân biệt nơi trả (Luật 109/2025/QH15 Điều 21).',
     'Không được áp dụng giảm trừ gia cảnh và giảm trừ bảo hiểm.',
+    ...getHousingNote(allowances, allowanceCalc),
+    ...getTreatyNotes(nationality, false),
   ];
-
-  if (treatyInfo) {
-    notes.push(`Quốc gia ${treatyInfo.name} có Hiệp định thuế với Việt Nam (từ ${treatyInfo.year}). Có thể được khấu trừ thuế đã nộp.`);
-  }
 
   return {
     residencyStatus: 'non-resident',
@@ -333,9 +344,9 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
     region = 1,
     dependents,
     taxYear,
-    isSecondHalf2026,
     nationality,
     daysInVietnam = 0,
+    languageTrainingJobRelated,
   } = input;
 
   // Xác định luật áp dụng
@@ -344,7 +355,7 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
   const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
   const deductions = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
 
-  const allowanceCalc = calculateForeignerAllowances(allowances);
+  const allowanceCalc = calculateForeignerAllowances(allowances, grossIncome, languageTrainingJobRelated);
 
   // Tổng thu nhập = VN + nước ngoài + phụ cấp chịu thuế
   const totalTaxableIncome = grossIncome + foreignIncome + allowanceCalc.taxable;
@@ -425,6 +436,7 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
     savings = taxUnderOldLaw - taxUnderNewLaw;
   }
 
+  taxAmount = Math.round(taxAmount);
   const totalIncome = grossIncome + foreignIncome + allowanceCalc.total;
   const netIncome = totalIncome - insuranceDeduction - taxAmount;
   const effectiveTaxRate = totalIncome > 0 ? (taxAmount / totalIncome) * 100 : 0;
@@ -432,10 +444,14 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
   const treatyInfo = checkDoubleTaxTreaty(nationality);
 
   const notes: string[] = [
-    `Người cư trú thuế tại Việt Nam (${daysInVietnam >= 183 ? `${daysInVietnam} ngày ≥ 183 ngày` : 'có nơi ở thường trú'}).`,
+    `Người cư trú thuế tại Việt Nam (${daysInVietnam >= RESIDENCY_DAYS_THRESHOLD ? `có mặt ${daysInVietnam} ngày, từ 183 ngày trở lên` : 'có nơi ở thường xuyên'}).`,
     'Áp dụng biểu thuế lũy tiến từ 5% đến 35%.',
     `Giảm trừ bản thân: ${new Intl.NumberFormat('vi-VN').format(personalDeduction)} VNĐ/tháng.`,
   ];
+
+  if (daysInVietnam < RESIDENCY_DAYS_THRESHOLD) {
+    notes.push('Có nơi ở thường xuyên nhưng có mặt dưới 183 ngày: vẫn là cá nhân cư trú, trừ khi chứng minh được là đối tượng cư trú của nước khác bằng Giấy chứng nhận cư trú (NĐ 253/2026/NĐ-CP Điều 4.3).');
+  }
 
   if (dependents > 0) {
     notes.push(`Giảm trừ ${dependents} người phụ thuộc: ${new Intl.NumberFormat('vi-VN').format(dependentDeduction)} VNĐ/tháng.`);
@@ -445,9 +461,7 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
     notes.push('Người cư trú phải kê khai cả thu nhập phát sinh ngoài Việt Nam.');
   }
 
-  if (treatyInfo) {
-    notes.push(`Quốc gia ${treatyInfo.name} có Hiệp định thuế với Việt Nam. Thu nhập đã nộp thuế ở nước ngoài có thể được khấu trừ.`);
-  }
+  notes.push(...getHousingNote(allowances, allowanceCalc), ...getTreatyNotes(nationality, true));
 
   if (savings && savings > 0) {
     notes.push(`Luật thuế mới 2026 giúp tiết kiệm ${new Intl.NumberFormat('vi-VN').format(savings)} VNĐ/tháng.`);
@@ -485,12 +499,8 @@ function calculateResidentTax(input: ForeignerTaxInput): ForeignerTaxResult {
  * Main function: Tính thuế TNCN cho người nước ngoài
  */
 export function calculateForeignerTax(input: ForeignerTaxInput): ForeignerTaxResult {
-  // Tính số ngày ở VN
-  let daysInVietnam = input.daysInVietnam ?? 0;
-
-  if (input.arrivalDate) {
-    daysInVietnam = calculateDaysInVietnam(input.arrivalDate, input.taxYear);
-  }
+  // Số ngày có mặt do người dùng nhập (ngày đến, ngày đi mỗi ngày tính 1 ngày) — không phụ thuộc ngày mở trang
+  const daysInVietnam = input.daysInVietnam ?? 0;
 
   // Xác định trạng thái cư trú
   const residencyStatus = determineResidencyStatus(daysInVietnam, input.hasPermanentResidence);
@@ -513,5 +523,5 @@ export function formatMoney(amount: number): string {
 }
 
 export function formatPercent(rate: number): string {
-  return `${rate.toFixed(1)}%`;
+  return `${rate.toFixed(1).replace('.', ',')}%`;
 }

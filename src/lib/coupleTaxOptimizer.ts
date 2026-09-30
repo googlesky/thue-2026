@@ -2,22 +2,25 @@
  * Couple Tax Optimizer - Tối ưu thuế cho vợ chồng
  *
  * Căn cứ pháp lý:
- * - Luật Thuế TNCN 2007 (sửa đổi 2012, 2014, 2024)
- * - Thông tư 111/2013/TT-BTC
- * - Nghị quyết 954/2020/UBTVQH14
+ * - Luật Thuế TNCN 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16): Điều 9, 10
+ * - NĐ 253/2026/NĐ-CP: Điều 46 (trần hưu trí/BH nhân thọ 3tr/tháng), Điều 47, 49
+ * - TT 87/2026/TT-BTC (người phụ thuộc thu nhập bình quân ≤ 3tr/tháng)
  *
  * Strategies:
- * 1. Phân bổ người phụ thuộc tối ưu
- * 2. Tối ưu giảm trừ (BHXH tự nguyện, hưu trí tự nguyện, từ thiện)
+ * 1. Phân bổ người phụ thuộc tối ưu (mỗi NPT chỉ tính cho 1 người nộp thuế)
+ * 2. Tối ưu giảm trừ (hưu trí tự nguyện, BH nhân thọ, từ thiện)
  * 3. Cân bằng thu nhập khi có thể
  */
 
 import {
   calculateNewTax,
+  getVoluntaryPensionCap,
   NEW_TAX_BRACKETS,
-  NEW_DEDUCTIONS,
   type TaxResult,
 } from './taxCalculator';
+
+// Số người phụ thuộc tối đa xét phân bổ (chặn dữ liệu nhập tay/snapshot)
+export const MAX_COUPLE_DEPENDENTS = 10;
 
 // Person income info
 export interface PersonIncome {
@@ -33,8 +36,6 @@ export interface CoupleInput {
   person1: PersonIncome;
   person2: PersonIncome;
   totalDependents: number;
-  charitableContribution: number;
-  voluntaryPension: number;
 }
 
 // Allocation scenario
@@ -71,25 +72,24 @@ export interface CoupleOptimizationResult {
 
 /**
  * Calculate tax for a person with given dependents
+ * (engine tự chặn trần hưu trí tự nguyện + BH nhân thọ theo kỳ tính thuế)
  */
-function calculatePersonTax(
-  person: PersonIncome,
-  dependents: number,
-  useNewLaw: boolean = true
-): TaxResult {
+function calculatePersonTax(person: PersonIncome, dependents: number): TaxResult {
   return calculateNewTax({
     grossIncome: person.grossIncome,
     dependents,
-    otherDeductions: person.otherDeductions + person.pensionContribution,
+    otherDeductions: person.otherDeductions,
+    pensionContribution: person.pensionContribution,
     hasInsurance: person.hasInsurance,
     region: 1, // Default region
   });
 }
 
 /**
- * Get marginal tax rate for income level
+ * Get marginal tax rate for income level (0 khi chưa phải nộp thuế)
  */
 function getMarginalRate(taxableIncome: number): number {
+  if (taxableIncome <= 0) return 0;
   for (const bracket of NEW_TAX_BRACKETS) {
     if (taxableIncome <= bracket.max) {
       return bracket.rate;
@@ -133,26 +133,20 @@ function generateAllocationScenarios(
 
 /**
  * Generate optimization tips based on couple's situation
+ * (số tiết kiệm tính bằng chính engine thuế, không ước lượng)
  */
 function generateTips(
   person1: PersonIncome,
   person2: PersonIncome,
   totalDependents: number,
-  charitableContribution: number,
-  voluntaryPension: number,
   optimalScenario: AllocationScenario,
   currentScenario: AllocationScenario
 ): OptimizationTip[] {
   const tips: OptimizationTip[] = [];
-
-  // Get taxable income estimates
-  const p1TaxableEstimate = person1.grossIncome - NEW_DEDUCTIONS.personal -
-    (person1.grossIncome * 0.105); // Approximate insurance
-  const p2TaxableEstimate = person2.grossIncome - NEW_DEDUCTIONS.personal -
-    (person2.grossIncome * 0.105);
-
-  const p1MarginalRate = getMarginalRate(p1TaxableEstimate);
-  const p2MarginalRate = getMarginalRate(p2TaxableEstimate);
+  const p1Deps = optimalScenario.person1Dependents;
+  const p2Deps = optimalScenario.person2Dependents;
+  const p1MarginalRate = getMarginalRate(calculatePersonTax(person1, p1Deps).taxableIncome);
+  const p2MarginalRate = getMarginalRate(calculatePersonTax(person2, p2Deps).taxableIncome);
 
   // Tip 1: Dependent allocation
   if (optimalScenario.totalTax < currentScenario.totalTax) {
@@ -165,54 +159,46 @@ function generateTips(
     });
   }
 
-  // Tip 2: Assign dependents to higher earner
-  if (p1MarginalRate > p2MarginalRate && totalDependents > 0) {
-    const savingsPerDependent = NEW_DEDUCTIONS.dependent * (p1MarginalRate - p2MarginalRate);
-    if (savingsPerDependent > 0) {
+  // Tip 2: NPT giảm thuế cho ai nhiều hơn (chênh thuế khi đăng ký 1 NPT)
+  if (totalDependents > 0) {
+    const gain = (p: PersonIncome) => calculatePersonTax(p, 0).taxAmount - calculatePersonTax(p, 1).taxAmount;
+    const [g1, g2] = [gain(person1), gain(person2)];
+    if (Math.abs(g1 - g2) >= 1000) {
+      const [hi, lo, gHi, gLo] = g1 > g2 ? [person1, person2, g1, g2] : [person2, person1, g2, g1];
       tips.push({
         id: 'tip-higher-earner',
         title: 'Người thu nhập cao đăng ký NPT',
-        description: `${person1.name} có thuế suất biên ${(p1MarginalRate * 100).toFixed(0)}% cao hơn ${person2.name} (${(p2MarginalRate * 100).toFixed(0)}%). Mỗi NPT đăng ký cho ${person1.name} tiết kiệm thêm ${formatCurrency(savingsPerDependent)}/tháng so với ${person2.name}.`,
-        potentialSavings: savingsPerDependent * totalDependents,
-        category: 'dependent',
-      });
-    }
-  } else if (p2MarginalRate > p1MarginalRate && totalDependents > 0) {
-    const savingsPerDependent = NEW_DEDUCTIONS.dependent * (p2MarginalRate - p1MarginalRate);
-    if (savingsPerDependent > 0) {
-      tips.push({
-        id: 'tip-higher-earner',
-        title: 'Người thu nhập cao đăng ký NPT',
-        description: `${person2.name} có thuế suất biên ${(p2MarginalRate * 100).toFixed(0)}% cao hơn ${person1.name} (${(p1MarginalRate * 100).toFixed(0)}%). Mỗi NPT đăng ký cho ${person2.name} tiết kiệm thêm ${formatCurrency(savingsPerDependent)}/tháng so với ${person1.name}.`,
-        potentialSavings: savingsPerDependent * totalDependents,
+        description: `Đăng ký 1 NPT cho ${hi.name} giảm ${formatCurrency(gHi)}/tháng tiền thuế, cho ${lo.name} chỉ giảm ${formatCurrency(gLo)}/tháng. Phương án phân bổ tối ưu ở trên đã tính cho toàn bộ NPT.`,
+        potentialSavings: 0, // Đã tính trong tip phân bổ NPT
         category: 'dependent',
       });
     }
   }
 
-  // Tip 3: Voluntary pension
-  const maxVoluntaryPension = 1_000_000; // 1 triệu/tháng mỗi người
-  if (voluntaryPension === 0) {
-    const higherEarner = person1.grossIncome > person2.grossIncome ? person1 : person2;
-    const higherRate = Math.max(p1MarginalRate, p2MarginalRate);
-    const potentialSavings = maxVoluntaryPension * higherRate;
-
+  // Tip 3: Hưu trí tự nguyện, BH nhân thọ (tổng tối đa 3tr/tháng/người, NĐ 253/2026 Điều 46.2.a)
+  const pensionCap = getVoluntaryPensionCap();
+  const pensionGain = (p: PersonIncome, deps: number) =>
+    p.pensionContribution >= pensionCap
+      ? 0
+      : calculatePersonTax(p, deps).taxAmount - calculatePersonTax({ ...p, pensionContribution: pensionCap }, deps).taxAmount;
+  const [pg1, pg2] = [pensionGain(person1, p1Deps), pensionGain(person2, p2Deps)];
+  if (Math.max(pg1, pg2) > 0) {
+    const [who, savings] = pg1 >= pg2 ? [person1, pg1] : [person2, pg2];
     tips.push({
       id: 'tip-voluntary-pension',
-      title: 'Tham gia bảo hiểm hưu trí tự nguyện',
-      description: `Đóng hưu trí tự nguyện tối đa ${formatCurrency(maxVoluntaryPension)}/tháng cho ${higherEarner.name} để giảm thuế suất ${(higherRate * 100).toFixed(0)}%.`,
-      potentialSavings,
+      title: 'Hưu trí tự nguyện, bảo hiểm nhân thọ',
+      description: `Đóng đủ ${formatCurrency(pensionCap)}/tháng cho ${who.name} (đang đóng ${formatCurrency(who.pensionContribution)}) giúp giảm ${formatCurrency(savings)}/tháng tiền thuế. Mức trừ tối đa ${formatCurrency(pensionCap)}/tháng/người, tính gộp hưu trí bổ sung, hưu trí tự nguyện, bảo hiểm nhân thọ (kể cả phần công ty đóng).`,
+      potentialSavings: savings,
       category: 'deduction',
     });
   }
 
   // Tip 4: Charitable contributions
-  if (charitableContribution === 0) {
-    const higherRate = Math.max(p1MarginalRate, p2MarginalRate);
+  if (person1.otherDeductions === 0 && person2.otherDeductions === 0) {
     tips.push({
       id: 'tip-charity',
       title: 'Đóng góp từ thiện qua tổ chức hợp pháp',
-      description: 'Khoản đóng góp từ thiện, nhân đạo qua tổ chức được công nhận sẽ được giảm trừ khỏi thu nhập chịu thuế.',
+      description: 'Khoản đóng góp từ thiện, nhân đạo qua tổ chức được công nhận sẽ được giảm trừ khỏi thu nhập chịu thuế của người đóng góp.',
       potentialSavings: 0, // Variable
       category: 'deduction',
     });
@@ -230,11 +216,11 @@ function generateTips(
     });
   }
 
-  // Tip 6: Timing for bonus/income
+  // Tip 6: Thời điểm nhận thưởng (thuế tiền lương quyết toán theo năm)
   tips.push({
     id: 'tip-timing',
-    title: 'Thời điểm nhận thu nhập',
-    description: 'Nếu có thể, tránh nhận thưởng/thu nhập đột biến trong cùng một tháng để không bị đẩy lên bậc thuế cao. Thưởng Tết được tính thuế riêng biệt.',
+    title: 'Thời điểm nhận thưởng',
+    description: 'Thưởng được cộng vào thu nhập tiền lương của tháng chi trả để tạm khấu trừ; nghĩa vụ cuối cùng xác định khi quyết toán năm, nên thời điểm nhận thưởng trong cùng năm không làm thay đổi thuế năm.',
     potentialSavings: 0,
     category: 'timing',
   });
@@ -249,9 +235,11 @@ function generateTips(
  * Main optimization function
  */
 export function optimizeCoupleTax(input: CoupleInput): CoupleOptimizationResult {
-  const { person1, person2, totalDependents, charitableContribution, voluntaryPension } = input;
+  const { person1, person2 } = input;
+  // Chặn [0, MAX]: số âm/NaN làm mảng phương án rỗng, số quá lớn làm treo trang
+  const totalDependents = Math.max(0, Math.min(MAX_COUPLE_DEPENDENTS, Math.floor(input.totalDependents || 0)));
 
-  // Generate all allocation scenarios
+  // Generate all allocation scenarios (luôn ≥ 1 phương án sau khi chặn)
   const scenarios = generateAllocationScenarios(person1, person2, totalDependents);
 
   // Find optimal scenario (lowest total tax)
@@ -278,15 +266,15 @@ export function optimizeCoupleTax(input: CoupleInput): CoupleOptimizationResult 
     person1,
     person2,
     totalDependents,
-    charitableContribution,
-    voluntaryPension,
     optimalScenario,
     currentScenario
   );
 
-  // Calculate combined metrics
+  // Calculate combined metrics (thực nhận = GROSS − BH − thuế)
   const combinedGrossIncome = person1.grossIncome + person2.grossIncome;
-  const combinedNetIncome = combinedGrossIncome - optimalScenario.totalTax;
+  const combinedNetIncome =
+    calculatePersonTax(person1, optimalScenario.person1Dependents).netIncome +
+    calculatePersonTax(person2, optimalScenario.person2Dependents).netIncome;
   const effectiveTaxRate = combinedGrossIncome > 0
     ? (optimalScenario.totalTax / combinedGrossIncome) * 100
     : 0;
@@ -324,17 +312,4 @@ export function getCategoryLabel(category: OptimizationTip['category']): string 
     structure: 'Cấu trúc thu nhập',
   };
   return labels[category];
-}
-
-/**
- * Get category color
- */
-export function getCategoryColor(category: OptimizationTip['category']): string {
-  const colors: Record<typeof category, string> = {
-    dependent: 'blue',
-    deduction: 'green',
-    timing: 'yellow',
-    structure: 'purple',
-  };
-  return colors[category];
 }

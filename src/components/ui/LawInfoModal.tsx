@@ -108,6 +108,12 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
                   </svg>
                   <span>Bậc thuế 35% áp dụng từ 100 triệu (thay vì 80 triệu)</span>
                 </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Hưu trí tự nguyện, bảo hiểm nhân thọ được trừ tối đa 3 triệu/tháng; chi khám chữa bệnh tối đa 23 triệu/năm, học phí tối đa 24 triệu/năm (khi tự quyết toán)</span>
+                </li>
               </ul>
             </div>
 
@@ -125,8 +131,8 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
                     <span className="text-primary-700 font-bold text-xs">1</span>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">Từ 1/1/2026</p>
-                    <p>Doanh nghiệp tạm tính và khấu trừ thuế theo mức mới</p>
+                    <p className="font-medium text-gray-800">Từ 01/01/2026</p>
+                    <p>Biểu 5 bậc và giảm trừ 15,5 triệu/6,2 triệu áp dụng cho cả năm tính thuế 2026; phần đã khấu trừ theo mức cũ được điều chỉnh khi quyết toán</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -134,8 +140,8 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
                     <span className="text-primary-700 font-bold text-xs">2</span>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">Từ 1/7/2026</p>
-                    <p>Luật chính thức có hiệu lực (thuế chuyển nhượng vàng)</p>
+                    <p className="font-medium text-gray-800">Từ 01/07/2026</p>
+                    <p>Luật 109/2025/QH15, NĐ 253/2026/NĐ-CP có hiệu lực: ngưỡng thuế từng lần 20 triệu, ăn giữa ca miễn tối đa 1,2 triệu/tháng, khấu trừ 10% vãng lai từ 5 triệu/lần. Vàng miếng 0,1%: chưa thu, chờ Chính phủ quy định.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -143,8 +149,8 @@ export default function LawInfoModal({ isOpen, onClose }: LawInfoModalProps) {
                     <span className="text-primary-700 font-bold text-xs">3</span>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">1/1 - 31/3/2027</p>
-                    <p>Quyết toán thuế năm 2026</p>
+                    <p className="font-medium text-gray-800">Quyết toán năm 2026</p>
+                    <p>Tổ chức trả thu nhập: hạn 31/3/2027. Cá nhân tự quyết toán: hạn cuối tháng 4/2027 (dời sang ngày làm việc tiếp theo nếu trùng ngày nghỉ).</p>
                   </div>
                 </div>
               </div>

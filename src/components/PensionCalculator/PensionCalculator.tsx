@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { calculatePension, PensionInput, PensionResult } from '@/lib/pensionCalculator';
-import { formatCurrency, formatNumber, parseCurrency } from '@/lib/taxCalculator';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { calculatePension, validatePensionInput, PensionInput } from '@/lib/pensionCalculator';
+import { formatCurrency, formatNumber, getMaxSocialInsuranceSalary, getBaseSalary } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
 import { PensionTabState } from '@/lib/snapshotTypes';
@@ -21,6 +21,8 @@ function InfoIcon() {
   );
 }
 
+const formatPercent = (rate: number) => `${(rate * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`;
+
 export default function PensionCalculator({ tabState, onTabStateChange }: PensionCalculatorProps) {
   // Initialize state from tabState or defaults
   const [gender, setGender] = useState<'male' | 'female'>(tabState?.gender ?? 'male');
@@ -29,84 +31,40 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
   const [contributionStartYear, setContributionStartYear] = useState<number>(tabState?.contributionStartYear ?? 2010);
   const [contributionYears, setContributionYears] = useState<number>(tabState?.contributionYears ?? 20);
   const [contributionMonths, setContributionMonths] = useState<number>(tabState?.contributionMonths ?? 0);
-  const [currentMonthlySalary, setCurrentMonthlySalary] = useState<string>(
-    tabState?.currentMonthlySalary?.toString() ?? '10000000'
-  );
+  const [salary, setSalary] = useState<number>(tabState?.currentMonthlySalary ?? 10_000_000);
   const [earlyRetirementYears, setEarlyRetirementYears] = useState<number>(tabState?.earlyRetirementYears ?? 0);
   const [isHazardousWork, setIsHazardousWork] = useState<boolean>(tabState?.isHazardousWork ?? false);
   const [salaryWarning, setSalaryWarning] = useState<string | null>(null);
 
-  const [result, setResult] = useState<PensionResult | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
+  const input: PensionInput = useMemo(() => ({
+    gender,
+    birthYear,
+    birthMonth,
+    contributionStartYear,
+    contributionYears,
+    contributionMonths,
+    currentMonthlySalary: salary,
+    earlyRetirementYears,
+    isHazardousWork,
+  }), [gender, birthYear, birthMonth, contributionStartYear, contributionYears, contributionMonths, salary, earlyRetirementYears, isHazardousWork]);
+
+  const errors = useMemo(() => validatePensionInput(input), [input]);
+  const result = useMemo(() => calculatePension(input), [input]);
+  const isEligible = errors.length === 0;
+  const hasSalary = salary > 0;
 
   // Update parent state when local state changes
   const updateTabState = useCallback(() => {
-    if (onTabStateChange) {
-      onTabStateChange({
-        gender,
-        birthYear,
-        birthMonth,
-        contributionStartYear,
-        contributionYears,
-        contributionMonths,
-        currentMonthlySalary: parseCurrency(currentMonthlySalary),
-        earlyRetirementYears,
-        isHazardousWork,
-      });
-    }
-  }, [
-    gender,
-    birthYear,
-    birthMonth,
-    contributionStartYear,
-    contributionYears,
-    contributionMonths,
-    currentMonthlySalary,
-    earlyRetirementYears,
-    isHazardousWork,
-    onTabStateChange,
-  ]);
+    onTabStateChange?.(input);
+  }, [input, onTabStateChange]);
 
-  // Calculate pension whenever inputs change
   useEffect(() => {
-    try {
-      const salary = parseCurrency(currentMonthlySalary);
-      const input: PensionInput = {
-        gender,
-        birthYear,
-        birthMonth,
-        contributionStartYear,
-        contributionYears,
-        contributionMonths,
-        currentMonthlySalary: salary,
-        earlyRetirementYears,
-        isHazardousWork,
-      };
-
-      const calculated = calculatePension(input);
-      setResult(calculated);
-      setErrors([]);
-      updateTabState();
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Có lỗi xảy ra']);
-      setResult(null);
-    }
-  }, [
-    gender,
-    birthYear,
-    birthMonth,
-    contributionStartYear,
-    contributionYears,
-    contributionMonths,
-    currentMonthlySalary,
-    earlyRetirementYears,
-    isHazardousWork,
-    updateTabState,
-  ]);
+    updateTabState();
+  }, [updateTabState]);
 
   const handleSalaryChange = (value: string) => {
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    setCurrentMonthlySalary(parsed.value.toString());
+    setSalary(parsed.value);
     setSalaryWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
   };
 
@@ -126,17 +84,13 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
 
   const currentYear = new Date().getFullYear();
   const currentAge = currentYear - birthYear;
+  const maxSalary = getMaxSocialInsuranceSalary();
 
   return (
     <div className="card">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl">👴</span>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Tính lương hưu BHXH</h2>
-          <p className="text-sm text-gray-500">Ước tính lương hưu dựa trên thời gian đóng bảo hiểm</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Tính lương hưu BHXH</h2>
+        <p className="text-sm text-gray-500">Ước tính lương hưu theo Luật BHXH 2024 dựa trên thời gian đóng bảo hiểm</p>
       </div>
 
       {errors.length > 0 && (
@@ -147,7 +101,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Input Section */}
         <div className="space-y-5">
           <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Thông tin cá nhân</h3>
@@ -186,7 +140,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             <div>
               <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
                 <span>Năm sinh</span>
-                <Tooltip content="Năm sinh của bạn để tính tuổi nghỉ hưu">
+                <Tooltip content="Tuổi nghỉ hưu xác định theo tháng, năm sinh (BLLĐ 2019 Điều 169)">
                   <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
@@ -226,7 +180,7 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Năm bắt đầu đóng BHXH</span>
-              <Tooltip content="Năm bạn bắt đầu tham gia bảo hiểm xã hội">
+              <Tooltip content="Dùng để xác định sàn lương hưu (tham gia trước 01/7/2025) và số năm đóng sau tuổi nghỉ hưu">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -245,8 +199,8 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
           {/* Contribution Years and Months */}
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-              <span>Thời gian đã đóng BHXH</span>
-              <Tooltip content="Tổng số năm và tháng đã đóng bảo hiểm xã hội">
+              <span>Tổng thời gian đóng BHXH đến khi nghỉ hưu</span>
+              <Tooltip content="Tổng số năm, tháng đóng BHXH bắt buộc tính đến thời điểm nghỉ hưu">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -281,11 +235,11 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             </p>
           </div>
 
-          {/* Current Monthly Salary */}
+          {/* Average Salary */}
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-              <span>Lương đóng BHXH hiện tại (VNĐ/tháng)</span>
-              <Tooltip content="Mức lương hiện tại bạn đang đóng bảo hiểm xã hội">
+              <span>Bình quân tiền lương đóng BHXH (VNĐ/tháng)</span>
+              <Tooltip content={`Bình quân tiền lương đóng BHXH của toàn bộ thời gian đóng, đã điều chỉnh theo chỉ số giá (Luật BHXH 2024 Điều 72, 73). Có thể nhập lương đóng BHXH hiện tại để ước tính. Tối đa 20 lần mức tham chiếu (${formatNumber(maxSalary)} đồng).`}>
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -293,21 +247,27 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             </label>
             <input
               type="text"
-              value={formatNumber(parseCurrency(currentMonthlySalary))}
+              inputMode="numeric"
+              value={hasSalary ? formatNumber(salary) : ''}
               onChange={(e) => handleSalaryChange(e.target.value)}
               className="input-field text-lg font-semibold"
-              placeholder="Nhập lương đóng BHXH"
+              placeholder="0"
             />
             {salaryWarning && (
               <p className="text-xs text-amber-600 mt-1">{salaryWarning}</p>
+            )}
+            {result.isSalaryCapped && (
+              <p className="text-xs text-amber-600 mt-1">
+                Tính theo mức tối đa {formatNumber(maxSalary)} đồng (20 lần mức tham chiếu)
+              </p>
             )}
           </div>
 
           {/* Early Retirement */}
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-              <span>Nghỉ hưu sớm (số năm)</span>
-              <Tooltip content="Số năm bạn muốn nghỉ hưu sớm hơn tuổi quy định (0-5 năm). Lương hưu sẽ giảm 2% mỗi năm nghỉ sớm.">
+              <span>Nghỉ hưu trước tuổi (số năm)</span>
+              <Tooltip content="Nghề nặng nhọc, độc hại đủ 15 năm: nghỉ trước tối đa 5 tuổi, không giảm tỷ lệ. Trường hợp khác chỉ được nghỉ trước tuổi khi đóng đủ 20 năm và suy giảm khả năng lao động từ 61%, giảm 2% tỷ lệ cho mỗi năm (Luật BHXH 2024 Điều 64, 65, 66).">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -327,7 +287,9 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
             </select>
             {earlyRetirementYears > 0 && (
               <p className="text-xs text-amber-600 mt-1">
-                Lương hưu sẽ giảm {earlyRetirementYears * 2}% do nghỉ sớm
+                {isHazardousWork
+                  ? 'Không giảm tỷ lệ hưởng (nghề nặng nhọc, độc hại đủ 15 năm)'
+                  : `Tỷ lệ hưởng giảm ${earlyRetirementYears * 2}% (chỉ khi suy giảm khả năng lao động từ 61%)`}
               </p>
             )}
           </div>
@@ -342,8 +304,8 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
                 className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
               />
               <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                Làm nghề độc hại, nguy hiểm
-                <Tooltip content="Nghề độc hại được nghỉ hưu sớm hơn. Nam: 57 tuổi, Nữ: 55 tuổi.">
+                Đủ 15 năm làm nghề nặng nhọc, độc hại, nguy hiểm
+                <Tooltip content="Được nghỉ hưu thấp hơn tối đa 5 tuổi so với tuổi nghỉ hưu thông thường tại thời điểm nghỉ hưu mà không bị giảm tỷ lệ hưởng (Luật BHXH 2024 Điều 64.1.b; BLLĐ Điều 169.3). Tuổi thấp nhất: nam 57 tuổi (từ năm 2028), nữ 55 tuổi (từ năm 2035).">
                   <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
@@ -357,56 +319,39 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
         <div className="space-y-5">
           <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Kết quả tính toán</h3>
 
-          {result && (
+          {/* Retirement Age and Date */}
+          <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <h4 className="font-semibold text-primary-900">Tuổi và thời điểm nghỉ hưu</h4>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-600">Tuổi nghỉ hưu:</span>
+                <span className="font-semibold text-primary-700">
+                  {result.retirementAge.years} tuổi {result.retirementAge.months > 0 && `${result.retirementAge.months} tháng`}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-600">Tháng đủ tuổi nghỉ hưu:</span>
+                <span className="font-semibold text-primary-700">
+                  {result.retirementMonth}/{result.retirementYear}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Lương hưu được hưởng từ tháng liền kề sau tháng đủ điều kiện.</p>
+            </div>
+          </div>
+
+          {isEligible && !hasSalary && (
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-sm text-gray-600">
+              Nhập bình quân tiền lương đóng BHXH để ước tính lương hưu.
+            </div>
+          )}
+
+          {isEligible && hasSalary && (
             <>
-              {/* Retirement Age and Date */}
-              <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <h4 className="font-semibold text-primary-900">Tuổi và thời điểm nghỉ hưu</h4>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tuổi nghỉ hưu:</span>
-                    <span className="font-semibold text-primary-700">
-                      {result.retirementAge.years} năm {result.retirementAge.months} tháng
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Thời điểm nghỉ hưu:</span>
-                    <span className="font-semibold text-primary-700">
-                      Tháng {result.retirementMonth}/{result.retirementYear}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contribution Summary */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <h4 className="font-semibold text-blue-900">Thông tin đóng góp</h4>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Thời gian đóng:</span>
-                    <span className="font-medium">
-                      {result.totalContributionYears} năm {result.totalContributionMonths} tháng
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tổng đã đóng:</span>
-                    <span className="font-semibold text-blue-700">
-                      {formatCurrency(result.totalContributed)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* Benefit Rate Calculation */}
               <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                 <div className="flex items-center gap-2 mb-2">
@@ -416,19 +361,23 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
                   <h4 className="font-semibold text-green-900">Tỷ lệ hưởng lương hưu</h4>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tỷ lệ cơ bản:</span>
-                    <span className="font-medium">{(result.baseRate * 100).toFixed(1)}%</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-600">Số năm tính tỷ lệ:</span>
+                    <span className="font-medium">{result.rateYears.toLocaleString('vi-VN')} năm</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-600">Tỷ lệ theo số năm đóng:</span>
+                    <span className="font-medium">{formatPercent(result.baseRate)}</span>
                   </div>
                   {result.deductionRate > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Giảm trừ nghỉ sớm:</span>
-                      <span className="text-amber-600 font-medium">-{(result.deductionRate * 100).toFixed(1)}%</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-600">Giảm do nghỉ trước tuổi:</span>
+                      <span className="text-amber-600 font-medium">-{formatPercent(result.deductionRate)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-2 border-t border-green-200">
-                    <span className="text-gray-600 font-medium">Tỷ lệ cuối cùng:</span>
-                    <span className="font-bold text-green-700">{(result.finalRate * 100).toFixed(1)}%</span>
+                  <div className="flex justify-between gap-3 pt-2 border-t border-green-200">
+                    <span className="text-gray-600 font-medium">Tỷ lệ hưởng:</span>
+                    <span className="font-bold text-green-700">{formatPercent(result.finalRate)}</span>
                   </div>
                 </div>
               </div>
@@ -443,13 +392,21 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <div className="text-xs text-gray-600 mb-1">Hàng tháng</div>
+                    <div className="text-xs text-gray-600 mb-1">Hằng tháng</div>
                     <div className="text-2xl font-bold text-purple-700">
                       {formatCurrency(result.monthlyPension)}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      = {formatPercent(result.finalRate)} × {formatCurrency(result.averageSalary)}
+                    </div>
+                    {result.isMinimumApplied && (
+                      <p className="text-xs text-purple-600 mt-1">
+                        Nâng bằng mức tham chiếu {formatCurrency(getBaseSalary())} (tham gia trước 01/7/2025, đủ 20 năm đóng - NĐ 158/2025/NĐ-CP Điều 13)
+                      </p>
+                    )}
                   </div>
                   <div className="pt-2 border-t border-purple-200">
-                    <div className="text-xs text-gray-600 mb-1">Hàng năm</div>
+                    <div className="text-xs text-gray-600 mb-1">Hằng năm</div>
                     <div className="text-lg font-semibold text-purple-600">
                       {formatCurrency(result.yearlyPension)}
                     </div>
@@ -464,37 +421,46 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
                     <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                     </svg>
-                    <h4 className="font-semibold text-amber-900">Trợ cấp thêm một lần</h4>
+                    <h4 className="font-semibold text-amber-900">Trợ cấp một lần khi nghỉ hưu</h4>
                   </div>
                   <div className="text-lg font-bold text-amber-700">
                     {formatCurrency(result.oneTimeAllowance)}
                   </div>
                   <p className="text-xs text-amber-600 mt-1">
-                    Cho thời gian đóng vượt mức tối đa hưởng lương
+                    0,5 tháng bình quân cho mỗi năm đóng vượt {gender === 'male' ? 35 : 30} năm
+                    {result.doubledAllowanceYears > 0 &&
+                      `; ${result.doubledAllowanceYears.toLocaleString('vi-VN')} năm đóng sau tuổi nghỉ hưu tính 2 tháng/năm`}
+                    {' '}(Luật BHXH 2024 Điều 68)
                   </p>
                 </div>
               )}
 
               {/* Analysis: Breakeven */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  <h4 className="font-semibold text-gray-900">Phân tích hòa vốn</h4>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Thời gian hòa vốn:</span>
-                    <span className="font-semibold text-gray-800">
-                      ~{result.yearsToBreakeven.toFixed(1)} năm
-                    </span>
+              {result.yearsToBreakeven > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h4 className="font-semibold text-gray-900">Phân tích hòa vốn</h4>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Sau khoảng {result.yearsToBreakeven.toFixed(1)} năm nghỉ hưu, tổng lương hưu nhận được sẽ bằng tổng số tiền đã đóng.
-                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-600">Đã đóng vào quỹ hưu trí (22%):</span>
+                      <span className="font-semibold text-gray-800">{formatCurrency(result.totalContributed)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-600">Thời gian hòa vốn:</span>
+                      <span className="font-semibold text-gray-800">
+                        ~{result.yearsToBreakeven.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} năm
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Tính trên phần đóng vào quỹ hưu trí - tử tuất (người lao động 8%, doanh nghiệp 14%), chưa tính trượt giá và điều chỉnh lương hưu.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
@@ -509,11 +475,12 @@ export default function PensionCalculator({ tabState, onTabStateChange }: Pensio
           Lưu ý quan trọng
         </h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Đây là ước tính dựa trên quy định BHXH Việt Nam hiện hành (2024-2025)</li>
-          <li>• Lương hưu thực tế phụ thuộc vào lương bình quân của những năm cuối cùng đóng BHXH</li>
-          <li>• Tuổi nghỉ hưu có thể thay đổi theo lộ trình tăng dần đến năm 2028 (nam) và 2035 (nữ)</li>
-          <li>• Nam cần tối thiểu 15 năm đóng BHXH, nữ cần 15 năm để được hưởng lương hưu</li>
-          <li>• Nghỉ hưu sớm: giảm 2% lương hưu cho mỗi năm nghỉ sớm (tối đa 5 năm)</li>
+          <li>• Ước tính theo Luật BHXH 2024 (41/2024/QH15, hiệu lực 01/7/2025) và Nghị định 158/2025/NĐ-CP</li>
+          <li>• Lương hưu = tỷ lệ hưởng × bình quân tiền lương đóng BHXH của toàn bộ thời gian đóng (đã điều chỉnh theo hệ số trượt giá)</li>
+          <li>• Tuổi nghỉ hưu tăng dần đến 62 tuổi (nam, năm 2028) và 60 tuổi (nữ, năm 2035) - BLLĐ 2019 Điều 169</li>
+          <li>• Cần đủ 15 năm đóng BHXH. Tỷ lệ: nữ 45% cho 15 năm; nam 45% cho 20 năm (15 đến dưới 20 năm: 40% + 1%/năm); mỗi năm thêm 2%, tối đa 75%; tháng lẻ 1-6 tính nửa năm, 7-11 tính một năm</li>
+          <li>• Nghỉ trước tuổi do suy giảm khả năng lao động: giảm 2% mỗi năm; nghề nặng nhọc, độc hại đủ 15 năm nghỉ sớm tối đa 5 tuổi không giảm</li>
+          <li>• Lương hưu được điều chỉnh tăng 8% từ 01/7/2026 (Nghị định 162/2026/NĐ-CP); số tiền trên tính theo mặt bằng hiện tại</li>
         </ul>
       </div>
     </div>

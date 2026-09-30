@@ -22,6 +22,10 @@ import {
   AllowancesState,
 } from '@/lib/taxCalculator';
 
+// "Luật cũ" (7 bậc) được so sánh theo kỳ tính thuế 2025: trần hưu trí tự nguyện 1tr,
+// trần BHXH 46,8tr, lương tối thiểu vùng 2025
+const OLD_LAW_DATE = new Date(2025, 11, 31);
+
 // ===== TYPES =====
 
 export interface SimulationBaseInput {
@@ -51,19 +55,6 @@ export interface SimulationResult {
     taxAmount: number;
     netIncome: number;
     effectiveRate: number;
-  };
-}
-
-export interface ComparisonResult {
-  baseline: SimulationResult;
-  comparison: SimulationResult;
-  impact: {
-    taxChange: number;
-    netIncomeChange: number;
-    taxChangePercent: number;
-    netIncomeChangePercent: number;
-    monthlyBenefit: number;
-    yearlyBenefit: number;
   };
 }
 
@@ -178,9 +169,9 @@ export function getDependentChangePresets(currentDependents: number): DependentC
 
 export interface BonusScenarioParams {
   annualBonus: number; // Tổng thưởng năm
-  splitMonths?: number; // Số tháng chia thưởng (0 = nhận 1 lần)
 }
 
+// Một cách chia thưởng: chỉ khác nhau ở số thuế TẠM khấu trừ hằng tháng
 export interface BonusTaxResult {
   scenario: string;
   description: string;
@@ -190,166 +181,62 @@ export interface BonusTaxResult {
     tax: number;
     netIncome: number;
   }[];
-  totalTax: number;
-  totalNetIncome: number;
-  averageMonthlyTax: number;
+  withheldTax: number; // Tổng thuế tạm khấu trừ trong năm (biểu tháng)
+  settlementDiff: number; // withheldTax - annualTax: > 0 được hoàn, < 0 nộp thêm khi quyết toán
+}
+
+export interface BonusScenariosResult {
+  annualTax: number; // Thuế năm sau quyết toán - như nhau với mọi cách chia thưởng
+  annualNetIncome: number; // Thực nhận cả năm sau quyết toán
+  scenarios: BonusTaxResult[];
 }
 
 /**
- * Calculate bonus tax with different distribution strategies
- * "Chia thưởng vs nhận 1 lần"
+ * "Chia thưởng vs nhận 1 lần".
+ * Thuế tiền lương của cá nhân cư trú tính theo kỳ năm và quyết toán (Luật Thuế TNCN
+ * Điều 6, 9; NĐ 253/2026/NĐ-CP Điều 51) nên thuế năm KHÔNG phụ thuộc cách chia thưởng
+ * trong năm; khác biệt chỉ là số tạm khấu trừ hằng tháng, được hoàn/bù trừ khi quyết toán.
+ * Thưởng không thuộc tiền lương đóng BHXH nên bảo hiểm chỉ tính trên lương.
  */
 export function calculateBonusTaxScenarios(
   baseInput: SimulationBaseInput,
-  bonusParams: BonusScenarioParams,
-  useTax2026: boolean = true
-): BonusTaxResult[] {
-  const calculateTax = useTax2026 ? calculateNewTax : calculateOldTax;
-  const results: BonusTaxResult[] = [];
-
-  // Scenario 1: Nhận thưởng 1 lần (tháng thưởng)
-  const oneTimeResult = calculateOneTimeBonusTax(baseInput, bonusParams.annualBonus, calculateTax);
-  results.push(oneTimeResult);
-
-  // Scenario 2: Chia đều 12 tháng
-  const splitResult = calculateSplitBonusTax(baseInput, bonusParams.annualBonus, 12, calculateTax);
-  results.push(splitResult);
-
-  // Scenario 3: Chia 2 lần (6 tháng/lần)
-  const halfYearResult = calculateSplitBonusTax(baseInput, bonusParams.annualBonus, 2, calculateTax);
-  results.push(halfYearResult);
-
-  // Scenario 4: Chia 4 lần (quý)
-  const quarterlyResult = calculateSplitBonusTax(baseInput, bonusParams.annualBonus, 4, calculateTax);
-  results.push(quarterlyResult);
-
-  return results;
-}
-
-function calculateOneTimeBonusTax(
-  baseInput: SimulationBaseInput,
-  bonus: number,
-  calculateTax: (input: TaxInput) => TaxResult
-): BonusTaxResult {
-  const monthlyTaxes: BonusTaxResult['monthlyTaxes'] = [];
-  let totalTax = 0;
-  let totalNetIncome = 0;
-
-  // 11 tháng bình thường
-  for (let month = 1; month <= 11; month++) {
-    const result = calculateTax({
-      grossIncome: baseInput.grossIncome,
-      dependents: baseInput.dependents,
-      hasInsurance: baseInput.hasInsurance,
-      insuranceOptions: baseInput.insuranceOptions,
-      region: baseInput.region,
-      otherDeductions: baseInput.otherDeductions,
-    });
-    monthlyTaxes.push({
-      month,
-      income: baseInput.grossIncome,
-      tax: result.taxAmount,
-      netIncome: result.netIncome,
-    });
-    totalTax += result.taxAmount;
-    totalNetIncome += result.netIncome;
-  }
-
-  // Tháng 12: Lương + thưởng
-  const month12Result = calculateTax({
-    grossIncome: baseInput.grossIncome + bonus,
-    dependents: baseInput.dependents,
-    hasInsurance: baseInput.hasInsurance,
-    insuranceOptions: baseInput.insuranceOptions,
-    region: baseInput.region,
-    otherDeductions: baseInput.otherDeductions,
-  });
-  monthlyTaxes.push({
-    month: 12,
-    income: baseInput.grossIncome + bonus,
-    tax: month12Result.taxAmount,
-    netIncome: month12Result.netIncome,
-  });
-  totalTax += month12Result.taxAmount;
-  totalNetIncome += month12Result.netIncome;
-
-  return {
-    scenario: 'Nhận thưởng 1 lần',
-    description: `Nhận toàn bộ ${formatNumber(bonus)} VND vào tháng 12`,
-    monthlyTaxes,
-    totalTax,
-    totalNetIncome,
-    averageMonthlyTax: totalTax / 12,
+  bonusParams: BonusScenarioParams
+): BonusScenariosResult {
+  const bonus = Math.max(0, bonusParams.annualBonus);
+  const input: TaxInput = {
+    ...baseInput,
+    declaredSalary: baseInput.declaredSalary ?? baseInput.grossIncome,
   };
-}
 
-function calculateSplitBonusTax(
-  baseInput: SimulationBaseInput,
-  bonus: number,
-  splitCount: number,
-  calculateTax: (input: TaxInput) => TaxResult
-): BonusTaxResult {
-  const monthlyTaxes: BonusTaxResult['monthlyTaxes'] = [];
-  let totalTax = 0;
-  let totalNetIncome = 0;
+  // Các tháng có cùng mức giảm trừ nên thuế theo biểu năm (= biểu tháng × 12)
+  // trên tổng thu nhập tính thuế cả năm = 12 × thuế của "tháng bình quân".
+  const averageMonth = calculateNewTax({ ...input, grossIncome: input.grossIncome + bonus / 12 });
+  const annualTax = Math.round(averageMonth.taxAmount * 12);
 
-  const bonusPerSplit = bonus / splitCount;
-  const splitMonths =
-    splitCount === 12
-      ? Array.from({ length: 12 }, (_, i) => i + 1)
-      : splitCount === 2
-        ? [6, 12]
-        : splitCount === 4
-          ? [3, 6, 9, 12]
-          : [12];
-
-  for (let month = 1; month <= 12; month++) {
-    const isBonusMonth = splitMonths.includes(month);
-    const income = baseInput.grossIncome + (isBonusMonth ? bonusPerSplit : 0);
-
-    const result = calculateTax({
-      grossIncome: income,
-      dependents: baseInput.dependents,
-      hasInsurance: baseInput.hasInsurance,
-      insuranceOptions: baseInput.insuranceOptions,
-      region: baseInput.region,
-      otherDeductions: baseInput.otherDeductions,
+  const withholding = (scenario: string, description: string, bonusMonths: number[]): BonusTaxResult => {
+    const perPayment = bonus / bonusMonths.length;
+    const monthlyTaxes = Array.from({ length: 12 }, (_, i) => {
+      const income = input.grossIncome + (bonusMonths.includes(i + 1) ? perPayment : 0);
+      const result = calculateNewTax({ ...input, grossIncome: income });
+      return { month: i + 1, income, tax: result.taxAmount, netIncome: result.netIncome };
     });
-
-    monthlyTaxes.push({
-      month,
-      income,
-      tax: result.taxAmount,
-      netIncome: result.netIncome,
-    });
-    totalTax += result.taxAmount;
-    totalNetIncome += result.netIncome;
-  }
-
-  let scenarioName: string;
-  let description: string;
-
-  if (splitCount === 12) {
-    scenarioName = 'Chia đều 12 tháng';
-    description = `Mỗi tháng thêm ${formatNumber(Math.round(bonusPerSplit))} VND`;
-  } else if (splitCount === 2) {
-    scenarioName = 'Chia 2 lần (tháng 6 & 12)';
-    description = `Mỗi lần ${formatNumber(Math.round(bonusPerSplit))} VND`;
-  } else if (splitCount === 4) {
-    scenarioName = 'Chia 4 lần (mỗi quý)';
-    description = `Mỗi quý ${formatNumber(Math.round(bonusPerSplit))} VND`;
-  } else {
-    scenarioName = `Chia ${splitCount} lần`;
-    description = `Mỗi lần ${formatNumber(Math.round(bonusPerSplit))} VND`;
-  }
+    const withheldTax = Math.round(monthlyTaxes.reduce((sum, m) => sum + m.tax, 0));
+    return { scenario, description, monthlyTaxes, withheldTax, settlementDiff: withheldTax - annualTax };
+  };
 
   return {
-    scenario: scenarioName,
-    description,
-    monthlyTaxes,
-    totalTax,
-    totalNetIncome,
-    averageMonthlyTax: totalTax / 12,
+    annualTax,
+    annualNetIncome: Math.round(averageMonth.netIncome * 12),
+    scenarios: [
+      withholding('Nhận 1 lần (tháng 12)', `Nhận toàn bộ ${formatNumber(bonus)} VND vào tháng 12`, [12]),
+      withholding(
+        'Chia đều 12 tháng',
+        `Mỗi tháng thêm ${formatNumber(bonus / 12)} VND`,
+        Array.from({ length: 12 }, (_, i) => i + 1)
+      ),
+      withholding('Chia 2 lần (tháng 6 & 12)', `Mỗi lần ${formatNumber(bonus / 2)} VND`, [6, 12]),
+      withholding('Chia 4 lần (mỗi quý)', `Mỗi quý ${formatNumber(bonus / 4)} VND`, [3, 6, 9, 12]),
+    ],
   };
 }
 
@@ -403,7 +290,7 @@ export function generateMultiYearProjection(
 
     // Apply salary increase (skip first year)
     if (i > 0) {
-      currentSalary = currentSalary * (1 + params.annualSalaryIncrease / 100);
+      currentSalary = Math.max(0, currentSalary * (1 + params.annualSalaryIncrease / 100));
     }
 
     // Check for dependent changes
@@ -412,17 +299,14 @@ export function generateMultiYearProjection(
       currentDependents = Math.max(0, currentDependents + dependentChange.change);
     }
 
-    // Calculate taxes
+    // Giữ đủ input thật (phụ cấp, lương đóng BH, hưu trí tự nguyện) như màn hình chính
     const taxInput: TaxInput = {
+      ...baseInput,
       grossIncome: Math.round(currentSalary),
       dependents: currentDependents,
-      hasInsurance: baseInput.hasInsurance,
-      insuranceOptions: baseInput.insuranceOptions,
-      region: baseInput.region,
-      otherDeductions: baseInput.otherDeductions,
     };
 
-    const oldResult = calculateOldTax(taxInput);
+    const oldResult = calculateOldTax({ ...taxInput, calculationDate: OLD_LAW_DATE });
     const newResult = calculateNewTax(taxInput);
 
     // Calculate real value if inflation rate provided
@@ -469,7 +353,7 @@ export function runSimulation(
     ...scenario.input,
   };
 
-  const oldTax = calculateOldTax(simulationInput);
+  const oldTax = calculateOldTax({ ...simulationInput, calculationDate: OLD_LAW_DATE });
   const newTax = calculateNewTax(simulationInput);
 
   return {
@@ -492,119 +376,6 @@ export function runSimulations(
   scenarios: SimulationScenario[]
 ): SimulationResult[] {
   return scenarios.map((scenario) => runSimulation(baseInput, scenario));
-}
-
-/**
- * Compare two simulation results
- */
-export function compareSimulations(
-  baseline: SimulationResult,
-  comparison: SimulationResult,
-  useTax2026: boolean = true
-): ComparisonResult {
-  const baselineTax = useTax2026 ? baseline.newTax : baseline.oldTax;
-  const comparisonTax = useTax2026 ? comparison.newTax : comparison.oldTax;
-
-  const taxChange = comparisonTax.taxAmount - baselineTax.taxAmount;
-  const netIncomeChange = comparisonTax.netIncome - baselineTax.netIncome;
-
-  const taxChangePercent = baselineTax.taxAmount > 0
-    ? (taxChange / baselineTax.taxAmount) * 100
-    : 0;
-
-  const netIncomeChangePercent = baselineTax.netIncome > 0
-    ? (netIncomeChange / baselineTax.netIncome) * 100
-    : 0;
-
-  return {
-    baseline,
-    comparison,
-    impact: {
-      taxChange,
-      netIncomeChange,
-      taxChangePercent,
-      netIncomeChangePercent,
-      monthlyBenefit: -taxChange, // Positive if saving money
-      yearlyBenefit: -taxChange * 12,
-    },
-  };
-}
-
-// ===== UTILITY FUNCTIONS =====
-
-/**
- * Find the optimal bonus distribution strategy
- */
-export function findOptimalBonusStrategy(
-  results: BonusTaxResult[]
-): BonusTaxResult | null {
-  if (results.length === 0) return null;
-
-  return results.reduce((best, current) =>
-    current.totalTax < best.totalTax ? current : best
-  );
-}
-
-/**
- * Calculate break-even salary for tax bracket
- * "Lương bao nhiêu thì chịu thuế bậc tiếp theo?"
- */
-export function calculateBreakEvenSalary(
-  baseInput: SimulationBaseInput,
-  useTax2026: boolean = true
-): {
-  currentBracket: number;
-  nextBracketThreshold: number;
-  additionalSalaryNeeded: number;
-  marginalRate: number;
-} {
-  const calculateTax = useTax2026 ? calculateNewTax : calculateOldTax;
-  const result = calculateTax({
-    grossIncome: baseInput.grossIncome,
-    dependents: baseInput.dependents,
-    hasInsurance: baseInput.hasInsurance,
-    insuranceOptions: baseInput.insuranceOptions,
-    region: baseInput.region,
-    otherDeductions: baseInput.otherDeductions,
-  });
-
-  // Find current bracket from breakdown
-  const currentBracket = result.taxBreakdown.length;
-  const lastBracket = result.taxBreakdown[result.taxBreakdown.length - 1];
-
-  if (!lastBracket) {
-    return {
-      currentBracket: 0,
-      nextBracketThreshold: 0,
-      additionalSalaryNeeded: 0,
-      marginalRate: 0,
-    };
-  }
-
-  // Calculate how much more income needed to hit next bracket
-  const totalDeductions = result.totalDeductions;
-  const taxableIncome = result.taxableIncome;
-  const nextBracketStart = lastBracket.to;
-
-  const additionalTaxableNeeded =
-    nextBracketStart === Infinity ? 0 : nextBracketStart - taxableIncome;
-
-  return {
-    currentBracket,
-    nextBracketThreshold: nextBracketStart + totalDeductions,
-    additionalSalaryNeeded: Math.max(0, additionalTaxableNeeded),
-    marginalRate: lastBracket.rate * 100,
-  };
-}
-
-/**
- * Generate summary text for simulation results
- */
-export function generateSimulationSummary(result: SimulationResult, useTax2026: boolean = true): string {
-  const tax = useTax2026 ? result.newTax : result.oldTax;
-  const taxName = useTax2026 ? 'Luật 2026' : 'Luật hiện hành';
-
-  return `${result.scenario.name}: Thu nhập ${formatNumber(tax.grossIncome)} VND → Thuế ${formatNumber(tax.taxAmount)} VND/tháng (${tax.effectiveRate.toFixed(1)}%) → Thực nhận ${formatNumber(tax.netIncome)} VND`;
 }
 
 /**

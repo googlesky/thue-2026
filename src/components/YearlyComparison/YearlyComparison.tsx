@@ -6,6 +6,7 @@ import {
   TwoYearResult,
   PresetConfig,
   PRESETS,
+  findPreset,
   createUniformMonths,
   calculateTwoYearStrategy,
   compareStrategies,
@@ -36,7 +37,7 @@ export default function YearlyComparison({
 }: YearlyComparisonProps) {
   // Preset hoặc custom
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
-    tabState?.selectedPresetId ?? 'normal'
+    findPreset(tabState ? tabState.selectedPresetId : 'normal')?.id ?? null
   );
 
   // Common params
@@ -73,7 +74,7 @@ export default function YearlyComparison({
   // Sync from tab state
   useEffect(() => {
     if (tabState) {
-      setSelectedPresetId(tabState.selectedPresetId);
+      setSelectedPresetId(findPreset(tabState.selectedPresetId)?.id ?? null);
       setBonusAmount(tabState.bonusAmount);
     }
   }, [tabState]);
@@ -192,11 +193,13 @@ export default function YearlyComparison({
       <div className="card">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg">
-            <span className="text-2xl">📅</span>
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">So sánh thuế theo năm</h2>
-            <p className="text-sm text-gray-500">So sánh thuế TNCN giữa các năm và luật</p>
+            <p className="text-sm text-gray-500">Thuế sau quyết toán năm 2025 (luật cũ) và 2026 (luật mới)</p>
           </div>
         </div>
       </div>
@@ -216,7 +219,7 @@ export default function YearlyComparison({
           Thông số chung
         </h3>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Monthly Salary */}
           <div>
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
@@ -240,7 +243,7 @@ export default function YearlyComparison({
                 }
                 onStateChange?.({ grossIncome: value });
               }}
-              placeholder="30,000,000"
+              placeholder="30.000.000"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -291,7 +294,7 @@ export default function YearlyComparison({
               }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
-              {[0, 1, 2, 3, 4, 5].map(n => (
+              {Array.from({ length: Math.max(11, dependents + 1) }, (_, n) => n).map(n => (
                 <option key={n} value={n}>{n} người</option>
               ))}
             </select>
@@ -301,7 +304,7 @@ export default function YearlyComparison({
           <div>
             <label className="block text-sm text-gray-600 mb-1 flex items-center gap-1">
               Bảo hiểm
-              <Tooltip content="Đóng bảo hiểm xã hội bắt buộc 10.5% trên thu nhập GROSS">
+              <Tooltip content="BHXH, BHYT, BHTN bắt buộc 10,5% trên tiền lương (không tính trên thưởng)">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -314,12 +317,14 @@ export default function YearlyComparison({
                 type="checkbox"
                 checked={hasInsurance}
                 onChange={(e) => {
-                  setHasInsurance(e.target.checked);
-                  onStateChange?.({ hasInsurance: e.target.checked });
+                  const checked = e.target.checked;
+                  setHasInsurance(checked);
+                  // Tab chính tính BH theo insuranceOptions -> cập nhật cả hai cho đồng bộ
+                  onStateChange?.({ hasInsurance: checked, insuranceOptions: { bhxh: checked, bhyt: checked, bhtn: checked } });
                 }}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
-              <span className="text-sm text-gray-700">Đóng BHXH (10.5%)</span>
+              <span className="text-sm text-gray-700">Đóng BHXH (10,5%)</span>
             </label>
           </div>
         </div>
@@ -346,7 +351,7 @@ export default function YearlyComparison({
 
       {/* Scenario Details (for current selection) */}
       {currentResult && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 2025 */}
           <ScenarioColumn
             scenario={
@@ -375,7 +380,6 @@ export default function YearlyComparison({
                 setCustomScenario2025(scenario);
               }
             }}
-            isOptimal={comparison?.bestStrategy === getCurrentStrategyIndex()}
             showDetails={selectedPresetId === null}
           />
 
@@ -407,7 +411,6 @@ export default function YearlyComparison({
                 setCustomScenario2026(scenario);
               }
             }}
-            isOptimal={comparison?.bestStrategy === getCurrentStrategyIndex()}
             showDetails={selectedPresetId === null}
           />
         </div>
@@ -430,11 +433,12 @@ export default function YearlyComparison({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div className="text-sm text-amber-800">
-            <div className="font-medium mb-1">Lưu ý quan trọng về Luật 2026</div>
+            <div className="font-medium mb-1">Lưu ý</div>
             <ul className="list-disc list-inside space-y-1 text-amber-700">
-              <li><strong>Từ 01/01/2026:</strong> Áp dụng luật mới (5 bậc, giảm trừ 15.5tr/6.2tr)</li>
-              <li>Nghĩa vụ thuế TNCN được quyết toán theo năm dương lịch</li>
-              <li>So sánh năm 2025 (luật cũ) với 2026 (luật mới) để thấy mức tiết kiệm</li>
+              <li><strong>Kỳ tính thuế 2026:</strong> áp dụng luật mới cho cả năm (5 bậc, giảm trừ 15,5tr/6,2tr) theo Luật 109/2025/QH15, NĐ 253/2026/NĐ-CP</li>
+              <li>Thuế tiền lương tính theo năm và quyết toán: thưởng cộng vào thu nhập của năm nhận, nhận vào tháng nào trong cùng năm cũng không đổi thuế năm (chỉ đổi số tạm khấu trừ)</li>
+              <li>Bảo hiểm bắt buộc chỉ tính trên tiền lương, không tính trên thưởng</li>
+              <li>Các kịch bản so sánh trên cùng tổng thu nhập 2 năm; năm 2026 là số ước tính đến hết năm</li>
             </ul>
           </div>
         </div>

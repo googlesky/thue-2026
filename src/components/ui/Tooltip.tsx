@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, useId, ReactNode } from 'react';
 
 type TooltipPosition = 'top' | 'bottom' | 'left' | 'right';
 
@@ -13,8 +13,11 @@ interface TooltipProps {
 export default function Tooltip({ content, children, position = 'bottom' }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
+  // Dịch ngang (px) để popover không tràn mép màn hình hẹp
+  const [shiftX, setShiftX] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const tooltipId = useId();
 
   // Close on click outside
   useEffect(() => {
@@ -42,7 +45,11 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
 
   // Auto-adjust position if out of viewport
   useEffect(() => {
-    if (!isVisible || !containerRef.current || !popoverRef.current) return;
+    if (!isVisible) {
+      setShiftX(0);
+      return;
+    }
+    if (!containerRef.current || !popoverRef.current) return;
 
     const trigger = containerRef.current.getBoundingClientRect();
     const popover = popoverRef.current.getBoundingClientRect();
@@ -64,6 +71,13 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
     }
 
     setAdjustedPosition(newPosition);
+
+    // Kẹp popover trong khung nhìn (cách mép 8px); đo lúc chưa dịch (shiftX = 0)
+    const margin = 8;
+    let shift = 0;
+    if (popover.right > viewport.width - margin) shift = viewport.width - margin - popover.right;
+    if (popover.left + shift < margin) shift = margin - popover.left;
+    setShiftX(shift);
   }, [isVisible, position]);
 
   const getPositionClasses = () => {
@@ -96,8 +110,9 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
         type="button"
         onClick={handleClick}
         className="inline-flex items-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded-full"
+        aria-label="Giải thích thêm"
         aria-expanded={isVisible}
-        aria-haspopup="true"
+        aria-describedby={isVisible ? tooltipId : undefined}
       >
         {children}
       </button>
@@ -105,7 +120,9 @@ export default function Tooltip({ content, children, position = 'bottom' }: Tool
       {isVisible && (
         <div
           ref={popoverRef}
+          id={tooltipId}
           className={getPositionClasses()}
+          style={shiftX ? { marginLeft: shiftX } : undefined}
           role="tooltip"
         >
           <div className="relative bg-gray-800 text-white text-xs rounded-md px-3 py-2 shadow-lg w-max max-w-[80vw] sm:max-w-sm">

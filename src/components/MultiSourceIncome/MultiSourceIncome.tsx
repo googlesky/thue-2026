@@ -1,20 +1,19 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
   calculateMultiSourceTax,
   createIncomeSource,
   getIncomeSourceOptions,
-  formatCurrency,
   formatPercent,
   INCOME_SOURCE_LABELS,
   INCOME_SOURCE_DESCRIPTIONS,
-  INCOME_TAX_RATES,
   type IncomeSourceType,
   type IncomeSource,
   type MultiSourceResult,
 } from '@/lib/multiSourceIncomeCalculator';
-import { MultiSourceIncomeTabState, DEFAULT_MULTI_SOURCE_INCOME_STATE } from '@/lib/snapshotTypes';
+import { formatCurrency, getVoluntaryPensionCap } from '@/lib/taxCalculator';
+import { MultiSourceIncomeTabState } from '@/lib/snapshotTypes';
 
 interface MultiSourceIncomeProps {
   tabState: MultiSourceIncomeTabState;
@@ -46,7 +45,10 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
     });
   }, [tabState]);
 
-  // Update a single field
+  // Trần hưu trí tự nguyện + BH nhân thọ theo năm thuế (3tr/tháng từ kỳ 2026)
+  const pensionCapYearly = getVoluntaryPensionCap(new Date(tabState.taxYear, 11, 31)) * 12;
+
+  // Không memo: mọi thao tác phải dựa trên tabState mới nhất (tránh ghi đè NPT, năm thuế...)
   const updateField = <K extends keyof MultiSourceIncomeTabState>(
     field: K,
     value: MultiSourceIncomeTabState[K]
@@ -55,28 +57,28 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
   };
 
   // Add new income source
-  const addSource = useCallback((type: IncomeSourceType) => {
+  const addSource = (type: IncomeSourceType) => {
     const newSource = createIncomeSource(type);
     updateField('incomeSources', [...tabState.incomeSources, newSource]);
     setExpandedSourceId(newSource.id);
-  }, [tabState.incomeSources]);
+  };
 
   // Update an income source
-  const updateSource = useCallback((id: string, updates: Partial<IncomeSource>) => {
+  const updateSource = (id: string, updates: Partial<IncomeSource>) => {
     const updatedSources = tabState.incomeSources.map(source =>
       source.id === id ? { ...source, ...updates } : source
     );
     updateField('incomeSources', updatedSources);
-  }, [tabState.incomeSources]);
+  };
 
   // Remove an income source
-  const removeSource = useCallback((id: string) => {
+  const removeSource = (id: string) => {
     const updatedSources = tabState.incomeSources.filter(source => source.id !== id);
     updateField('incomeSources', updatedSources);
     if (expandedSourceId === id) {
       setExpandedSourceId(null);
     }
-  }, [tabState.incomeSources, expandedSourceId]);
+  };
 
   return (
     <div className="space-y-6">
@@ -107,7 +109,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               min="0"
               max="20"
               value={tabState.dependents}
-              onChange={(e) => updateField('dependents', parseInt(e.target.value) || 0)}
+              onChange={(e) => updateField('dependents', Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
@@ -151,7 +153,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 className="w-4 h-4 rounded border-gray-300"
               />
               <span className="text-sm text-gray-700">
-                Có đóng BHXH bắt buộc (được trừ 10.5% lương vào thu nhập chịu thuế)
+                Có đóng BHXH, BHYT, BHTN bắt buộc (10,5% lương, được trừ trước khi tính thuế)
               </span>
             </label>
           </div>
@@ -159,7 +161,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
           {/* Pension Contribution */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hưu trí tự nguyện (VND/năm)
+              Hưu trí tự nguyện, BH nhân thọ (VND/năm)
             </label>
             <input
               type="text"
@@ -172,6 +174,9 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               placeholder="0"
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Được trừ tối đa {formatCurrency(pensionCapYearly)}/năm (tính chung cả phần công ty đóng)
+            </p>
           </div>
 
           {/* Charitable Contribution */}
@@ -241,20 +246,17 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                 >
                   {/* Header */}
                   <div
-                    className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer"
+                    className="flex items-center justify-between gap-3 p-3 bg-gray-50 cursor-pointer"
                     onClick={() => setExpandedSourceId(isExpanded ? null : source.id)}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{getIconForType(source.type)}</span>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {INCOME_SOURCE_LABELS[source.type]}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {source.amount > 0
-                            ? `${formatCurrency(source.amount)} / ${FREQUENCY_LABELS[source.frequency]}`
-                            : 'Chưa nhập số tiền'}
-                        </div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900">
+                        {INCOME_SOURCE_LABELS[source.type]}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {source.amount > 0
+                          ? `${formatCurrency(source.amount)} / ${FREQUENCY_LABELS[source.frequency]}`
+                          : 'Chưa nhập số tiền'}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -279,6 +281,8 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                   {/* Expanded Content */}
                   {isExpanded && (
                     <div className="p-4 space-y-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">{INCOME_SOURCE_DESCRIPTIONS[source.type]}</p>
+
                       {/* Amount */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -320,6 +324,20 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                       </div>
 
                       {/* Type-specific options */}
+                      {source.type === 'freelance' && (
+                        <label className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
+                          <input
+                            type="checkbox"
+                            checked={source.isBusiness || false}
+                            onChange={(e) => updateSource(source.id, { isBusiness: e.target.checked })}
+                            className="w-4 h-4 rounded border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Có đăng ký kinh doanh (hộ, cá nhân kinh doanh): tính thuế theo doanh thu năm. Bỏ chọn nếu là thù lao dịch vụ không đăng ký kinh doanh (tính như tiền công)
+                          </span>
+                        </label>
+                      )}
+
                       {source.type === 'inheritance' && (
                         <label className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                           <input
@@ -329,7 +347,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                             className="w-4 h-4 rounded border-gray-300"
                           />
                           <span className="text-sm text-gray-700">
-                            Từ thành viên gia đình (vợ/chồng, cha mẹ, con) - được miễn thuế
+                            Là bất động sản nhận từ vợ/chồng, cha mẹ (kể cả cha mẹ nuôi, cha mẹ vợ/chồng), con, ông bà, cháu, anh chị em ruột - được miễn thuế
                           </span>
                         </label>
                       )}
@@ -343,7 +361,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                             className="w-4 h-4 rounded border-gray-300"
                           />
                           <span className="text-sm text-gray-700">
-                            Lãi từ trái phiếu Chính phủ - được miễn thuế
+                            Lãi tiền gửi tại tổ chức tín dụng, trái phiếu Chính phủ, trái phiếu chính quyền địa phương hoặc hợp đồng BH nhân thọ - được miễn thuế. Bỏ chọn nếu là lãi cho vay, trái phiếu doanh nghiệp (5%)
                           </span>
                         </label>
                       )}
@@ -357,12 +375,8 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                               <span className="ml-2 font-medium">{formatCurrency(sourceResult.annualAmount)}</span>
                             </div>
                             <div>
-                              <span className="text-gray-500">Thuế suất:</span>
-                              <span className="ml-2 font-medium">
-                                {sourceResult.appliedRate === 'progressive'
-                                  ? 'Lũy tiến'
-                                  : formatPercent(sourceResult.appliedRate as number)}
-                              </span>
+                              <span className="text-gray-500">Cách tính:</span>
+                              <span className="ml-2 font-medium">{sourceResult.method}</span>
                             </div>
                             <div>
                               <span className="text-gray-500">Thuế phải nộp:</span>
@@ -371,7 +385,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
                             <div>
                               <span className="text-gray-500">Thực nhận:</span>
                               <span className="ml-2 font-medium text-green-600">
-                                {formatCurrency(sourceResult.annualAmount - sourceResult.taxAmount)}
+                                {formatCurrency(sourceResult.annualAmount - sourceResult.insuranceAmount - sourceResult.taxAmount)}
                               </span>
                             </div>
                           </div>
@@ -415,7 +429,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {result.categoryBreakdown.salary.gross > 0 && (
                   <div className="flex justify-between">
-                    <span>Lương:</span>
+                    <span>Lương, tiền công:</span>
                     <span>{formatCurrency(result.categoryBreakdown.salary.gross)}</span>
                   </div>
                 )}
@@ -440,6 +454,16 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
               </div>
             </div>
 
+            {/* Insurance */}
+            {result.totalInsurance > 0 && (
+              <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-600">BH bắt buộc (người lao động):</span>
+                <span className="font-medium text-gray-900">
+                  {formatCurrency(result.totalInsurance)}
+                </span>
+              </div>
+            )}
+
             {/* Total Tax */}
             <div className="flex items-center justify-between py-2 border-b border-gray-200">
               <span className="font-medium text-gray-700">Tổng thuế TNCN:</span>
@@ -452,7 +476,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
             {result.progressiveTax > 0 && result.flatTax > 0 && (
               <div className="flex items-center justify-between py-2 border-b border-gray-200 text-sm">
                 <div className="text-gray-500">
-                  <div>Thuế lũy tiến (lương): {formatCurrency(result.progressiveTax)}</div>
+                  <div>Thuế lũy tiến (tiền lương, tiền công): {formatCurrency(result.progressiveTax)}</div>
                   <div>Thuế khác: {formatCurrency(result.flatTax)}</div>
                 </div>
               </div>
@@ -481,7 +505,7 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
       {result.optimizationTips.length > 0 && (
         <div className="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
           <h3 className="text-md font-medium text-blue-900 mb-3">
-            💡 Gợi ý tối ưu thuế
+            Gợi ý tối ưu thuế
           </h3>
           <ul className="space-y-2">
             {result.optimizationTips.map((tip, idx) => (
@@ -498,34 +522,14 @@ export function MultiSourceIncome({ tabState, onTabStateChange }: MultiSourceInc
       <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
         <p className="font-medium mb-2">Căn cứ pháp lý:</p>
         <ul className="list-disc list-inside space-y-1">
-          <li>Luật Thuế TNCN 2007 (sửa đổi 2012, 2014)</li>
-          <li>Nghị quyết 954/2020/UBTVQH14 về điều chỉnh giảm trừ gia cảnh</li>
-          <li>Thông tư 111/2013/TT-BTC hướng dẫn Luật Thuế TNCN</li>
-          <li>Luật sửa đổi thuế TNCN có hiệu lực từ 1/7/2026</li>
+          <li>Luật Thuế TNCN số 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16)</li>
+          <li>Nghị định 253/2026/NĐ-CP, Thông tư 87/2026/TT-BTC hướng dẫn Luật Thuế TNCN</li>
+          <li>Nghị định 68/2026/NĐ-CP (sửa đổi bởi Nghị định 141/2026/NĐ-CP): hộ, cá nhân kinh doanh doanh thu đến 1 tỷ/năm không nộp thuế</li>
+          <li>Năm 2025: Luật Thuế TNCN 2007 (sửa đổi 2012, 2014), Nghị quyết 954/2020/UBTVQH14</li>
         </ul>
       </div>
     </div>
   );
-}
-
-/**
- * Get icon for income source type
- */
-function getIconForType(type: IncomeSourceType): string {
-  const icons: Record<IncomeSourceType, string> = {
-    salary: '💼',
-    freelance: '🧑‍💻',
-    rental: '🏠',
-    dividend: '📈',
-    interest: '🏦',
-    securities: '📊',
-    real_estate: '🏡',
-    lottery: '🎰',
-    inheritance: '🎁',
-    royalty: '📝',
-    capital_investment: '💰',
-  };
-  return icons[type] || '💵';
 }
 
 export default MultiSourceIncome;

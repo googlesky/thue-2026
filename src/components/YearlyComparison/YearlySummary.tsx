@@ -5,10 +5,9 @@ import { formatCurrency } from '@/lib/taxCalculator';
 
 interface YearlySummaryProps {
   result: YearlyResult;
-  isHighlighted?: boolean;
 }
 
-export default function YearlySummary({ result, isHighlighted = false }: YearlySummaryProps) {
+export default function YearlySummary({ result }: YearlySummaryProps) {
   const {
     year,
     totalGross,
@@ -25,7 +24,7 @@ export default function YearlySummary({ result, isHighlighted = false }: YearlyS
   const bonusCount = monthlyBreakdown.filter(m => m.isBonus).length;
 
   return (
-    <div className={`rounded-lg p-4 ${isHighlighted ? 'bg-green-50 border-2 border-green-300' : 'bg-gray-50'}`}>
+    <div className="rounded-lg p-4 bg-gray-50">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -34,11 +33,6 @@ export default function YearlySummary({ result, isHighlighted = false }: YearlyS
             ({totalMonths - bonusCount} tháng{bonusCount > 0 ? ` + ${bonusCount} thưởng` : ''})
           </span>
         </div>
-        {isHighlighted && (
-          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
-            Tối ưu
-          </span>
-        )}
       </div>
 
       {/* Luật áp dụng */}
@@ -68,20 +62,20 @@ export default function YearlySummary({ result, isHighlighted = false }: YearlyS
           <span className="text-gray-500">-{formatCurrency(totalInsurance)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Thuế TNCN</span>
-          <span className={`font-medium ${isHighlighted ? 'text-green-600' : 'text-red-600'}`}>
+          <span className="text-gray-600">Thuế TNCN (quyết toán năm)</span>
+          <span className="font-medium text-red-600">
             -{formatCurrency(totalTax)}
           </span>
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-gray-500">Thuế suất thực tế</span>
-          <span className="text-gray-500">{effectiveRate.toFixed(2)}%</span>
+          <span className="text-gray-500">{effectiveRate.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
         </div>
 
         <div className="border-t pt-2 mt-2">
           <div className="flex justify-between">
             <span className="font-medium text-gray-700">Thực nhận</span>
-            <span className={`font-bold text-lg ${isHighlighted ? 'text-green-600' : 'text-gray-800'}`}>
+            <span className="font-bold text-lg text-gray-800">
               {formatCurrency(totalNet)}
             </span>
           </div>

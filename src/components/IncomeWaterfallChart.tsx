@@ -37,6 +37,7 @@ interface WaterfallDataItem {
 
 const COLORS = {
   gross: '#3b82f6',
+  allowance: '#14b8a6',
   insurance: '#f97316',
   deduction: '#a855f7',
   taxableIncome: '#64748b',
@@ -44,9 +45,16 @@ const COLORS = {
   net: '#22c55e',
 };
 
-function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
+// Số thập phân kiểu Việt Nam: 2,5 / 10,4
+const DECIMAL_FORMAT = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
+
+// % tính trên tổng thu nhập (lương + phụ cấp) để BH + Thuế + Thực nhận = 100%
+export function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
   const data: WaterfallDataItem[] = [];
   const gross = result.grossIncome;
+  const total = result.totalIncome;
+  const pctOf = (v: number) => (total > 0 ? (v / total) * 100 : 0);
+  const allowances = result.allowancesBreakdown;
   let running = gross;
 
   // 1. GROSS
@@ -59,8 +67,26 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
     runningTotal: running,
     color: COLORS.gross,
     isTotal: true,
-    percentOfGross: 100,
+    percentOfGross: pctOf(gross),
   });
+
+  // 1b. Phụ cấp chịu thuế đi tiếp vào TN tính thuế; phụ cấp miễn thuế chỉ cộng vào thực nhận
+  if (allowances && allowances.taxable > 0) {
+    data.push({
+      name: 'Phụ cấp chịu thuế',
+      shortName: 'Phụ cấp',
+      base: running,
+      value: allowances.taxable,
+      rawValue: allowances.taxable,
+      runningTotal: running + allowances.taxable,
+      color: COLORS.allowance,
+      detail: allowances.taxExempt > 0
+        ? `Phụ cấp miễn thuế ${formatCurrency(allowances.taxExempt)} không tính thuế, chỉ cộng vào thực nhận`
+        : undefined,
+      percentOfGross: pctOf(allowances.taxable),
+    });
+    running += allowances.taxable;
+  }
 
   // 2. Bảo hiểm gộp (BHXH + BHYT + BHTN)
   const totalInsurance = result.insuranceDeduction;
@@ -72,7 +98,7 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
     if (result.insuranceDetail.bhtn > 0) parts.push(`BHTN ${formatCurrency(result.insuranceDetail.bhtn)}`);
 
     data.push({
-      name: 'Bảo hiểm (10,5%)',
+      name: 'Bảo hiểm bắt buộc',
       shortName: 'Bảo hiểm',
       base: running,
       value: totalInsurance,
@@ -80,7 +106,7 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
       runningTotal: running,
       color: COLORS.insurance,
       detail: parts.join(' + '),
-      percentOfGross: gross > 0 ? (totalInsurance / gross) * 100 : 0,
+      percentOfGross: pctOf(totalInsurance),
     });
   }
 
@@ -106,7 +132,7 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
       runningTotal: running,
       color: COLORS.deduction,
       detail: parts.join(' + '),
-      percentOfGross: gross > 0 ? (totalDeduction / gross) * 100 : 0,
+      percentOfGross: pctOf(totalDeduction),
     });
   }
 
@@ -120,7 +146,7 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
     runningTotal: result.taxableIncome,
     color: COLORS.taxableIncome,
     isTotal: true,
-    percentOfGross: gross > 0 ? (result.taxableIncome / gross) * 100 : 0,
+    percentOfGross: pctOf(result.taxableIncome),
   });
 
   // 5. Thuế TNCN gộp
@@ -138,7 +164,7 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
       runningTotal: result.taxableIncome - result.taxAmount,
       color: COLORS.tax,
       detail: bracketParts.join(', '),
-      percentOfGross: gross > 0 ? (result.taxAmount / gross) * 100 : 0,
+      percentOfGross: pctOf(result.taxAmount),
     });
   }
 
@@ -152,7 +178,10 @@ function buildWaterfallData(result: TaxResult): WaterfallDataItem[] {
     runningTotal: result.netIncome,
     color: COLORS.net,
     isTotal: true,
-    percentOfGross: gross > 0 ? (result.netIncome / gross) * 100 : 0,
+    detail: allowances && allowances.taxExempt > 0
+      ? `Gồm phụ cấp miễn thuế ${formatCurrency(allowances.taxExempt)}`
+      : undefined,
+    percentOfGross: pctOf(result.netIncome),
   });
 
   return data;
@@ -178,7 +207,7 @@ function WaterfallTooltip({ active, payload }: {
       </p>
       {item.percentOfGross !== undefined && (
         <p className="text-xs text-gray-400 mt-0.5">
-          {item.percentOfGross.toFixed(1)}% thu nhập gộp
+          {DECIMAL_FORMAT.format(item.percentOfGross)}% tổng thu nhập
         </p>
       )}
       {item.detail && (
@@ -193,7 +222,7 @@ function WaterfallTooltip({ active, payload }: {
 function formatYAxisTick(value: number): string {
   if (value >= 1_000_000) {
     const m = value / 1_000_000;
-    return m % 1 === 0 ? `${m}tr` : `${m.toFixed(1)}tr`;
+    return `${DECIMAL_FORMAT.format(m)}tr`;
   }
   if (value >= 1_000) {
     return `${(value / 1_000).toFixed(0)}k`;
@@ -206,12 +235,12 @@ function IncomeWaterfallChartComponent({ result, label }: IncomeWaterfallChartPr
 
   if (result.grossIncome <= 0) return null;
 
-  const gross = result.grossIncome;
-  const netPercent = gross > 0 ? (result.netIncome / gross) * 100 : 0;
-  const insurancePercent = gross > 0 ? (result.insuranceDeduction / gross) * 100 : 0;
+  // Chia cho tổng thu nhập (lương + phụ cấp): Bảo hiểm + Thuế + Thực nhận = 100%
+  const total = result.totalIncome;
+  const netPercent = total > 0 ? (result.netIncome / total) * 100 : 0;
+  const insurancePercent = total > 0 ? (result.insuranceDeduction / total) * 100 : 0;
   const deductionTotal = result.personalDeduction + result.dependentDeduction + result.otherDeductions;
-  const deductionPercent = gross > 0 ? (deductionTotal / gross) * 100 : 0;
-  const taxPercent = gross > 0 ? (result.taxAmount / gross) * 100 : 0;
+  const taxPercent = total > 0 ? (result.taxAmount / total) * 100 : 0;
 
   return (
     <div className="card mt-6">
@@ -226,7 +255,7 @@ function IncomeWaterfallChartComponent({ result, label }: IncomeWaterfallChartPr
           <h4 className="font-semibold text-gray-800">
             Dòng tiền từ GROSS đến NET {label ? `(${label})` : ''}
           </h4>
-          <p className="text-xs text-gray-500">Bạn giữ lại {netPercent.toFixed(0)}% thu nhập gộp</p>
+          <p className="text-xs text-gray-500">Bạn giữ lại {Math.round(netPercent)}% tổng thu nhập</p>
         </div>
       </div>
 

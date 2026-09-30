@@ -3,7 +3,8 @@
  * Uses lz-string for compression and compact key mapping to minimize URL length
  */
 import * as LZString from 'lz-string';
-import { CalculatorSnapshot, isValidSnapshot, mergeSnapshotWithDefaults, DEFAULT_YEARLY_COMPARISON_STATE } from './snapshotTypes';
+import { CalculatorSnapshot, isValidSnapshot, mergeSnapshotWithDefaults, DEFAULT_YEARLY_COMPARISON_STATE, DEFAULT_TAB_STATES } from './snapshotTypes';
+import { DEFAULT_INCOME_SUMMARY_INPUT } from './incomeSummaryCalculator';
 import { SharedTaxState, RegionType } from './taxCalculator';
 
 /**
@@ -67,12 +68,13 @@ const KEY_MAP: Record<string, string> = {
   otherBonuses: 'obb',
   selectedScenarioId: 'ssi',
 
-  // ESOPTabState
+  // ESOPTabState (link cũ còn 'ep'/'ed'/'spi' của mô hình "giá thực hiện" - bỏ qua)
+  shareType: 'est',
   grantPrice: 'gp',
-  exercisePrice: 'ep',
   numberOfShares: 'ns',
-  exerciseDate: 'ed',
-  selectedPeriodId: 'spi',
+  parValue: 'epv',
+  bookAmount: 'eba',
+  sellPrice: 'esp',
 
   // EmployerCostTabState
   includeUnionFee: 'uf',
@@ -112,8 +114,8 @@ const KEY_MAP: Record<string, string> = {
   hoursPerDay: 'hd',
   entries: 'en',
   includeHolidayBasePay: 'hb',
-  // OvertimeEntry (type and shift use 'tp' and 'sh' to avoid conflict with 't')
-  type: 'tp',
+  // OvertimeEntry ('tp' đã dùng cho allowances.transport; link cũ mã 'tp' được giải theo ngữ cảnh)
+  type: 'ty',
   shift: 'sh',
   hours: 'hr',
 
@@ -149,17 +151,19 @@ function compactKeys(obj: unknown): unknown {
 }
 
 /**
- * Recursively restore keys from compact versions
+ * Recursively restore keys from compact versions.
+ * Link cũ mã cả allowances.transport lẫn overtime entry.type là 'tp' → giải theo khóa cha.
  */
-function expandKeys(obj: unknown): unknown {
+function expandKeys(obj: unknown, parentKey = ''): unknown {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(expandKeys);
+  if (Array.isArray(obj)) return obj.map((item) => expandKeys(item, parentKey));
 
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    const fullKey = REVERSE_KEY_MAP[key] || key;
-    result[fullKey] = expandKeys(value);
+    const fullKey =
+      key === 'tp' ? (parentKey === 'allowances' ? 'transport' : 'type') : REVERSE_KEY_MAP[key] || key;
+    result[fullKey] = expandKeys(value, fullKey);
   }
   return result;
 }
@@ -243,7 +247,7 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
       ot.workingDaysPerMonth !== 26 ||
       ot.hoursPerDay !== 8 ||
       ot.entries.length > 0 ||
-      ot.includeHolidayBasePay !== true ||
+      ot.includeHolidayBasePay === true || // mặc định false
       ot.useNewLaw !== true
     ) {
       tabs.overtime = ot;
@@ -267,11 +271,12 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
   if (snapshot.tabs.esop) {
     const es = snapshot.tabs.esop;
     if (
+      es.shareType !== 'esop' ||
       es.grantPrice !== 0 ||
-      es.exercisePrice !== 0 ||
       es.numberOfShares !== 0 ||
-      es.exerciseDate !== '' ||
-      es.selectedPeriodId !== null
+      es.parValue !== 10_000 ||
+      es.bookAmount !== 0 ||
+      es.sellPrice !== 0
     ) {
       tabs.esop = es;
     }
@@ -293,6 +298,14 @@ function removeDefaults(snapshot: CalculatorSnapshot): Record<string, unknown> {
     ) {
       tabs.pension = pn;
     }
+  }
+
+  // Các tab còn lại: giữ nguyên state khi khác mặc định (link chia sẻ không mất dữ liệu tab)
+  const handwritten = new Set(['employerCost', 'freelancer', 'salaryComparison', 'yearlyComparison', 'overtime', 'bonus', 'esop', 'pension']);
+  const defaults: Record<string, unknown> = { ...DEFAULT_TAB_STATES, incomeSummary: DEFAULT_INCOME_SUMMARY_INPUT };
+  for (const [key, state] of Object.entries(snapshot.tabs)) {
+    if (handwritten.has(key) || state === undefined) continue;
+    if (JSON.stringify(state) !== JSON.stringify(defaults[key])) tabs[key] = state;
   }
 
   if (Object.keys(tabs).length > 0) {

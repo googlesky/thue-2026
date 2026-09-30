@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   calculateIncomeSummary,
   IncomeSummaryInput,
@@ -8,28 +8,49 @@ import {
   IncomeEntry,
   IncomeCategory,
   INCOME_CATEGORIES,
+  DEFAULT_INCOME_SUMMARY_INPUT,
   getCategoryConfig,
   generateEntryId,
-  formatCurrency,
   formatShortCurrency,
   formatPercent,
+  formatTaxMethod,
 } from '@/lib/incomeSummaryCalculator';
+import { formatCurrency, getRentalIncomeThreshold, getTaxConfigForDate } from '@/lib/taxCalculator';
 
 interface IncomeSummaryDashboardProps {
   className?: string;
+  // Giữ dữ liệu khi chuyển tab/lưu snapshot: trang cha truyền state của tab vào đây
+  tabState?: IncomeSummaryInput;
+  onTabStateChange?: (state: IncomeSummaryInput) => void;
 }
 
-// Default state
-const DEFAULT_INPUT: IncomeSummaryInput = {
-  year: new Date().getFullYear(),
-  entries: [],
-  dependents: 0,
-  hasInsurance: true,
-};
+// "15,5 triệu", "1 tỷ"
+const formatMillions = (value: number) =>
+  value >= 1_000_000_000
+    ? `${(value / 1_000_000_000).toLocaleString('vi-VN')} tỷ`
+    : `${(value / 1_000_000).toLocaleString('vi-VN')} triệu`;
 
-export default function IncomeSummaryDashboard({ className = '' }: IncomeSummaryDashboardProps) {
+// Chấm màu thay icon (design system không dùng emoji)
+function CategoryDot({ color }: { color: string }) {
+  return <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />;
+}
+
+export default function IncomeSummaryDashboard({
+  className = '',
+  tabState,
+  onTabStateChange,
+}: IncomeSummaryDashboardProps) {
   // State
-  const [input, setInput] = useState<IncomeSummaryInput>(DEFAULT_INPUT);
+  const [input, setInput] = useState<IncomeSummaryInput>(tabState ?? DEFAULT_INCOME_SUMMARY_INPUT);
+
+  // Đồng bộ hai chiều với trang cha (nếu có) để không mất dữ liệu khi đổi tab hoặc nạp snapshot
+  useEffect(() => {
+    if (tabState && tabState !== input) setInput(tabState);
+  }, [tabState]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    onTabStateChange?.(input);
+  }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [activeTab, setActiveTab] = useState<'overview' | 'entries' | 'monthly' | 'category'>('overview');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<IncomeEntry | null>(null);
@@ -46,6 +67,11 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
     return calculateIncomeSummary(input);
   }, [input]);
 
+  // Mức giảm trừ, ngưỡng kinh doanh của năm đang xem (2025: luật cũ)
+  const yearEnd = new Date(input.year, 11, 31);
+  const yearDeductions = getTaxConfigForDate(yearEnd).deductions;
+  const businessThreshold = getRentalIncomeThreshold(yearEnd);
+
   // Reset form
   const resetForm = useCallback(() => {
     setFormCategory('salary');
@@ -58,26 +84,16 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
 
   // Add or update entry
   const handleSaveEntry = useCallback(() => {
-    const amount = parseFloat(formAmount.replace(/[,.]/g, '')) || 0;
+    const amount = parseInt(formAmount, 10) || 0;
     if (amount <= 0) return;
 
     const config = getCategoryConfig(formCategory);
-    let taxableAmount = amount;
-    let taxAmount = 0;
-
-    // Calculate tax based on method
-    if (config.taxMethod === 'flat' && config.defaultTaxRate) {
-      taxAmount = Math.round(taxableAmount * config.defaultTaxRate);
-    }
-    // Progressive tax will be calculated in the summary
-
+    // Thuế từng khoản do calculateIncomeSummary tính (ngưỡng theo lần, ngưỡng doanh thu năm, lũy tiến)
     const entry: IncomeEntry = {
       id: editingEntry?.id || generateEntryId(),
       category: formCategory,
       description: formDescription || config.name,
       amount,
-      taxableAmount,
-      taxAmount,
       month: formMonth,
       notes: formNotes || undefined,
     };
@@ -135,7 +151,7 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
   // Clear all
   const handleClearAll = useCallback(() => {
     if (confirm('Xóa tất cả dữ liệu?')) {
-      setInput(DEFAULT_INPUT);
+      setInput(DEFAULT_INCOME_SUMMARY_INPUT);
     }
   }, []);
 
@@ -170,7 +186,7 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
             {formatShortCurrency(result.totalNetIncome)}
           </div>
           <div className="text-xs text-green-500 mt-1">
-            Sau thuế
+            Sau BH và thuế
           </div>
         </div>
 
@@ -212,10 +228,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
             {result.topCategories.map((cat) => (
               <div key={cat.category} className="flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ backgroundColor: `${cat.config.color}20` }}
                 >
-                  {cat.config.icon}
+                  <CategoryDot color={cat.config.color} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
@@ -278,7 +294,6 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
       {/* Empty state */}
       {result.totalEntries === 0 && (
         <div className="text-center py-12 text-gray-500">
-          <div className="text-4xl mb-3">📊</div>
           <p>Chưa có dữ liệu thu nhập</p>
           <p className="text-sm mt-1">Nhấn &quot;Thêm thu nhập&quot; để bắt đầu</p>
         </div>
@@ -291,11 +306,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
     <div className="space-y-3">
       {input.entries.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <div className="text-4xl mb-3">📝</div>
           <p>Chưa có khoản thu nhập nào</p>
         </div>
       ) : (
-        input.entries
+        [...result.entries]
           .sort((a, b) => a.month - b.month)
           .map((entry) => {
             const config = getCategoryConfig(entry.category);
@@ -306,10 +320,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
               >
                 <div className="flex items-start gap-3">
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                     style={{ backgroundColor: `${config.color}20` }}
                   >
-                    {config.icon}
+                    <CategoryDot color={config.color} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -397,7 +411,7 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
                           color: config.color
                         }}
                       >
-                        {config.icon} {formatShortCurrency(cat.amount)}
+                        {config.name}: {formatShortCurrency(cat.amount)}
                       </span>
                     );
                   })}
@@ -422,10 +436,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
         >
           <div className="flex items-center gap-3 mb-3">
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: `${cat.config.color}20` }}
             >
-              {cat.config.icon}
+              <CategoryDot color={cat.config.color} />
             </div>
             <div className="flex-1">
               <div className="font-medium text-gray-900">{cat.config.name}</div>
@@ -451,8 +465,7 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
             <div className="text-center p-2 bg-gray-50 rounded-lg">
               <div className="text-gray-500 text-xs">Phương pháp</div>
               <div className="font-medium text-gray-900 text-xs">
-                {cat.config.taxMethod === 'progressive' ? 'Lũy tiến' :
-                 cat.config.taxMethod === 'flat' ? `${(cat.config.defaultTaxRate || 0) * 100}%` : 'Miễn'}
+                {formatTaxMethod(cat.config)}
               </div>
             </div>
           </div>
@@ -461,7 +474,6 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
 
       {result.byCategory.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          <div className="text-4xl mb-3">📁</div>
           <p>Chưa có dữ liệu theo danh mục</p>
         </div>
       )}
@@ -487,7 +499,7 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
             onChange={(e) => handleYearChange(parseInt(e.target.value))}
             className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm"
           >
-            {[2024, 2025, 2026, 2027].map(year => (
+            {[2025, 2026, 2027].map(year => (
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
@@ -549,22 +561,21 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
         {[
-          { id: 'overview', label: 'Tổng quan', icon: '📊' },
-          { id: 'entries', label: 'Chi tiết', icon: '📝' },
-          { id: 'monthly', label: 'Theo tháng', icon: '📅' },
-          { id: 'category', label: 'Theo loại', icon: '📁' },
+          { id: 'overview', label: 'Tổng quan' },
+          { id: 'entries', label: 'Chi tiết' },
+          { id: 'monthly', label: 'Theo tháng' },
+          { id: 'category', label: 'Theo loại' },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex-1 min-w-[80px] px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+            className={`flex-1 min-w-0 px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
               activeTab === tab.id
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            <span className="mr-1">{tab.icon}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
+            {tab.label}
           </button>
         ))}
       </div>
@@ -604,8 +615,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <div className="text-xl mb-1">{cat.icon}</div>
-                      <div className="text-xs text-gray-600 truncate">{cat.name}</div>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <CategoryDot color={cat.color} />
+                        <span className="text-xs text-gray-600 leading-tight">{cat.name}</span>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -678,11 +691,11 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
                 <div className="text-gray-600">
                   Phương pháp tính thuế: {' '}
                   <span className="text-gray-900 font-medium">
-                    {getCategoryConfig(formCategory).taxMethod === 'progressive'
-                      ? 'Biểu thuế lũy tiến'
-                      : `Thuế suất cố định ${(getCategoryConfig(formCategory).defaultTaxRate || 0) * 100}%`
-                    }
+                    {formatTaxMethod(getCategoryConfig(formCategory))}
                   </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {getCategoryConfig(formCategory).description}
                 </div>
               </div>
             </div>
@@ -713,10 +726,10 @@ export default function IncomeSummaryDashboard({ className = '' }: IncomeSummary
       <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
         <p className="font-medium mb-1">Lưu ý:</p>
         <ul className="list-disc list-inside space-y-1">
-          <li>Thuế lũy tiến áp dụng cho thu nhập từ lương sau khi trừ giảm trừ</li>
-          <li>Các khoản thu nhập khác chịu thuế suất cố định theo quy định</li>
-          <li>Giảm trừ bản thân: 15,4 triệu/tháng (từ 2026)</li>
-          <li>Giảm trừ người phụ thuộc: 6,16 triệu/người/tháng</li>
+          <li>Lương, thưởng, thù lao dịch vụ (không đăng ký kinh doanh) gộp cả năm tính lũy tiến; BH bắt buộc tính trên lương, không tính trên thưởng</li>
+          <li>Giảm trừ bản thân năm {input.year}: {formatMillions(yearDeductions.personal)}/tháng; người phụ thuộc: {formatMillions(yearDeductions.dependent)}/người/tháng</li>
+          <li>Kinh doanh, cho thuê: tổng doanh thu năm đến {formatMillions(businessThreshold)} không nộp thuế TNCN</li>
+          <li>Trúng thưởng, thừa kế, quà tặng, thu nhập khác: tính trên phần vượt 20 triệu mỗi lần (trước 01/7/2026: 10 triệu)</li>
         </ul>
       </div>
     </div>

@@ -1,15 +1,10 @@
-// Chuyển đổi GROSS - NET
+// Chuyển đổi GROSS - NET: dùng chung engine tính thuế tiền lương (taxCalculator)
 import {
-  OLD_DEDUCTIONS,
-  NEW_DEDUCTIONS,
-  INSURANCE_RATES,
-  getMaxSocialInsuranceSalary,
-  getMaxUnemploymentInsuranceSalary,
-  OLD_TAX_BRACKETS,
-  NEW_TAX_BRACKETS,
   RegionType,
   AllowancesState,
-  calculateAllowancesBreakdown,
+  InsuranceOptions,
+  calculateNewTax,
+  calculateOldTax,
 } from './taxCalculator';
 import { MAX_MONTHLY_INCOME } from '@/utils/inputSanitizers';
 
@@ -22,6 +17,9 @@ export interface GrossNetInput {
   region?: RegionType;
   declaredSalary?: number; // Lương khai báo (nếu khác lương thực)
   allowances?: AllowancesState; // Phụ cấp
+  insuranceOptions?: InsuranceOptions; // Bật/tắt từng loại BH (mặc định theo hasInsurance)
+  otherDeductions?: number; // Từ thiện, nhân đạo...
+  pensionContribution?: number; // Hưu trí tự nguyện, BH nhân thọ (engine chặn trần)
 }
 
 export interface GrossNetResult {
@@ -37,79 +35,40 @@ export interface GrossNetResult {
   taxableIncome: number;
 }
 
-function calculateInsurance(gross: number, hasInsurance: boolean, region: RegionType = 1, date: Date = new Date()): number {
-  if (!hasInsurance) return 0;
-
-  // BHXH và BHYT: tối đa 20 lần lương cơ sở (date-aware)
-  const bhxhBhytBase = Math.min(gross, getMaxSocialInsuranceSalary(date));
-  const bhxh = bhxhBhytBase * INSURANCE_RATES.socialInsurance;
-  const bhyt = bhxhBhytBase * INSURANCE_RATES.healthInsurance;
-
-  // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
-  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(date);
-  const maxBhtn = maxBhtnByRegion[region];
-  const bhtnBase = Math.min(gross, maxBhtn);
-  const bhtn = bhtnBase * INSURANCE_RATES.unemploymentInsurance;
-
-  return bhxh + bhyt + bhtn;
-}
-
-function calculateTax(taxableIncome: number, brackets: typeof OLD_TAX_BRACKETS): number {
-  if (taxableIncome <= 0) return 0;
-
-  let totalTax = 0;
-  let remainingIncome = taxableIncome;
-
-  for (const bracket of brackets) {
-    if (remainingIncome <= 0) break;
-    const bracketWidth = bracket.max - bracket.min;
-    const taxableInBracket = Math.min(remainingIncome, bracketWidth);
-    totalTax += taxableInBracket * bracket.rate;
-    remainingIncome -= taxableInBracket;
-  }
-
-  return totalTax;
-}
-
 export function grossToNet(input: GrossNetInput): GrossNetResult {
-  const { amount: gross, dependents, hasInsurance, useNewLaw, region = 1, declaredSalary, allowances } = input;
-  const deductionRates = useNewLaw ? NEW_DEDUCTIONS : OLD_DEDUCTIONS;
-  const brackets = useNewLaw ? NEW_TAX_BRACKETS : OLD_TAX_BRACKETS;
-
-  // Nếu có lương khai báo, tính bảo hiểm trên lương khai báo
-  const insuranceBase = declaredSalary !== undefined ? declaredSalary : gross;
-  const insurance = calculateInsurance(insuranceBase, hasInsurance, region);
-  const personalDeduction = deductionRates.personal;
-  const dependentDeduction = dependents * deductionRates.dependent;
-
-  // Tính phụ cấp
-  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
-
-  // Thu nhập tính thuế = lương + phụ cấp chịu thuế - các khoản giảm trừ
-  const taxableIncome = Math.max(0, gross + allowancesBreakdown.taxable - insurance - personalDeduction - dependentDeduction);
-  const tax = calculateTax(taxableIncome, brackets);
-  // Net = lương + tất cả phụ cấp - bảo hiểm - thuế
-  const net = gross + allowancesBreakdown.total - insurance - tax;
+  const { amount: gross, useNewLaw } = input;
+  const r = (useNewLaw ? calculateNewTax : calculateOldTax)({
+    grossIncome: gross,
+    declaredSalary: input.declaredSalary,
+    dependents: input.dependents,
+    hasInsurance: input.hasInsurance,
+    insuranceOptions: input.insuranceOptions,
+    region: input.region ?? 1,
+    allowances: input.allowances,
+    otherDeductions: input.otherDeductions,
+    pensionContribution: input.pensionContribution,
+  });
 
   return {
     gross,
-    net,
-    insurance,
-    tax,
+    net: r.netIncome,
+    insurance: r.insuranceDeduction,
+    tax: r.taxAmount,
     deductions: {
-      personal: personalDeduction,
-      dependent: dependentDeduction,
-      insurance,
+      personal: r.personalDeduction,
+      dependent: r.dependentDeduction,
+      insurance: r.insuranceDeduction,
     },
-    taxableIncome,
+    taxableIncome: r.taxableIncome,
   };
 }
 
 export function netToGross(input: GrossNetInput): GrossNetResult {
-  const { amount: targetNet, dependents, hasInsurance, useNewLaw } = input;
+  const { amount: targetNet } = input;
 
-  // Binary search để tìm gross từ net
-  let low = targetNet;
+  // Binary search để tìm gross từ net.
+  // Cận dưới = 0: có phụ cấp thì NET có thể lớn hơn GROSS (net = gross + phụ cấp - BH - thuế).
+  let low = 0;
   let high = targetNet * 2; // Gross thường không quá 2 lần net
   const maxSearch = MAX_MONTHLY_INCOME * 2;
   let result: GrossNetResult | null = null;
@@ -142,43 +101,4 @@ export function netToGross(input: GrossNetInput): GrossNetResult {
   }
 
   return result;
-}
-
-export function convertGrossNet(input: GrossNetInput): GrossNetResult {
-  if (input.type === 'gross') {
-    return grossToNet(input);
-  } else {
-    return netToGross(input);
-  }
-}
-
-// Tính lương theo năm
-export function calculateYearlyTax(
-  monthlyGross: number,
-  dependents: number,
-  useNewLaw: boolean,
-  allowances?: AllowancesState
-): {
-  monthlyResult: GrossNetResult;
-  yearlyGross: number;
-  yearlyNet: number;
-  yearlyTax: number;
-  yearlyInsurance: number;
-} {
-  const monthlyResult = grossToNet({
-    amount: monthlyGross,
-    type: 'gross',
-    dependents,
-    hasInsurance: true,
-    useNewLaw,
-    allowances,
-  });
-
-  return {
-    monthlyResult,
-    yearlyGross: monthlyResult.gross * 12,
-    yearlyNet: monthlyResult.net * 12,
-    yearlyTax: monthlyResult.tax * 12,
-    yearlyInsurance: monthlyResult.insurance * 12,
-  };
 }

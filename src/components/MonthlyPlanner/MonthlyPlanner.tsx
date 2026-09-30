@@ -24,6 +24,7 @@ import {
   MonthlyPlannerResult,
 } from '@/lib/monthlyPlannerCalculator';
 import { MonthlyPlannerTabState } from '@/lib/snapshotTypes';
+import { MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 
 interface MonthlyPlannerProps {
   sharedState: SharedTaxState;
@@ -58,7 +59,7 @@ function MonthChartTooltip({ active, payload }: {
           <span className="font-mono tabular-nums text-orange-600">-{formatCurrency(d.insurance)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">Thuế</span>
+          <span className="text-gray-500">Tạm khấu trừ</span>
           <span className="font-mono tabular-nums text-red-600">-{formatCurrency(d.tax)}</span>
         </div>
         <div className="pt-1 border-t border-gray-100 flex justify-between gap-4">
@@ -99,14 +100,15 @@ function MonthlyPlannerComponent({
 
   // Handle base salary change
   const handleBaseSalaryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^\d]/g, '');
-    if (raw === '') {
-      onTabStateChange({ ...tabState, baseSalary: 0 });
-      return;
-    }
-    const num = parseInt(raw, 10) || 0;
-    onTabStateChange({ ...tabState, baseSalary: num });
-  }, [tabState, onTabStateChange]);
+    const num = parseCurrencyInput(e.target.value, { max: MAX_MONTHLY_INCOME }).value;
+    // Preset thưởng tính theo lương: đổi lương thì tính lại (trừ khi đang tự nhập)
+    const preset = PRESET_SCENARIOS.find(p => p.id === tabState.selectedPreset && p.id !== 'custom');
+    onTabStateChange({
+      ...tabState,
+      baseSalary: num,
+      ...(preset ? { months: preset.applyToMonths(num || sharedState.grossIncome) } : {}),
+    });
+  }, [tabState, onTabStateChange, sharedState.grossIncome]);
 
   const handleBaseSalaryBlur = useCallback(() => {
     if (tabState.baseSalary === 0) {
@@ -129,8 +131,7 @@ function MonthlyPlannerComponent({
 
   // Handle individual month change
   const handleMonthFieldChange = useCallback((monthIndex: number, field: keyof MonthlyEntry, value: string) => {
-    const raw = value.replace(/[^\d]/g, '');
-    const num = raw === '' ? 0 : (parseInt(raw, 10) || 0);
+    const num = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME }).value;
 
     const newMonths = [...tabState.months];
     newMonths[monthIndex] = { ...newMonths[monthIndex], [field]: num };
@@ -149,9 +150,11 @@ function MonthlyPlannerComponent({
       months: tabState.months,
       dependents: sharedState.dependents,
       hasInsurance: sharedState.hasInsurance,
+      insuranceOptions: sharedState.insuranceOptions,
+      declaredSalary: sharedState.declaredSalary,
       region: sharedState.region,
     });
-  }, [baseSalary, tabState.months, sharedState.dependents, sharedState.hasInsurance, sharedState.region]);
+  }, [baseSalary, tabState.months, sharedState.dependents, sharedState.hasInsurance, sharedState.insuranceOptions, sharedState.declaredSalary, sharedState.region]);
 
   // Chart data
   const chartData = useMemo(() => {
@@ -186,7 +189,7 @@ function MonthlyPlannerComponent({
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-800">Kế hoạch thu nhập 12 tháng</h2>
-            <p className="text-sm text-gray-500">Nhập lương từng tháng, tính thuế thực tế cả năm</p>
+            <p className="text-sm text-gray-500">Kỳ tính thuế {result.year}: tạm khấu trừ từng tháng và thuế sau quyết toán năm</p>
           </div>
         </div>
 
@@ -265,12 +268,12 @@ function MonthlyPlannerComponent({
             </div>
           </div>
           <div className="bg-red-50 rounded-lg p-3">
-            <div className="text-xs text-red-600 mb-0.5">Tổng thuế</div>
+            <div className="text-xs text-red-600 mb-0.5">Thuế quyết toán năm</div>
             <div className="text-base sm:text-lg font-bold font-mono tabular-nums text-red-700">
               {formatCurrency(summary.totalTax)}
             </div>
             <div className="text-[10px] text-red-400 mt-0.5">
-              Thuế suất: {summary.effectiveRate.toFixed(2)}%
+              Thuế suất: {summary.effectiveRate.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
             </div>
           </div>
           <div className="bg-green-50 rounded-lg p-3">
@@ -279,47 +282,29 @@ function MonthlyPlannerComponent({
               {formatCurrency(summary.totalNet)}
             </div>
             <div className="text-[10px] text-green-500 mt-0.5">
-              TB: {formatCurrency(summary.averageMonthlyNet)}/tháng
+              Sau quyết toán, TB {formatCurrency(summary.averageMonthlyNet)}/tháng
             </div>
           </div>
         </div>
 
-        {/* Comparison: Uniform vs Actual */}
-        {Math.abs(summary.taxDifference) > 1000 && (
-          <div className={`mt-4 rounded-lg p-3.5 border ${
-            summary.taxDifference > 0
-              ? 'bg-amber-50 border-amber-200'
-              : 'bg-green-50 border-green-200'
-          }`}>
+        {/* Tạm khấu trừ theo tháng vs thuế sau quyết toán năm */}
+        {summary.settlementRefund > 1000 && (
+          <div className="mt-4 rounded-lg p-3.5 border bg-amber-50 border-amber-200">
             <div className="flex items-start gap-2.5">
-              <div className={`p-1 rounded-full mt-0.5 flex-shrink-0 ${
-                summary.taxDifference > 0 ? 'bg-amber-500' : 'bg-green-500'
-              }`}>
-                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="p-1 rounded-full mt-0.5 flex-shrink-0 bg-amber-500">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d={summary.taxDifference > 0
-                      ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                      : "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    } />
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${
-                  summary.taxDifference > 0 ? 'text-amber-800' : 'text-green-800'
-                }`}>
-                  {summary.taxDifference > 0
-                    ? 'Thu nhập biến động làm thuế tăng'
-                    : 'Thu nhập biến động giúp thuế giảm'
-                  }
-                  {' '}<span className="font-bold font-mono tabular-nums">
-                    {summary.taxDifference > 0 ? '+' : ''}{formatCurrency(summary.taxDifference)}
-                  </span>
+                <p className="text-sm font-medium text-amber-800">
+                  Tạm khấu trừ theo tháng cao hơn thuế năm{' '}
+                  <span className="font-bold font-mono tabular-nums">{formatCurrency(summary.settlementRefund)}</span>
                 </p>
-                <p className={`text-xs mt-1 ${
-                  summary.taxDifference > 0 ? 'text-amber-600' : 'text-green-600'
-                }`}>
-                  So với thuế nếu lương đều đặn {formatCurrency(summary.totalGross / 12)}/tháng
-                  {' '}= {formatCurrency(summary.uniformTotalTax)}
+                <p className="text-xs mt-1 text-amber-600">
+                  Tổng tạm khấu trừ {formatCurrency(summary.totalWithholding)}. Phần chênh được hoàn hoặc bù trừ khi quyết toán năm;
+                  thu nhập biến động giữa các tháng không làm tăng thuế năm.
                 </p>
               </div>
             </div>
@@ -349,7 +334,7 @@ function MonthlyPlannerComponent({
                   tickFormatter={(v: number) => {
                     if (v >= 1_000_000) {
                       const m = v / 1_000_000;
-                      return m % 1 === 0 ? `${m}tr` : `${m.toFixed(1)}tr`;
+                      return `${m.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}tr`;
                     }
                     return formatNumber(v);
                   }}
@@ -394,7 +379,7 @@ function MonthlyPlannerComponent({
             <span className="w-2.5 h-2.5 rounded-sm bg-[#f97316]" /> Bảo hiểm
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]" /> Thuế
+            <span className="w-2.5 h-2.5 rounded-sm bg-[#ef4444]" /> Thuế tạm khấu trừ
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-[#22c55e]" /> Thực nhận
@@ -416,6 +401,9 @@ function MonthlyPlannerComponent({
             {allExpanded ? 'Thu gọn tất cả' : 'Mở tất cả'}
           </button>
         </div>
+        <p className="text-xs text-gray-500 -mt-2 mb-3">
+          Tăng ca đúng quy định Bộ luật Lao động được miễn thuế toàn bộ; thưởng và phụ cấp chịu thuế như tiền lương. Bảo hiểm chỉ tính trên lương.
+        </p>
         <div className="space-y-1.5">
           {result.months.map((m, index) => {
             const entry = tabState.months[index] || { bonus: 0, overtime: 0, otherIncome: 0 };
@@ -467,7 +455,7 @@ function MonthlyPlannerComponent({
                     </div>
                     {hasExtra && (
                       <div className="text-[10px] text-amber-600 mt-0.5">
-                        +{entry.bonus > 0 ? ` Thưởng` : ''}{entry.overtime > 0 ? ` OT` : ''}{entry.otherIncome > 0 ? ` Khác` : ''}
+                        +{entry.bonus > 0 ? ` Thưởng` : ''}{entry.overtime > 0 ? ` Tăng ca` : ''}{entry.otherIncome > 0 ? ` Phụ cấp` : ''}
                       </div>
                     )}
                   </div>
@@ -505,7 +493,7 @@ function MonthlyPlannerComponent({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">TN khác</label>
+                        <label className="block text-xs text-gray-500 mb-1">Phụ cấp</label>
                         <input
                           type="text"
                           inputMode="numeric"
@@ -527,7 +515,7 @@ function MonthlyPlannerComponent({
                         <div className="font-mono tabular-nums text-orange-600">-{formatCurrency(m.insurance)}</div>
                       </div>
                       <div className="bg-red-50 rounded p-2">
-                        <div className="text-red-400">Thuế</div>
+                        <div className="text-red-400">Tạm khấu trừ</div>
                         <div className="font-mono tabular-nums text-red-600">-{formatCurrency(m.tax)}</div>
                       </div>
                       <div className="bg-green-50 rounded p-2">

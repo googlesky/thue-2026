@@ -72,9 +72,10 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
     };
   }, [isMobileMenuOpen]);
 
-  const isHomePage = pathname === '/';
-  const isCalculatorPage = pathname === '/tinh-thue';
-  const isGuidePage = pathname === '/huong-dan';
+  // trailingSlash: true → usePathname() trả '/tinh-thue/' (Next giữ nguyên dấu '/' cuối)
+  const path = pathname.replace(/\/+$/, '') || '/';
+  const isHomePage = path === '/';
+  const isCalculatorPage = path === '/tinh-thue';
 
   // Dynamic header styles based on variant and scroll state
   const headerBaseStyles = variant === 'transparent' && !isScrolled
@@ -163,9 +164,7 @@ export default function Header({ variant = 'solid', showSpacer = true }: HeaderP
               </Link>
               <Link
                 href="/#thay-doi"
-                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                  isGuidePage ? navLinkActiveStyles : navLinkBaseStyles
-                }`}
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${navLinkBaseStyles}`}
               >
                 <span className="relative z-10">Thay đổi 2026</span>
               </Link>

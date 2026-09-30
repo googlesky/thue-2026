@@ -1,24 +1,23 @@
 /**
- * Overtime Pay Calculator
- * Based on Vietnam Labor Code 2019 and Decree 145/2020/ND-CP
+ * Tính lương làm thêm giờ và thuế TNCN
  *
- * Overtime rates (Article 98, Labor Code 2019):
- * - Weekday: 150%
- * - Weekend: 200%
- * - Holiday/Tet: 300% (+ base pay if normally a paid day off)
+ * Hệ số (BLLĐ 2019 Điều 98; NĐ 145/2020/NĐ-CP Điều 55–57):
+ * - Ngày thường ≥ 150%, ngày nghỉ hằng tuần ≥ 200%, ngày lễ, tết ≥ 300%
+ *   (chưa kể tiền lương ngày lễ, tết đối với người hưởng lương ngày)
+ * - Làm thêm ban đêm: hệ số ngày + 30% + 20% × tiền lương giờ ban ngày của ngày đó
  *
- * Night shift (22:00 - 06:00, Article 106):
- * - Normal night work: +30% of day rate
- * - Night overtime: +20% of base overtime rate
+ * Giới hạn (BLLĐ Điều 107; NĐ 145/2020 Điều 60): ngày thường ≤ 50% số giờ làm việc bình thường;
+ * ngày nghỉ hằng tuần, lễ, tết ≤ 12 giờ/ngày; ≤ 40 giờ/tháng; ≤ 200 giờ/năm (300 giờ với một số ngành, nghề).
  *
- * Tax exemption (Circular 111/2013/TT-BTC):
- * - The difference between overtime pay and regular pay is tax-exempt
+ * Thuế TNCN:
+ * - Từ kỳ tính thuế 2026: miễn TOÀN BỘ tiền lương làm thêm giờ, làm đêm đúng giới hạn (Luật Thuế TNCN
+ *   109/2025/QH15 Điều 4.8; NĐ 253/2026/NĐ-CP Điều 26.1); phần vượt mức quy định chịu thuế (Điều 26.3)
+ * - Trước 2026: chỉ miễn phần tiền lương trả cao hơn so với làm việc trong giờ (TT 111/2013/TT-BTC)
  */
 
 import {
   RegionType,
   InsuranceOptions,
-  DEFAULT_INSURANCE_OPTIONS,
   calculateNewTax,
   calculateOldTax,
   getInsuranceDetailed,
@@ -35,46 +34,40 @@ export interface OvertimeEntry {
   type: OvertimeType;
   shift: ShiftType;
   hours: number;
+  // Làm thêm ban đêm ngày thường sau khi đã làm thêm ban ngày của ngày đó (210% thay vì 200%)
+  afterDayOvertime?: boolean;
 }
 
 // ===== CONSTANTS =====
 
-/**
- * Overtime rate multipliers by type and shift
- * Calculated based on Labor Code 2019:
- *
- * Weekday day:   150%
- * Weekday night: 150% + 30% (night premium) + 20%*150% (night OT) = 210%
- *
- * Weekend day:   200%
- * Weekend night: 200% + 30% + 20%*200% = 270%
- *
- * Holiday day:   300%
- * Holiday night: 300% + 30% + 20%*300% = 390%
- */
-export const OVERTIME_RATES: Record<OvertimeType, Record<ShiftType, number>> = {
-  weekday: { day: 1.5, night: 2.1 },
-  weekend: { day: 2.0, night: 2.7 },
-  holiday: { day: 3.0, night: 3.9 },
+// Hệ số làm thêm ban ngày (BLLĐ Điều 98.1)
+export const OVERTIME_DAY_RATES: Record<OvertimeType, number> = {
+  weekday: 1.5,
+  weekend: 2.0,
+  holiday: 3.0,
 };
 
-// Night shift premium (30% of regular hourly rate)
+// Làm việc ban đêm: thêm ít nhất 30% tiền lương giờ (BLLĐ Điều 98.2)
 export const NIGHT_PREMIUM = 0.3;
 
-// Additional premium for night overtime (20% of base overtime rate)
+// Làm thêm ban đêm: thêm 20% tiền lương giờ ban ngày của ngày đó (BLLĐ Điều 98.3)
 export const NIGHT_OVERTIME_PREMIUM = 0.2;
 
-// Maximum overtime limits
+// Giới hạn làm thêm giờ
 export const OVERTIME_LIMITS = {
-  maxPerDay: 4,           // Max 4 hours/day (50% of 8 hours)
-  maxTotalPerDay: 12,     // Max 12 hours total work per day
-  maxPerMonth: 40,        // Max 40 hours/month
-  maxPerYear: 200,        // Max 200 hours/year (300 for special industries)
+  weekdayRatio: 0.5,   // Ngày thường: ≤ 50% số giờ làm việc bình thường/ngày
+  maxPerRestDay: 12,   // Ngày nghỉ hằng tuần, lễ, tết: ≤ 12 giờ/ngày
+  maxPerMonth: 40,     // ≤ 40 giờ/tháng
+  maxPerYear: 200,     // ≤ 200 giờ/năm (300 giờ với một số ngành, nghề)
 };
 
 // Default working parameters
 export const DEFAULT_WORKING_DAYS = 26;
 export const DEFAULT_HOURS_PER_DAY = 8;
+
+// "Trước 2026": tính theo quy định năm 2025 (biểu 7 bậc, trần bảo hiểm 2025)
+const PRE_2026_DATE = new Date(2025, 11, 31);
+const NO_INSURANCE: InsuranceOptions = { bhxh: false, bhyt: false, bhtn: false };
 
 // ===== INTERFACES =====
 
@@ -90,7 +83,7 @@ export interface OvertimeCalculationInput {
   hasInsurance: boolean;
   insuranceOptions: InsuranceOptions;
   region: RegionType;
-  useNewLaw: boolean;
+  useNewLaw: boolean; // true: kỳ tính thuế 2026 (hiện hành); false: trước 2026
 }
 
 export interface OvertimeBreakdown {
@@ -101,8 +94,9 @@ export interface OvertimeBreakdown {
   rate: number;
   hourlyRate: number;
   grossAmount: number;
-  taxableAmount: number;      // Portion subject to tax (= regular hourly rate × hours)
-  taxExemptAmount: number;    // Tax-exempt portion (= difference from regular pay)
+  taxableAmount: number;      // Phần tính vào thu nhập chịu thuế
+  taxExemptAmount: number;    // Phần được miễn thuế
+  overLimitHours: number;     // Số giờ vượt 40 giờ/tháng (từ 2026: chịu thuế toàn bộ)
 }
 
 export interface OvertimeResult {
@@ -118,6 +112,7 @@ export interface OvertimeResult {
   totalOvertimeGross: number;
   totalTaxableOvertime: number;
   totalTaxExemptOvertime: number;
+  overLimitHours: number;
 
   // Holiday base pay (if applicable)
   holidayBasePay: number;
@@ -144,10 +139,19 @@ export interface OvertimeResult {
 // ===== HELPER FUNCTIONS =====
 
 /**
- * Get overtime rate for a given type and shift
+ * Hệ số làm thêm (NĐ 145/2020 Điều 57): ca đêm = hệ số ngày + 30% + 20% × tiền lương giờ ban ngày của ngày đó.
+ * Ngày thường: tiền lương giờ ban ngày = 100% nếu không làm thêm ban ngày (→ 200%), 150% nếu có (→ 210%).
+ * Ngày nghỉ hằng tuần 270%, lễ, tết 390%.
  */
-export function getOvertimeRate(type: OvertimeType, shift: ShiftType): number {
-  return OVERTIME_RATES[type][shift];
+export function getOvertimeRate(
+  type: OvertimeType,
+  shift: ShiftType,
+  afterDayOvertime: boolean = false
+): number {
+  const dayRate = OVERTIME_DAY_RATES[type];
+  if (shift === 'day') return dayRate;
+  const daytimeHourlyRate = type === 'weekday' && !afterDayOvertime ? 1 : dayRate;
+  return Math.round((dayRate + NIGHT_PREMIUM + NIGHT_OVERTIME_PREMIUM * daytimeHourlyRate) * 100) / 100;
 }
 
 /**
@@ -170,7 +174,7 @@ export function getOvertimeTypeLabel(type: OvertimeType): string {
     case 'weekday':
       return 'Ngày thường';
     case 'weekend':
-      return 'Ngày nghỉ tuần';
+      return 'Ngày nghỉ hằng tuần';
     case 'holiday':
       return 'Ngày lễ, Tết';
     default:
@@ -178,17 +182,10 @@ export function getOvertimeTypeLabel(type: OvertimeType): string {
   }
 }
 
-/**
- * Get Vietnamese label for shift type
- */
-export function getShiftTypeLabel(shift: ShiftType): string {
-  if (shift === 'day') return 'Ca ngày';
-  if (shift === 'night') return 'Ca đêm (22h-6h)';
-  return 'Không xác định';
-}
+const formatHours = (hours: number) => hours.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
 
 /**
- * Check overtime limits and return warnings
+ * Kiểm tra giới hạn làm thêm (mỗi dòng là một ngày làm thêm)
  */
 export function checkOvertimeLimits(
   entries: OvertimeEntry[],
@@ -197,27 +194,21 @@ export function checkOvertimeLimits(
   const warnings: string[] = [];
   const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
 
-  // Check monthly limit
   if (totalHours > OVERTIME_LIMITS.maxPerMonth) {
     warnings.push(
-      `Vượt quá ${OVERTIME_LIMITS.maxPerMonth} giờ tăng ca/tháng (đang có ${totalHours} giờ)`
+      `Vượt ${OVERTIME_LIMITS.maxPerMonth} giờ làm thêm/tháng (đang có ${formatHours(totalHours)} giờ)`
     );
   }
 
-  // Check daily limit for any single entry
-  const hasExcessiveDaily = entries.some((e) => e.hours > OVERTIME_LIMITS.maxPerDay);
-  if (hasExcessiveDaily) {
+  const weekdayCap = hoursPerDay * OVERTIME_LIMITS.weekdayRatio;
+  if (entries.some((e) => e.type === 'weekday' && e.hours > weekdayCap)) {
     warnings.push(
-      `Một số mục vượt quá ${OVERTIME_LIMITS.maxPerDay} giờ tăng ca/ngày`
+      `Có ngày thường làm thêm quá ${formatHours(weekdayCap)} giờ (50% số giờ làm việc bình thường/ngày)`
     );
   }
 
-  // Check total work hours per day
-  const maxEntryHours = Math.max(...entries.map((e) => e.hours), 0);
-  if (hoursPerDay + maxEntryHours > OVERTIME_LIMITS.maxTotalPerDay) {
-    warnings.push(
-      `Tổng giờ làm việc có thể vượt ${OVERTIME_LIMITS.maxTotalPerDay} giờ/ngày`
-    );
+  if (entries.some((e) => e.type !== 'weekday' && e.hours > OVERTIME_LIMITS.maxPerRestDay)) {
+    warnings.push(`Có ngày nghỉ, lễ tết làm thêm quá ${OVERTIME_LIMITS.maxPerRestDay} giờ/ngày`);
   }
 
   return warnings;
@@ -253,16 +244,25 @@ export function calculateOvertime(input: OvertimeCalculationInput): OvertimeResu
   // Calculate base hourly rate
   const hourlyRate = calculateHourlyRate(monthlySalary, workingDaysPerMonth, hoursPerDay);
 
-  // Calculate breakdown for each entry
+  // ponytail: giờ vượt 40 giờ/tháng tính theo thứ tự nhập (không có ngày cụ thể); giới hạn ngày chỉ cảnh báo
+  let legalHoursLeft = OVERTIME_LIMITS.maxPerMonth;
+
   const breakdowns: OvertimeBreakdown[] = entries.map((entry) => {
-    const rate = getOvertimeRate(entry.type, entry.shift);
+    const rate = getOvertimeRate(entry.type, entry.shift, entry.afterDayOvertime);
     const grossAmount = hourlyRate * rate * entry.hours;
 
-    // Taxable amount = regular hourly pay for those hours
-    const taxableAmount = hourlyRate * entry.hours;
-
-    // Tax-exempt amount = the overtime premium portion
-    const taxExemptAmount = grossAmount - taxableAmount;
+    let taxableAmount: number;
+    let overLimitHours = 0;
+    if (useNewLaw) {
+      // Từ 2026: miễn toàn bộ trong giới hạn, phần vượt giới hạn chịu thuế toàn bộ
+      const legalHours = Math.min(entry.hours, legalHoursLeft);
+      legalHoursLeft -= legalHours;
+      overLimitHours = entry.hours - legalHours;
+      taxableAmount = hourlyRate * rate * overLimitHours;
+    } else {
+      // Trước 2026: chịu thuế phần tiền lương giờ bình thường, miễn phần chênh
+      taxableAmount = hourlyRate * entry.hours;
+    }
 
     return {
       id: entry.id,
@@ -273,7 +273,8 @@ export function calculateOvertime(input: OvertimeCalculationInput): OvertimeResu
       hourlyRate,
       grossAmount,
       taxableAmount,
-      taxExemptAmount,
+      taxExemptAmount: grossAmount - taxableAmount,
+      overLimitHours,
     };
   });
 
@@ -282,37 +283,40 @@ export function calculateOvertime(input: OvertimeCalculationInput): OvertimeResu
   const totalOvertimeGross = breakdowns.reduce((sum, b) => sum + b.grossAmount, 0);
   const totalTaxableOvertime = breakdowns.reduce((sum, b) => sum + b.taxableAmount, 0);
   const totalTaxExemptOvertime = breakdowns.reduce((sum, b) => sum + b.taxExemptAmount, 0);
+  const overLimitHours = breakdowns.reduce((sum, b) => sum + b.overLimitHours, 0);
 
-  // Calculate holiday base pay (if working on a normally paid holiday)
-  const holidayEntries = entries.filter((e) => e.type === 'holiday');
-  const holidayHours = holidayEntries.reduce((sum, e) => sum + e.hours, 0);
+  // Tiền lương ngày lễ, tết (chỉ người hưởng lương ngày) - thu nhập chịu thuế bình thường
+  const holidayHours = entries
+    .filter((e) => e.type === 'holiday')
+    .reduce((sum, e) => sum + e.hours, 0);
   const holidayBasePay = includeHolidayBasePay ? hourlyRate * holidayHours : 0;
 
   // Total gross income
   const totalGrossIncome = monthlySalary + totalOvertimeGross + holidayBasePay;
 
-  // Total taxable income (regular salary + taxable portion of overtime + holiday base pay)
+  // Thu nhập chịu thuế = lương + tiền lương ngày lễ + phần làm thêm chịu thuế
   const totalTaxableIncome = monthlySalary + totalTaxableOvertime + holidayBasePay;
 
-  // Calculate insurance on base salary only
-  const insuranceDetail = getInsuranceDetailed(monthlySalary, region, insuranceOptions);
-  const insuranceAmount = hasInsurance ? insuranceDetail.total : 0;
+  // Bảo hiểm chỉ tính trên lương cơ bản (không tính trên tiền làm thêm)
+  const calculationDate = useNewLaw ? undefined : PRE_2026_DATE;
+  const insOptions = hasInsurance ? insuranceOptions : NO_INSURANCE;
+  const insuranceDetail = getInsuranceDetailed(monthlySalary, region, insOptions, calculationDate);
+  const insuranceAmount = insuranceDetail.total;
 
-  // Calculate tax on taxable income
   const taxInput = {
     grossIncome: totalTaxableIncome,
+    declaredSalary: monthlySalary, // nền đóng bảo hiểm = lương cơ bản
     dependents,
     otherDeductions,
-    hasInsurance,
-    insuranceOptions,
+    insuranceOptions: insOptions,
     region,
+    calculationDate,
   };
 
   const taxResult = useNewLaw ? calculateNewTax(taxInput) : calculateOldTax(taxInput);
   const taxAmount = taxResult.taxAmount;
 
   // Net income = total gross - insurance - tax
-  // Note: Insurance is calculated on base salary, tax on taxable income
   const netIncome = totalGrossIncome - insuranceAmount - taxAmount;
 
   // Calculate summary stats
@@ -334,6 +338,7 @@ export function calculateOvertime(input: OvertimeCalculationInput): OvertimeResu
     totalOvertimeGross,
     totalTaxableOvertime,
     totalTaxExemptOvertime,
+    overLimitHours,
 
     holidayBasePay,
     holidayHours,
@@ -350,37 +355,5 @@ export function calculateOvertime(input: OvertimeCalculationInput): OvertimeResu
     taxExemptPercentage,
 
     warnings,
-  };
-}
-
-// ===== QUICK CALCULATION =====
-
-/**
- * Quick calculation for a single overtime scenario
- */
-export function calculateQuickOvertime(
-  monthlySalary: number,
-  overtimeType: OvertimeType,
-  shift: ShiftType,
-  hours: number,
-  workingDays: number = DEFAULT_WORKING_DAYS,
-  hoursPerDay: number = DEFAULT_HOURS_PER_DAY
-): {
-  hourlyRate: number;
-  overtimeRate: number;
-  overtimePay: number;
-  taxExempt: number;
-} {
-  const hourlyRate = calculateHourlyRate(monthlySalary, workingDays, hoursPerDay);
-  const overtimeRate = getOvertimeRate(overtimeType, shift);
-  const overtimePay = hourlyRate * overtimeRate * hours;
-  const regularPay = hourlyRate * hours;
-  const taxExempt = overtimePay - regularPay;
-
-  return {
-    hourlyRate,
-    overtimeRate,
-    overtimePay,
-    taxExempt,
   };
 }

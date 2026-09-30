@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { MAX_MONTHLY_INCOME } from '@/utils/inputSanitizers';
 import {
   calculateForeignerTax,
   DOUBLE_TAX_TREATY_COUNTRIES,
@@ -63,10 +64,9 @@ export default function ForeignerTaxCalculator({
 
   // Handle input change
   const handleInputChange = useCallback((field: keyof typeof localInputs, value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    setLocalInputs(prev => ({ ...prev, [field]: numericValue }));
-
-    const numValue = parseInt(numericValue) || 0;
+    const digits = value.replace(/[^\d]/g, '');
+    const numValue = Math.min(parseInt(digits) || 0, MAX_MONTHLY_INCOME);
+    setLocalInputs(prev => ({ ...prev, [field]: digits ? String(numValue) : '' }));
 
     if (field === 'grossIncome') {
       onStateChange({ grossIncome: numValue });
@@ -92,13 +92,6 @@ export default function ForeignerTaxCalculator({
     });
   }, []);
 
-  const handleFocus = useCallback((field: keyof typeof localInputs) => {
-    setLocalInputs(prev => {
-      const numValue = parseInt(prev[field].replace(/[^\d]/g, '')) || 0;
-      return { ...prev, [field]: numValue.toString() };
-    });
-  }, []);
-
   // Calculate tax result
   const result = useMemo<ForeignerTaxResult>(() => {
     return calculateForeignerTax({
@@ -108,12 +101,12 @@ export default function ForeignerTaxCalculator({
       grossIncome: sharedState.grossIncome,
       foreignIncome: tabState.foreignIncome || 0,
       allowances: tabState.allowances || DEFAULT_FOREIGNER_ALLOWANCES,
+      languageTrainingJobRelated: tabState.languageTrainingJobRelated ?? false,
       hasVietnameseInsurance: tabState.hasVietnameseInsurance ?? false,
       insuranceOptions: sharedState.insuranceOptions || DEFAULT_INSURANCE_OPTIONS,
       region: sharedState.region || 1,
       dependents: sharedState.dependents || 0,
       taxYear: tabState.taxYear || 2026,
-      isSecondHalf2026: tabState.isSecondHalf2026 ?? true,
     });
   }, [sharedState, tabState]);
 
@@ -128,7 +121,9 @@ export default function ForeignerTaxCalculator({
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <span className="text-2xl">🌏</span>
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">Thuế TNCN cho người nước ngoài</h2>
@@ -140,20 +135,18 @@ export default function ForeignerTaxCalculator({
 
         {/* Info Box */}
         <div className="bg-indigo-50 rounded-xl p-4">
-          <div className="flex items-start gap-2">
-            <span className="text-indigo-500 text-lg">💡</span>
-            <div className="text-sm text-indigo-800">
-              <p className="font-medium mb-1">Quy tắc xác định cư trú thuế:</p>
-              <ul className="list-disc list-inside space-y-1 text-indigo-700">
-                <li><strong>Cư trú:</strong> Ở VN ≥ 183 ngày/năm hoặc có nơi ở thường trú → Thuế lũy tiến 5-35%</li>
-                <li><strong>Không cư trú:</strong> Ở VN &lt; 183 ngày, không có nơi ở thường trú → Thuế 20% cố định</li>
-              </ul>
-            </div>
+          <div className="text-sm text-indigo-800">
+            <p className="font-medium mb-1">Quy tắc xác định cư trú thuế (NĐ 253/2026/NĐ-CP Điều 4):</p>
+            <ul className="list-disc list-inside space-y-1 text-indigo-700">
+              <li><strong>Cư trú:</strong> có mặt tại Việt Nam từ 183 ngày trong năm dương lịch hoặc trong 12 tháng liên tục kể từ ngày đầu tiên có mặt, hoặc có nơi ở thường xuyên tại Việt Nam → thuế lũy tiến 5–35%</li>
+              <li><strong>Không cư trú:</strong> không đáp ứng các điều kiện trên → thuế 20% trên thu nhập làm việc tại Việt Nam</li>
+              <li>Ngày đến và ngày đi mỗi ngày tính là 1 ngày; nhập cảnh và xuất cảnh trong cùng một ngày tính chung là 1 ngày</li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Input Section */}
         <div className="space-y-6">
           {/* Residency Status */}
@@ -191,7 +184,7 @@ export default function ForeignerTaxCalculator({
                           : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
                       }`}
                     >
-                      {country.name.split(' ')[0]}
+                      {country.name.replace(/ \(.*\)$/, '')}
                     </button>
                   );
                 })}
@@ -207,31 +200,37 @@ export default function ForeignerTaxCalculator({
                 <optgroup label="Các nước có Hiệp định thuế">
                   {DOUBLE_TAX_TREATY_COUNTRIES.map(country => (
                     <option key={country.code} value={country.code}>
-                      {country.name} (từ {country.year})
+                      {country.name} ({country.pending ? `ký ${country.year}, chưa có hiệu lực` : `từ ${country.year}`})
                     </option>
                   ))}
                 </optgroup>
               </select>
 
               {selectedCountry && (
-                <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-center gap-2 text-green-700 text-sm">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>
-                      <strong>{selectedCountry.name}</strong> có Hiệp định thuế với Việt Nam (từ năm {selectedCountry.year})
-                    </span>
+                selectedCountry.pending ? (
+                  <div className="mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
+                    Hiệp định giữa Việt Nam và <strong>{selectedCountry.name}</strong> ký năm {selectedCountry.year} nhưng chưa có hiệu lực: chưa được áp dụng ưu đãi hiệp định.
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 text-green-700 text-sm">
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>
+                        <strong>{selectedCountry.name}</strong> có Hiệp định thuế với Việt Nam (từ năm {selectedCountry.year})
+                      </span>
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
             {/* Days in Vietnam */}
             <div className="mb-4">
               <label htmlFor="days-in-vietnam" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                Số ngày ở Việt Nam trong năm
-                <Tooltip content="Số ngày có mặt tại Việt Nam trong năm tính thuế">
+                Số ngày có mặt tại Việt Nam
+                <Tooltip content="Trong năm dương lịch hoặc 12 tháng liên tục kể từ ngày đầu tiên có mặt. Ngày đến, ngày đi mỗi ngày tính 1 ngày (theo dấu xuất nhập cảnh trên hộ chiếu).">
                   <span className="text-gray-400 hover:text-gray-600 cursor-help">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -244,7 +243,7 @@ export default function ForeignerTaxCalculator({
                   id="days-in-vietnam"
                   type="number"
                   min="0"
-                  max="365"
+                  max="366"
                   value={tabState.daysInVietnam || 0}
                   onChange={(e) => onTabStateChange({ ...tabState, daysInVietnam: parseInt(e.target.value) || 0 })}
                   className="input-field pr-16"
@@ -282,11 +281,11 @@ export default function ForeignerTaxCalculator({
                   className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span className="text-sm font-medium text-gray-700">
-                  Có nơi ở thường trú tại Việt Nam
+                  Có nơi ở thường xuyên tại Việt Nam
                 </span>
               </label>
               <p className="text-xs text-gray-500 mt-1 ml-8">
-                Thuê nhà ≥ 183 ngày hoặc đăng ký thường trú
+                Nơi thường trú/tạm trú ghi trên thẻ thường trú, thẻ tạm trú; hoặc thuê nhà để ở (kể cả khách sạn, nhà do công ty thuê) tổng từ 183 ngày trong năm tính thuế
               </p>
             </div>
 
@@ -297,13 +296,6 @@ export default function ForeignerTaxCalculator({
                 : 'bg-amber-50 border-amber-200'
             }`}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  result.residencyStatus === 'resident' ? 'bg-green-500' : 'bg-amber-500'
-                }`}>
-                  <span className="text-white text-lg">
-                    {result.residencyStatus === 'resident' ? '🏠' : '✈️'}
-                  </span>
-                </div>
                 <div>
                   <p className={`font-semibold ${
                     result.residencyStatus === 'resident' ? 'text-green-800' : 'text-amber-800'
@@ -341,7 +333,6 @@ export default function ForeignerTaxCalculator({
                     value={localInputs.grossIncome}
                     onChange={(e) => handleInputChange('grossIncome', e.target.value)}
                     onBlur={() => handleBlur('grossIncome')}
-                    onFocus={() => handleFocus('grossIncome')}
                     className="input-field pr-10"
                     placeholder="0"
                   />
@@ -368,7 +359,6 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.foreignIncome}
                       onChange={(e) => handleInputChange('foreignIncome', e.target.value)}
                       onBlur={() => handleBlur('foreignIncome')}
-                      onFocus={() => handleFocus('foreignIncome')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
@@ -387,11 +377,11 @@ export default function ForeignerTaxCalculator({
             </h3>
 
             <div className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="housing" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    Phụ cấp nhà ở
-                    <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded">Chịu thuế</span>
+                    Tiền nhà công ty trả thay
+                    <span className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">Tối đa 15%</span>
                   </label>
                   <div className="relative">
                     <input
@@ -400,18 +390,20 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.housing}
                       onChange={(e) => handleInputChange('housing', e.target.value)}
                       onBlur={() => handleBlur('housing')}
-                      onFocus={() => handleFocus('housing')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tính vào thu nhập chịu thuế tối đa 15% tổng thu nhập chịu thuế tại đơn vị (chưa gồm tiền nhà) — NĐ 253/2026/NĐ-CP Điều 8.2.h
+                  </p>
                 </div>
 
                 <div>
                   <label htmlFor="schoolFees" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    Học phí cho con
-                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Miễn thuế</span>
+                    Học phí cho con (mầm non – THPT)
+                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Không tính</span>
                   </label>
                   <div className="relative">
                     <input
@@ -420,7 +412,6 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.schoolFees}
                       onChange={(e) => handleInputChange('schoolFees', e.target.value)}
                       onBlur={() => handleBlur('schoolFees')}
-                      onFocus={() => handleFocus('schoolFees')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
@@ -430,8 +421,8 @@ export default function ForeignerTaxCalculator({
 
                 <div>
                   <label htmlFor="homeLeaveFare" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    Vé máy bay về nước
-                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Miễn thuế</span>
+                    Vé máy bay về phép (1 lần/năm)
+                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Không tính</span>
                   </label>
                   <div className="relative">
                     <input
@@ -440,7 +431,6 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.homeLeaveFare}
                       onChange={(e) => handleInputChange('homeLeaveFare', e.target.value)}
                       onBlur={() => handleBlur('homeLeaveFare')}
-                      onFocus={() => handleFocus('homeLeaveFare')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
@@ -450,8 +440,8 @@ export default function ForeignerTaxCalculator({
 
                 <div>
                   <label htmlFor="relocation" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    Chi phí chuyển chỗ ở
-                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Miễn thuế</span>
+                    Trợ cấp chuyển vùng (1 lần)
+                    <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Không tính</span>
                   </label>
                   <div className="relative">
                     <input
@@ -460,7 +450,6 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.relocation}
                       onChange={(e) => handleInputChange('relocation', e.target.value)}
                       onBlur={() => handleBlur('relocation')}
-                      onFocus={() => handleFocus('relocation')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
@@ -471,7 +460,11 @@ export default function ForeignerTaxCalculator({
                 <div>
                   <label htmlFor="languageTraining" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                     Đào tạo ngôn ngữ
-                    <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded">Chịu thuế</span>
+                    {tabState.languageTrainingJobRelated ? (
+                      <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-600 rounded">Không tính</span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded">Chịu thuế</span>
+                    )}
                   </label>
                   <div className="relative">
                     <input
@@ -480,12 +473,20 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.languageTraining}
                       onChange={(e) => handleInputChange('languageTraining', e.target.value)}
                       onBlur={() => handleBlur('languageTraining')}
-                      onFocus={() => handleFocus('languageTraining')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
                   </div>
+                  <label className="mt-2 flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tabState.languageTrainingJobRelated ?? false}
+                      onChange={(e) => onTabStateChange({ ...tabState, languageTrainingJobRelated: e.target.checked })}
+                      className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Phù hợp công việc chuyên môn hoặc theo kế hoạch của công ty: không tính vào thu nhập chịu thuế (NĐ 253/2026/NĐ-CP Điều 8.4.i)</span>
+                  </label>
                 </div>
 
                 <div>
@@ -500,7 +501,6 @@ export default function ForeignerTaxCalculator({
                       value={localInputs.other}
                       onChange={(e) => handleInputChange('other', e.target.value)}
                       onBlur={() => handleBlur('other')}
-                      onFocus={() => handleFocus('other')}
                       className="input-field pr-10"
                       placeholder="0"
                     />
@@ -516,7 +516,7 @@ export default function ForeignerTaxCalculator({
                   <span className="font-medium">{formatMoney(result.totalAllowances)} đ</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-green-600">Phụ cấp miễn thuế:</span>
+                  <span className="text-green-600">Không tính vào thu nhập chịu thuế:</span>
                   <span className="font-medium text-green-600">{formatMoney(result.exemptAllowances)} đ</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -660,7 +660,7 @@ export default function ForeignerTaxCalculator({
               {/* Effective Tax Rate */}
               <div className="flex justify-between items-center py-2">
                 <span className="text-white/80">Thuế suất hiệu quả:</span>
-                <span className="font-semibold">{result.effectiveTaxRate.toFixed(2)}%</span>
+                <span className="font-semibold">{result.effectiveTaxRate.toFixed(2).replace('.', ',')}%</span>
               </div>
             </div>
           </div>
@@ -702,9 +702,6 @@ export default function ForeignerTaxCalculator({
           {result.savings !== undefined && result.savings > 0 && (
             <div className="card bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-lg">💰</span>
-                </div>
                 <div>
                   <h4 className="font-semibold text-green-800">Tiết kiệm với luật mới 2026</h4>
                   <p className="text-2xl font-bold text-green-600 mt-1">{formatMoney(result.savings)} đ/tháng</p>
@@ -720,8 +717,7 @@ export default function ForeignerTaxCalculator({
           {/* Notes */}
           {result.notes.length > 0 && (
             <div className="card">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="text-lg">📝</span>
+              <h3 className="font-semibold text-gray-900 mb-4">
                 Lưu ý
               </h3>
               <ul className="space-y-2">
@@ -738,18 +734,13 @@ export default function ForeignerTaxCalculator({
           {/* Treaty Info */}
           {result.hasTreatyWithCountry && result.treatyInfo && (
             <div className="card bg-blue-50 border border-blue-200">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-lg">🤝</span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-blue-800">Hiệp định tránh đánh thuế hai lần</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Việt Nam và {result.treatyInfo.name} đã ký Hiệp định từ năm {result.treatyInfo.year}.
-                    Thuế đã nộp ở một trong hai nước có thể được khấu trừ để tránh đánh thuế hai lần.
-                  </p>
-                </div>
-              </div>
+              <h4 className="font-semibold text-blue-800">Hiệp định tránh đánh thuế hai lần</h4>
+              <p className="text-sm text-blue-700 mt-1">
+                Hiệp định giữa Việt Nam và {result.treatyInfo.name} có hiệu lực từ năm {result.treatyInfo.year}.{' '}
+                {result.residencyStatus === 'resident'
+                  ? 'Thuế đã nộp ở nước ngoài đối với thu nhập phát sinh ở nước ngoài được trừ vào số thuế phải nộp tại Việt Nam.'
+                  : 'Tiền lương có thể được miễn thuế tại Việt Nam nếu đáp ứng điều kiện 183 ngày của hiệp định (xem tab Hiệp định thuế); hồ sơ theo TT 89/2026/TT-BTC Điều 76.'}
+              </p>
             </div>
           )}
         </div>

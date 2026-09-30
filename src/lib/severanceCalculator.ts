@@ -1,10 +1,12 @@
 /**
- * Severance/Retirement Pay Tax Calculator
- * Tính thuế TNCN cho trợ cấp thôi việc, nghỉ hưu, BHXH một lần
+ * Thuế TNCN đối với trợ cấp thôi việc, mất việc làm, BHXH một lần, rút quỹ hưu trí tự nguyện
  *
- * Căn cứ pháp lý:
- * - Điều 8 Thông tư 111/2013/TT-BTC
- * - Điều 14 Luật Thuế TNCN sửa đổi 2024
+ * Căn cứ pháp lý (kỳ tính thuế 2026):
+ * - Luật Thuế TNCN 109/2025/QH15 Điều 3.2.c: trợ cấp thôi việc, mất việc làm, trợ cấp theo pháp luật
+ *   BHXH không tính vào thu nhập chịu thuế; Điều 4.9: miễn thuế thu nhập do quỹ hưu trí tự nguyện chi trả
+ * - NĐ 253/2026/NĐ-CP Điều 8.3.g, h; Điều 27.2
+ * - Bộ luật Lao động 2019 Điều 46, 47; NĐ 145/2020/NĐ-CP Điều 8 (mức trợ cấp)
+ * - Luật BHXH 2024 Điều 70 (BHXH một lần)
  */
 
 import { formatNumber } from './taxCalculator';
@@ -14,65 +16,64 @@ import { formatNumber } from './taxCalculator';
 // =============================================================================
 
 /**
- * Loại trợ cấp
+ * Loại khoản nhận khi nghỉ việc
  */
 export type SeveranceType =
   | 'severance'     // Trợ cấp thôi việc (Điều 46 BLLĐ)
   | 'job_loss'      // Trợ cấp mất việc làm (Điều 47 BLLĐ)
-  | 'early_retire'  // Trợ cấp nghỉ hưu sớm
+  | 'early_retire'  // Khoản doanh nghiệp tự chi khi nghỉ hưu sớm
   | 'social_insurance_lump_sum'  // BHXH một lần
   | 'voluntary_pension_lump_sum'; // Quỹ hưu trí tự nguyện rút một lần
 
+const NOT_TAXABLE_ALLOWANCE = 'Luật Thuế TNCN 109/2025/QH15 Điều 3.2.c; NĐ 253/2026/NĐ-CP Điều 8.3.h';
+
 /**
- * Thông tin về loại trợ cấp
+ * Thông tin về loại khoản (taxable = tính vào thu nhập chịu thuế từ tiền lương, tiền công)
  */
 export const SEVERANCE_TYPE_INFO: Record<SeveranceType, {
   label: string;
   description: string;
-  taxExemptMultiplier: number; // Hệ số x lương bình quân được miễn thuế
+  taxable: boolean;
   legalReference: string;
 }> = {
   severance: {
     label: 'Trợ cấp thôi việc',
-    description: 'Trợ cấp theo Điều 46 Bộ luật Lao động khi chấm dứt HĐLĐ',
-    taxExemptMultiplier: 10,
-    legalReference: 'Điều 8, Thông tư 111/2013/TT-BTC',
+    description: 'Trợ cấp theo Điều 46 Bộ luật Lao động khi chấm dứt hợp đồng lao động',
+    taxable: false,
+    legalReference: NOT_TAXABLE_ALLOWANCE,
   },
   job_loss: {
     label: 'Trợ cấp mất việc làm',
-    description: 'Trợ cấp theo Điều 47 BLLĐ do thay đổi cơ cấu, công nghệ',
-    taxExemptMultiplier: 10,
-    legalReference: 'Điều 8, Thông tư 111/2013/TT-BTC',
+    description: 'Trợ cấp theo Điều 47 Bộ luật Lao động do thay đổi cơ cấu, công nghệ, lý do kinh tế, sáp nhập, chia tách',
+    taxable: false,
+    legalReference: NOT_TAXABLE_ALLOWANCE,
   },
   early_retire: {
-    label: 'Trợ cấp nghỉ hưu sớm',
-    description: 'Trợ cấp cho người nghỉ hưu trước tuổi quy định',
-    taxExemptMultiplier: 10,
-    legalReference: 'Điều 8, Thông tư 111/2013/TT-BTC',
+    label: 'Khoản doanh nghiệp chi khi nghỉ hưu sớm',
+    description: 'Khoản doanh nghiệp tự chi thêm khi người lao động nghỉ hưu trước tuổi (không phải trợ cấp theo luật)',
+    taxable: true,
+    legalReference: 'Luật Thuế TNCN 109/2025/QH15 Điều 3.2; NĐ 253/2026/NĐ-CP Điều 8',
   },
   social_insurance_lump_sum: {
     label: 'BHXH một lần',
-    description: 'Nhận BHXH một lần khi không đủ điều kiện hưởng lương hưu',
-    taxExemptMultiplier: 10,
-    legalReference: 'Điều 8, Thông tư 111/2013/TT-BTC',
+    description: 'Hưởng BHXH một lần theo Điều 70 Luật BHXH 2024',
+    taxable: false,
+    legalReference: 'Luật Thuế TNCN 109/2025/QH15 Điều 3.2.c; NĐ 253/2026/NĐ-CP Điều 8.3.g',
   },
   voluntary_pension_lump_sum: {
-    label: 'Quỹ hưu trí tự nguyện (rút một lần)',
-    description: 'Rút một lần từ quỹ hưu trí tự nguyện (không đúng quy định)',
-    taxExemptMultiplier: 0, // Không được miễn giảm
-    legalReference: 'Điều 14, Luật Thuế TNCN sửa đổi 2024',
+    label: 'Quỹ hưu trí tự nguyện, bổ sung (rút một lần)',
+    description: 'Thu nhập do quỹ hưu trí tự nguyện, quỹ bảo hiểm hưu trí bổ sung chi trả, kể cả rút một lần trước tuổi nghỉ hưu',
+    taxable: false,
+    legalReference: 'Luật Thuế TNCN 109/2025/QH15 Điều 4.9; NĐ 253/2026/NĐ-CP Điều 27.2',
   },
 };
 
 /**
- * Input cho tính thuế trợ cấp
+ * Input cho tính thuế
  */
 export interface SeveranceInput {
   type: SeveranceType;
-  totalAmount: number;           // Tổng số tiền trợ cấp
-  averageSalary: number;         // Lương bình quân 6 tháng cuối (hoặc cả quá trình)
-  yearsWorked?: number;          // Số năm làm việc (tùy chọn, để hiển thị)
-  contributionAmount?: number;   // Số tiền đã đóng (cho quỹ hưu trí tự nguyện)
+  totalAmount: number; // Tổng số tiền nhận
 }
 
 /**
@@ -82,18 +83,16 @@ export interface SeveranceResult {
   type: SeveranceType;
   typeInfo: typeof SEVERANCE_TYPE_INFO[SeveranceType];
   totalAmount: number;
-  taxExemptAmount: number;       // Số tiền được miễn thuế
-  taxableIncome: number;         // Thu nhập chịu thuế
-  taxRate: number;               // Thuế suất (10%)
-  taxAmount: number;             // Số thuế phải nộp
-  netAmount: number;             // Số tiền thực nhận
-  effectiveRate: number;         // Thuế suất thực tế (%)
+  taxExemptAmount: number; // Không tính vào thu nhập chịu thuế / được miễn
+  taxableIncome: number;   // Tính vào thu nhập chịu thuế từ tiền lương, tiền công
+  taxAmount: number;       // Thuế tính riêng cho khoản này (khoản chịu thuế được tính cùng tiền lương)
+  netAmount: number;       // Số tiền nhận (trước thuế tiền lương nếu khoản chịu thuế)
 
   // Chi tiết tính toán
   calculation: {
-    step1: string;  // Mô tả bước 1
-    step2: string;  // Mô tả bước 2
-    step3: string;  // Mô tả bước 3
+    step1: string;
+    step2: string;
+    step3: string;
   };
 
   // Ghi chú
@@ -101,168 +100,107 @@ export interface SeveranceResult {
 }
 
 // =============================================================================
-// CONSTANTS
-// =============================================================================
-
-/**
- * Thuế suất cho thu nhập từ trợ cấp thôi việc
- */
-const SEVERANCE_TAX_RATE = 0.10; // 10%
-
-/**
- * Thuế suất cho quỹ hưu trí tự nguyện rút một lần
- */
-const PENSION_LUMP_SUM_TAX_RATE = 0.10; // 10%
-
-// =============================================================================
 // MAIN FUNCTIONS
 // =============================================================================
 
 /**
- * Tính thuế TNCN cho trợ cấp thôi việc/nghỉ hưu
+ * Xác định thuế TNCN của khoản nhận khi nghỉ việc (kỳ tính thuế 2026)
  */
 export function calculateSeveranceTax(input: SeveranceInput): SeveranceResult {
-  const { type, totalAmount, averageSalary, contributionAmount } = input;
+  const { type, totalAmount } = input;
   const typeInfo = SEVERANCE_TYPE_INFO[type];
-
-  // Xử lý riêng cho quỹ hưu trí tự nguyện
-  if (type === 'voluntary_pension_lump_sum') {
-    return calculateVoluntaryPensionLumpSum(input);
-  }
-
-  // Tính số tiền được miễn thuế
-  // Theo Thông tư 111: Miễn thuế = 10 x Lương bình quân 6 tháng cuối
-  const taxExemptAmount = averageSalary * typeInfo.taxExemptMultiplier;
-
-  // Thu nhập chịu thuế = Tổng trợ cấp - Số tiền được miễn
-  const taxableIncome = Math.max(0, totalAmount - taxExemptAmount);
-
-  // Thuế = Thu nhập chịu thuế x 10%
-  const taxAmount = Math.round(taxableIncome * SEVERANCE_TAX_RATE);
-
-  // Số tiền thực nhận
-  const netAmount = totalAmount - taxAmount;
-
-  // Thuế suất thực tế
-  const effectiveRate = totalAmount > 0 ? (taxAmount / totalAmount) * 100 : 0;
-
-  // Chi tiết tính toán
-  const calculation = {
-    step1: `Số tiền được miễn thuế = ${formatNumber(averageSalary)} × ${typeInfo.taxExemptMultiplier} = ${formatNumber(taxExemptAmount)} VND`,
-    step2: `Thu nhập chịu thuế = ${formatNumber(totalAmount)} - ${formatNumber(taxExemptAmount)} = ${formatNumber(taxableIncome)} VND`,
-    step3: taxableIncome > 0
-      ? `Thuế TNCN = ${formatNumber(taxableIncome)} × 10% = ${formatNumber(taxAmount)} VND`
-      : 'Thu nhập chịu thuế ≤ 0, không phải nộp thuế',
-  };
-
-  // Ghi chú
   const notes: string[] = [];
 
-  if (taxableIncome <= 0) {
-    notes.push('Bạn không phải nộp thuế TNCN vì trợ cấp nhận được không vượt quá mức miễn thuế.');
+  switch (type) {
+    case 'severance':
+    case 'job_loss':
+      notes.push('Phần doanh nghiệp chi cao hơn mức luật định cũng không tính vào thu nhập chịu thuế nếu được quy định trong quy chế tài chính, quy chế nội bộ, hợp đồng lao động hoặc thỏa ước lao động (NĐ 253/2026/NĐ-CP Điều 8.3.h).');
+      notes.push('Thời gian đã đóng bảo hiểm thất nghiệp không được tính trợ cấp; người đủ điều kiện hưởng lương hưu không được trợ cấp thôi việc (NĐ 145/2020/NĐ-CP Điều 8).');
+      break;
+    case 'social_insurance_lump_sum':
+      notes.push('BHXH một lần (Luật BHXH 2024 Điều 70): đủ tuổi nghỉ hưu mà chưa đủ 15 năm đóng; ra nước ngoài định cư; mắc bệnh ung thư, bại liệt, xơ gan mất bù, lao nặng, AIDS; suy giảm khả năng lao động từ 81%; người có thời gian đóng trước 01/7/2025, sau 12 tháng không tham gia BHXH và chưa đủ 20 năm đóng.');
+      notes.push('Mức hưởng: 1,5 tháng lương bình quân cho mỗi năm đóng trước 2014, 2 tháng cho mỗi năm đóng từ 2014.');
+      break;
+    case 'voluntary_pension_lump_sum':
+      notes.push('Miễn thuế không phân biệt chi trả định kỳ hay một lần, trước hay sau tuổi nghỉ hưu (NĐ 253/2026/NĐ-CP Điều 27.2).');
+      break;
+    case 'early_retire':
+      notes.push('Khoản doanh nghiệp tự chi (không phải trợ cấp theo luật) chịu thuế như tiền lương: tổ chức trả khấu trừ khi chi trả, thuế cuối cùng tính theo biểu lũy tiến cùng thu nhập tiền lương cả năm khi quyết toán.');
+      notes.push('Trợ cấp thôi việc, mất việc làm, BHXH một lần theo luật không chịu thuế: chọn đúng loại tương ứng. Lương hưu do Quỹ BHXH chi trả được miễn thuế (Luật Thuế TNCN 109/2025/QH15 Điều 4.9).');
+      break;
   }
-
-  if (type === 'social_insurance_lump_sum') {
-    notes.push('BHXH một lần chỉ được nhận khi không đủ điều kiện hưởng lương hưu (đóng dưới 20 năm và đủ tuổi nghỉ hưu, hoặc ra nước ngoài định cư).');
-  }
-
   notes.push(`Căn cứ pháp lý: ${typeInfo.legalReference}`);
 
+  const calculation = typeInfo.taxable
+    ? {
+        step1: `Loại khoản: ${typeInfo.label} (không phải trợ cấp theo luật)`,
+        step2: `Tính vào thu nhập chịu thuế từ tiền lương, tiền công: ${formatNumber(totalAmount)} VNĐ`,
+        step3: 'Thuế TNCN tính theo biểu lũy tiến cùng tiền lương của kỳ chi trả, quyết toán cả năm',
+      }
+    : {
+        step1: `Loại khoản: ${typeInfo.label}`,
+        step2: `${type === 'voluntary_pension_lump_sum' ? 'Miễn thuế TNCN' : 'Không tính vào thu nhập chịu thuế TNCN'}: ${formatNumber(totalAmount)} VNĐ`,
+        step3: 'Thuế TNCN phải nộp = 0 VNĐ',
+      };
+
   return {
     type,
     typeInfo,
     totalAmount,
-    taxExemptAmount,
-    taxableIncome,
-    taxRate: SEVERANCE_TAX_RATE,
-    taxAmount,
-    netAmount,
-    effectiveRate,
+    taxExemptAmount: typeInfo.taxable ? 0 : totalAmount,
+    taxableIncome: typeInfo.taxable ? totalAmount : 0,
+    taxAmount: 0,
+    netAmount: totalAmount,
     calculation,
     notes,
   };
 }
 
 /**
- * Tính thuế cho rút quỹ hưu trí tự nguyện một lần
- * Trường hợp rút không đúng quy định (trước tuổi nghỉ hưu)
+ * Thời gian tính trợ cấp (năm) = thời gian làm việc thực tế − thời gian đóng BHTN − thời gian đã được chi trả;
+ * tháng lẻ ≤ 6 tính 1/2 năm, trên 6 tháng tính 1 năm (NĐ 145/2020/NĐ-CP Điều 8.3)
  */
-function calculateVoluntaryPensionLumpSum(input: SeveranceInput): SeveranceResult {
-  const { totalAmount, contributionAmount = 0 } = input;
-  const type = 'voluntary_pension_lump_sum';
-  const typeInfo = SEVERANCE_TYPE_INFO[type];
-
-  // Thu nhập chịu thuế = Tổng rút - Số đã đóng (phần lãi)
-  // Nếu rút đúng quy định (đủ tuổi) thì miễn thuế
-  // Nếu rút sớm thì chịu thuế 10% trên phần lãi
-  const profitAmount = Math.max(0, totalAmount - contributionAmount);
-  const taxableIncome = profitAmount;
-
-  const taxAmount = Math.round(taxableIncome * PENSION_LUMP_SUM_TAX_RATE);
-  const netAmount = totalAmount - taxAmount;
-  const effectiveRate = totalAmount > 0 ? (taxAmount / totalAmount) * 100 : 0;
-
-  const calculation = {
-    step1: `Số tiền đã đóng góp = ${formatNumber(contributionAmount)} VND`,
-    step2: `Phần lãi/lợi nhuận = ${formatNumber(totalAmount)} - ${formatNumber(contributionAmount)} = ${formatNumber(profitAmount)} VND`,
-    step3: profitAmount > 0
-      ? `Thuế TNCN = ${formatNumber(profitAmount)} × 10% = ${formatNumber(taxAmount)} VND`
-      : 'Không có lãi, không phải nộp thuế',
-  };
-
-  const notes = [
-    'Rút quỹ hưu trí tự nguyện trước tuổi nghỉ hưu phải chịu thuế 10% trên phần lãi.',
-    'Nếu rút đúng quy định (đủ tuổi nghỉ hưu theo Luật BHXH) thì được miễn thuế.',
-    `Căn cứ pháp lý: ${typeInfo.legalReference}`,
-  ];
-
-  return {
-    type,
-    typeInfo,
-    totalAmount,
-    taxExemptAmount: contributionAmount,
-    taxableIncome,
-    taxRate: PENSION_LUMP_SUM_TAX_RATE,
-    taxAmount,
-    netAmount,
-    effectiveRate,
-    calculation,
-    notes,
-  };
+export function getSeveranceServiceYears(
+  yearsWorked: number,
+  unemploymentInsuranceYears: number = 0,
+  paidYears: number = 0
+): number {
+  const months = Math.max(0, Math.round((yearsWorked - unemploymentInsuranceYears - paidYears) * 12));
+  const oddMonths = months % 12;
+  return Math.floor(months / 12) + (oddMonths === 0 ? 0 : oddMonths <= 6 ? 0.5 : 1);
 }
 
 /**
- * Tính trợ cấp thôi việc theo Bộ luật Lao động
- * Công thức: Trợ cấp = (Số năm làm việc) × (1/2 tháng lương)
+ * Trợ cấp thôi việc (BLLĐ Điều 46): mỗi năm làm việc 1/2 tháng lương bình quân 6 tháng liền kề.
+ * Chỉ áp dụng khi làm việc thường xuyên từ đủ 12 tháng.
  */
 export function estimateSeveranceAmount(
   yearsWorked: number,
-  averageSalary: number
+  averageSalary: number,
+  unemploymentInsuranceYears: number = 0,
+  paidYears: number = 0
 ): number {
-  // Mỗi năm làm việc được 1/2 tháng lương
-  // Thời gian làm việc từ 12 tháng trở lên mới được tính trợ cấp
   if (yearsWorked < 1) return 0;
-
-  return Math.round(yearsWorked * averageSalary * 0.5);
+  return Math.round(getSeveranceServiceYears(yearsWorked, unemploymentInsuranceYears, paidYears) * averageSalary * 0.5);
 }
 
 /**
- * Tính trợ cấp mất việc làm theo Bộ luật Lao động
- * Công thức: Trợ cấp = (Số năm làm việc) × (1 tháng lương)
+ * Trợ cấp mất việc làm (BLLĐ Điều 47; NĐ 145/2020 Điều 8.2): mỗi năm làm việc 1 tháng lương,
+ * ít nhất 2 tháng lương. Chỉ áp dụng khi làm việc thường xuyên từ đủ 12 tháng.
  */
 export function estimateJobLossAmount(
   yearsWorked: number,
-  averageSalary: number
+  averageSalary: number,
+  unemploymentInsuranceYears: number = 0,
+  paidYears: number = 0
 ): number {
-  // Mỗi năm làm việc được 1 tháng lương, tối thiểu 2 tháng
   if (yearsWorked < 1) return 0;
-
-  const amount = yearsWorked * averageSalary;
-  return Math.round(Math.max(amount, averageSalary * 2));
+  const years = getSeveranceServiceYears(yearsWorked, unemploymentInsuranceYears, paidYears);
+  return Math.round(Math.max(years, 2) * averageSalary);
 }
 
 /**
- * Danh sách các loại trợ cấp để hiển thị trong dropdown
+ * Danh sách các loại khoản để hiển thị trong dropdown
  */
 export function getSeveranceTypes(): Array<{ id: SeveranceType; label: string; description: string }> {
   return Object.entries(SEVERANCE_TYPE_INFO).map(([id, info]) => ({

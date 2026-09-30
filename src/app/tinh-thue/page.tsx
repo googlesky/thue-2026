@@ -12,7 +12,6 @@ import { SaveShareButton } from '@/components/SaveShare';
 import LawInfoModal from '@/components/ui/LawInfoModal';
 import LoadingSpinner, { TabLoadingSkeleton, ChartLoadingSkeleton } from '@/components/ui/LoadingSpinner';
 import { KeyboardShortcuts, ShortcutHelpHint } from '@/components/ui';
-import { useTheme } from '@/contexts/ThemeContext';
 
 // Lazy-loaded components for better code splitting
 const TaxChart = lazy(() => import('@/components/TaxChart'));
@@ -119,9 +118,13 @@ import {
   DEFAULT_MONTHLY_PLANNER_STATE,
   MortgageTabState,
   DEFAULT_MORTGAGE_STATE,
+  DEFAULT_EMPLOYER_COST_STATE,
+  DEFAULT_SNAPSHOT,
+  sanitizeSharedState,
 } from '@/lib/snapshotTypes';
 import { decodeSnapshot, decodeLegacyURLParams, encodeSnapshot } from '@/lib/snapshotCodec';
 import { createDefaultCompanyOffer } from '@/lib/salaryComparisonCalculator';
+import { DEFAULT_INCOME_SUMMARY_INPUT, type IncomeSummaryInput } from '@/lib/incomeSummaryCalculator';
 
 const defaultSharedState: SharedTaxState = {
   grossIncome: 30_000_000,
@@ -133,6 +136,24 @@ const defaultSharedState: SharedTaxState = {
   pensionContribution: 0,
   otherIncome: DEFAULT_OTHER_INCOME,
 };
+
+// Chuỗi mã hóa của trạng thái mặc định (chỉ có version) - khi trùng thì URL chỉ giữ #tab
+const DEFAULT_ENCODED_STATE = encodeSnapshot(DEFAULT_SNAPSHOT);
+
+// SharedTaxState -> TaxInput (engine tự chặn trần hưu trí tự nguyện)
+function toTaxInput(state: SharedTaxState): TaxInputType {
+  return {
+    grossIncome: state.grossIncome,
+    declaredSalary: state.declaredSalary,
+    dependents: state.dependents,
+    otherDeductions: state.otherDeductions,
+    pensionContribution: state.pensionContribution,
+    hasInsurance: state.hasInsurance,
+    insuranceOptions: state.insuranceOptions,
+    region: state.region,
+    allowances: state.allowances,
+  };
+}
 
 // Valid tab types for hash navigation
 const VALID_TABS: TabType[] = [
@@ -152,7 +173,6 @@ const ALL_TABS = TAB_GROUPS.flatMap(group => group.tabs);
 export default function Home() {
   // Next.js hook for navigation tracking
   const pathname = usePathname();
-  const { toggleTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<TabType>('calculator');
   const [isInitialized, setIsInitialized] = useState(false);
@@ -163,10 +183,7 @@ export default function Home() {
   const [sharedState, setSharedState] = useState<SharedTaxState>(defaultSharedState);
 
   // Tab-specific states (lifted from individual tab components)
-  const [employerCostState, setEmployerCostState] = useState<EmployerCostTabState>({
-    includeUnionFee: false,
-    useNewLaw: true,
-  });
+  const [employerCostState, setEmployerCostState] = useState<EmployerCostTabState>(DEFAULT_EMPLOYER_COST_STATE);
   const [freelancerState, setFreelancerState] = useState<FreelancerTabState>(DEFAULT_FREELANCER_STATE);
   const [salaryComparisonState, setSalaryComparisonState] = useState<SalaryComparisonTabState>({
     companies: [
@@ -193,17 +210,23 @@ export default function Home() {
   const [contentCreatorState, setContentCreatorState] = useState<ContentCreatorTabState>(DEFAULT_CONTENT_CREATOR_STATE);
   const [cryptoTaxState, setCryptoTaxState] = useState<CryptoTaxTabState>(DEFAULT_CRYPTO_TAX_STATE);
   const [goldTaxState, setGoldTaxState] = useState<GoldTaxTabState>(DEFAULT_GOLD_TAX_STATE);
+  const [incomeSummaryState, setIncomeSummaryState] = useState<IncomeSummaryInput>(DEFAULT_INCOME_SUMMARY_INPUT);
   const [monthlyPlannerState, setMonthlyPlannerState] = useState<MonthlyPlannerTabState>(DEFAULT_MONTHLY_PLANNER_STATE);
   const [mortgageState, setMortgageState] = useState<MortgageTabState>(DEFAULT_MORTGAGE_STATE);
 
-  // Tax calculation results
-  const [newResult, setNewResult] = useState<TaxResultType>(() =>
-    calculateNewTax(sharedState)
+  // Tăng mỗi lần nạp bản lưu/đặt lại để dựng lại nội dung tab
+  const [loadCounter, setLoadCounter] = useState(0);
+
+  // Kết quả thuế luôn suy ra từ sharedState (kể cả khi nạp snapshot/URL ở tab bất kỳ)
+  const newResult = useMemo<TaxResultType>(
+    () => calculateNewTax(toTaxInput(sharedState)),
+    [sharedState]
   );
 
   // Handler for loading a snapshot (defined early to avoid hoisting issues)
   const handleLoadSnapshot = useCallback((snapshot: CalculatorSnapshot) => {
-    setSharedState(snapshot.sharedState);
+    setLoadCounter((n) => n + 1);
+    setSharedState(sanitizeSharedState(snapshot.sharedState));
     setActiveTab(snapshot.activeTab as TabType);
     setEmployerCostState(snapshot.tabs.employerCost);
     setFreelancerState(snapshot.tabs.freelancer);
@@ -266,6 +289,7 @@ export default function Home() {
     if (snapshot.tabs.mortgage) {
       setMortgageState(snapshot.tabs.mortgage);
     }
+    setIncomeSummaryState(snapshot.tabs.incomeSummary ?? DEFAULT_INCOME_SUMMARY_INPUT);
   }, []);
 
   // Helper function to handle hash navigation
@@ -349,21 +373,7 @@ export default function Home() {
       // Fall back to legacy URL params for backward compatibility
       const urlState = decodeLegacyURLParams(window.location.search);
       if (urlState) {
-        const newState = { ...defaultSharedState, ...urlState };
-        setSharedState(newState);
-
-        // Recalculate
-        const taxInput: TaxInputType = {
-          grossIncome: newState.grossIncome,
-          declaredSalary: newState.declaredSalary,
-          dependents: newState.dependents,
-          otherDeductions: newState.otherDeductions + newState.pensionContribution,
-          hasInsurance: newState.hasInsurance,
-          insuranceOptions: newState.insuranceOptions,
-          region: newState.region,
-          allowances: newState.allowances,
-        };
-        setNewResult(calculateNewTax(taxInput));
+        setSharedState(sanitizeSharedState({ ...defaultSharedState, ...urlState }));
 
         // Clear URL params after loading (cleaner URL)
         window.history.replaceState({}, '', window.location.pathname);
@@ -410,26 +420,7 @@ export default function Home() {
 
   // Update shared state and recalculate tax
   const updateSharedState = useCallback((updates: Partial<SharedTaxState>) => {
-    setSharedState(prev => {
-      const newState = { ...prev, ...updates };
-
-      // Build tax input
-      const taxInput: TaxInputType = {
-        grossIncome: newState.grossIncome,
-        declaredSalary: newState.declaredSalary,
-        dependents: newState.dependents,
-        otherDeductions: newState.otherDeductions + newState.pensionContribution,
-        hasInsurance: newState.hasInsurance,
-        insuranceOptions: newState.insuranceOptions,
-        region: newState.region,
-        allowances: newState.allowances,
-      };
-
-      // Recalculate tax results
-      setNewResult(calculateNewTax(taxInput));
-
-      return newState;
-    });
+    setSharedState(prev => ({ ...prev, ...updates }));
   }, []);
 
   // Handler for TaxInput component (maintains backward compatibility)
@@ -484,11 +475,12 @@ export default function Home() {
       goldTax: goldTaxState,
       monthlyPlanner: monthlyPlannerState,
       mortgage: mortgageState,
+      incomeSummary: incomeSummaryState,
     },
     meta: {
       createdAt: Date.now(),
     },
-  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState, monthlyPlannerState, mortgageState]);
+  }), [sharedState, activeTab, employerCostState, freelancerState, salaryComparisonState, yearlyState, overtimeState, annualSettlementState, bonusState, esopState, pensionState, foreignerTaxState, latePaymentState, businessFormComparisonState, severanceState, vatState, withholdingTaxState, multiSourceIncomeState, taxTreatyState, coupleOptimizerState, contentCreatorState, cryptoTaxState, goldTaxState, monthlyPlannerState, mortgageState, incomeSummaryState]);
 
   // Auto-update URL when state changes (debounced)
   // Format: #<tab> (default state) or #<tab>~<encoded> (custom state)
@@ -501,7 +493,7 @@ export default function Home() {
 
       // Check if state is basically default (encoded string is very short)
       // Short encoded = mostly defaults, just use simple tab hash
-      if (encoded.length < 10) {
+      if (encoded.length < 10 || encoded === DEFAULT_ENCODED_STATE) {
         // Use simple tab hash or clean URL for default tab
         const newURL = activeTab === 'calculator'
           ? window.location.pathname
@@ -521,9 +513,10 @@ export default function Home() {
 
   // Reset to home (default state)
   const handleGoHome = useCallback(() => {
+    setLoadCounter((n) => n + 1);
     setSharedState(defaultSharedState);
     setActiveTab('calculator');
-    setEmployerCostState({ includeUnionFee: false, useNewLaw: true });
+    setEmployerCostState(DEFAULT_EMPLOYER_COST_STATE);
     setFreelancerState(DEFAULT_FREELANCER_STATE);
     setSalaryComparisonState({
       companies: [
@@ -551,9 +544,8 @@ export default function Home() {
     setCryptoTaxState(DEFAULT_CRYPTO_TAX_STATE);
     setMonthlyPlannerState(DEFAULT_MONTHLY_PLANNER_STATE);
     setMortgageState(DEFAULT_MORTGAGE_STATE);
-
-    // Recalculate with default values
-    setNewResult(calculateNewTax(defaultSharedState));
+    setGoldTaxState(DEFAULT_GOLD_TAX_STATE);
+    setIncomeSummaryState(DEFAULT_INCOME_SUMMARY_INPUT);
 
     // Clear URL
     window.history.replaceState(null, '', window.location.pathname);
@@ -570,7 +562,7 @@ export default function Home() {
       <Header variant="solid" />
 
       {/* Band tiêu đề - mực phẳng, số hiệu luật kiểu văn bản */}
-      <div className="relative bg-primary-700 overflow-hidden">
+      <div className="relative bg-primary-700">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Title Section */}
@@ -618,7 +610,8 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div className="bg-paper min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* key: nạp bản lưu/đặt lại thì dựng lại các tab (nhiều tab chỉ đọc tabState khi mount) */}
+        <div key={loadCounter} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {/* Tab Navigation */}
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
@@ -1089,7 +1082,10 @@ export default function Home() {
         {activeTab === 'income-summary' && (
           <div className="mb-8">
             <Suspense fallback={<TabLoadingSkeleton />}>
-              <IncomeSummaryDashboard />
+              <IncomeSummaryDashboard
+                tabState={incomeSummaryState}
+                onTabStateChange={setIncomeSummaryState}
+              />
             </Suspense>
           </div>
         )}
@@ -1150,11 +1146,11 @@ export default function Home() {
           // Trigger save by copying URL to clipboard
           const encoded = encodeSnapshot(currentSnapshot);
           const url = `${window.location.origin}${window.location.pathname}#${currentSnapshot.activeTab}~${encoded}`;
-          navigator.clipboard.writeText(url).then(() => {
-            alert('Đã sao chép URL trạng thái vào clipboard');
-          });
+          navigator.clipboard.writeText(url).then(
+            () => alert('Đã sao chép URL trạng thái vào clipboard'),
+            () => alert('Không sao chép được, hãy dùng nút Lưu & Chia sẻ'),
+          );
         }}
-        onToggleDarkMode={toggleTheme}
         totalTabs={Math.min(ALL_TABS.length, 9)}
       />
       <ShortcutHelpHint />

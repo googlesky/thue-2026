@@ -13,6 +13,9 @@ import {
   DEFAULT_ALLOWANCES,
   ALLOWANCE_LIMITS,
   calculateAllowancesBreakdown,
+  getMealAllowanceLimit,
+  getVoluntaryPensionCap,
+  DEPENDENT_INCOME_LIMIT,
 } from "@/lib/taxCalculator";
 import {
   grossToNet,
@@ -146,10 +149,13 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
           type: "gross",
           dependents: initialValues.dependents,
           hasInsurance: initialValues.hasInsurance,
+          insuranceOptions: initialValues.insuranceOptions,
           useNewLaw: true,
           region: initialValues.region,
           declaredSalary: initialValues.declaredSalary,
           allowances: initialValues.allowances,
+          otherDeductions: initialValues.otherDeductions,
+          pensionContribution: initialValues.pensionContribution,
         });
         setNetIncome(Math.round(result.net).toString());
       }
@@ -166,21 +172,27 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
       type,
       dependents,
       hasInsurance,
+      insuranceOptions,
       useNewLaw: true,
       region,
       declaredSalary: useDeclaredSalary
         ? parseInt(declaredSalary, 10) || undefined
         : undefined,
       allowances: showAllowances ? allowances : undefined,
+      otherDeductions: parseInt(otherDeductions, 10) || 0,
+      pensionContribution: parseInt(pensionContribution, 10) || 0,
     }),
     [
       dependents,
       hasInsurance,
+      insuranceOptions,
       region,
       useDeclaredSalary,
       declaredSalary,
       showAllowances,
       allowances,
+      otherDeductions,
+      pensionContribution,
     ],
   );
 
@@ -277,9 +289,10 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
       setPensionWarning(null);
       return;
     }
-    const parsed = parseCurrencyInput(value, { max: 1_000_000 });
+    const cap = getVoluntaryPensionCap();
+    const parsed = parseCurrencyInput(value, { max: cap });
     flushSync(() => setPensionContribution(parsed.value.toString()));
-    setPensionWarning(buildWarning(parsed.issues, 1_000_000));
+    setPensionWarning(buildWarning(parsed.issues, cap));
   };
 
   const handleInsuranceToggle = (type: keyof InsuranceOptions) => {
@@ -404,7 +417,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
 
   const insuranceItems = [
     { key: "bhxh" as const, label: "BHXH", rate: "8%" },
-    { key: "bhyt" as const, label: "BHYT", rate: "1.5%" },
+    { key: "bhyt" as const, label: "BHYT", rate: "1,5%" },
     { key: "bhtn" as const, label: "BHTN", rate: "1%" },
   ];
 
@@ -665,7 +678,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
             </button>
           </div>
           <p id="dependents-hint" className="text-sm text-gray-500 mt-2">
-            Người phụ thuộc: con cái, cha mẹ không có thu nhập...
+            Con, vợ/chồng, cha mẹ... có thu nhập bình quân không quá{" "}
+            {formatNumber(DEPENDENT_INCOME_LIMIT)}đ/tháng
           </p>
         </div>
 
@@ -752,7 +766,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
               (insuranceOptions.bhxh ? 8 : 0) +
               (insuranceOptions.bhyt ? 1.5 : 0) +
               (insuranceOptions.bhtn ? 1 : 0)
-            ).toFixed(1)}
+            ).toLocaleString("vi-VN", { maximumFractionDigits: 1 })}
             %
           </p>
         </fieldset>
@@ -792,8 +806,8 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 htmlFor="pension-contribution"
                 className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2"
               >
-                <span>Quỹ hưu trí tự nguyện (VNĐ/tháng)</span>
-                <Tooltip content="Tối đa 1 triệu/tháng được giảm trừ">
+                <span>Hưu trí tự nguyện, BH nhân thọ (VNĐ/tháng)</span>
+                <Tooltip content="Tổng hưu trí bổ sung, hưu trí tự nguyện và bảo hiểm nhân thọ được trừ tối đa 3 triệu/tháng, gồm cả phần công ty đóng (NĐ 253/2026)">
                   <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
@@ -808,7 +822,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 }}
                 onChange={(e) => handlePensionChange(e.target.value)}
                 className="input-field"
-                placeholder="Tối đa 1.000.000"
+                placeholder={`Tối đa ${formatNumber(getVoluntaryPensionCap())}`}
                 aria-describedby="pension-contribution-hint"
               />
               {pensionWarning && (
@@ -818,7 +832,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 id="pension-contribution-hint"
                 className="text-xs text-gray-500 mt-1"
               >
-                Tối đa 1.000.000 VNĐ/tháng được giảm trừ
+                Tối đa {formatNumber(getVoluntaryPensionCap())} VNĐ/tháng được giảm trừ
               </p>
             </div>
 
@@ -913,7 +927,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Tiền ăn trưa/ăn ca</span>
-                    <Tooltip content="Không giới hạn (từ 15/6/2025). Phải ghi trong HĐLĐ hoặc quy chế công ty.">
+                    <Tooltip content={`Trả bằng tiền: miễn thuế tối đa ${formatNumber(getMealAllowanceLimit())}đ/tháng, phần vượt chịu thuế (NĐ 253/2026). Công ty tự nấu, mua suất ăn, phát phiếu ăn thì không tính.`}>
                       <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
@@ -928,13 +942,20 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                     className="input-field text-sm"
                     placeholder="VNĐ/tháng"
                   />
+                  {allowances.meal > getMealAllowanceLimit() && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Vượt{" "}
+                      {formatNumber(allowances.meal - getMealAllowanceLimit())}
+                      đ sẽ chịu thuế
+                    </p>
+                  )}
                 </div>
 
                 {/* Phone allowance */}
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Phụ cấp điện thoại</span>
-                    <Tooltip content="Không giới hạn. Phục vụ công việc, cần có hóa đơn.">
+                    <Tooltip content="Miễn trong mức khoán theo quy chế công ty (phù hợp chi phí được trừ TNDN). Phần vượt mức chịu thuế.">
                       <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>
@@ -957,7 +978,7 @@ function TaxInputComponent({ onCalculate, initialValues }: TaxInputProps) {
                 <div>
                   <label className="flex items-center gap-1 text-xs font-medium text-gray-700 mb-1">
                     <span>Xăng xe, đi lại</span>
-                    <Tooltip content="Không giới hạn. Phục vụ công việc, cần chứng từ.">
+                    <Tooltip content="Khoán công tác phí, đi lại phục vụ công việc theo quy chế công ty, có chứng từ. Phần vượt mức chịu thuế.">
                       <span className="text-gray-500 hover:text-gray-700 cursor-help">
                         <InfoIcon />
                       </span>

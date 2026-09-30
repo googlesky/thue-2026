@@ -6,36 +6,18 @@ import {
   RegionType,
   InsuranceOptions,
   DEFAULT_INSURANCE_OPTIONS,
+  INSURANCE_RATES,
+  EMPLOYER_INSURANCE_RATES,
   getRegionalMinimumWages,
-  getMaxUnemploymentInsuranceSalary,
   getMaxSocialInsuranceSalary,
+  getFullEmployerCostResult,
   formatNumber,
 } from '@/lib/taxCalculator';
 import { CurrencyInputIssues, MAX_MONTHLY_INCOME, parseCurrencyInput } from '@/utils/inputSanitizers';
 import { EmployerCostTabState } from '@/lib/snapshotTypes';
 
-const INSURANCE_RATES = {
-  socialInsurance: 0.08,
-  healthInsurance: 0.015,
-  unemploymentInsurance: 0.01,
-};
-
-const EMPLOYER_RATES = {
-  socialInsurance: 0.175,
-  healthInsurance: 0.03,
-  unemploymentInsurance: 0.01,
-  unionFee: 0.02,
-};
-
-const DEDUCTIONS = { personal: 15_500_000, dependent: 6_200_000 };
-
-const TAX_BRACKETS = [
-  { min: 0, max: 10_000_000, rate: 0.05 },
-  { min: 10_000_000, max: 30_000_000, rate: 0.1 },
-  { min: 30_000_000, max: 60_000_000, rate: 0.2 },
-  { min: 60_000_000, max: 100_000_000, rate: 0.3 },
-  { min: 100_000_000, max: Infinity, rate: 0.35 },
-];
+// Tỷ lệ kiểu Việt Nam: 0,175 → "17,5%"
+const pct = (rate: number) => `${(rate * 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 
 interface EmployerCostCalculatorProps {
   sharedState?: SharedTaxState;
@@ -96,50 +78,30 @@ export default function EmployerCostCalculator({
 
   // Get date-aware constants (uses browser's current date)
   const regionalMinimumWages = useMemo(() => getRegionalMinimumWages(new Date()), []);
-  const maxUnemploymentInsuranceSalary = useMemo(() => getMaxUnemploymentInsuranceSalary(new Date()), []);
   const maxSocialInsuranceSalary = useMemo(() => getMaxSocialInsuranceSalary(new Date()), []);
 
-  // Base for insurance calculation
-  const insuranceBase = (useDeclaredSalary && declaredSalary > 0) ? declaredSalary : grossSalary;
-
-  // Employee insurance (deducted from salary)
-  const bhxhBhytBase = Math.min(insuranceBase, maxSocialInsuranceSalary);
-  const maxBhtn = maxUnemploymentInsuranceSalary[region];
-  const bhtnBase = Math.min(insuranceBase, maxBhtn);
-
-  const employeeBhxh = insuranceOptions.bhxh ? bhxhBhytBase * INSURANCE_RATES.socialInsurance : 0;
-  const employeeBhyt = insuranceOptions.bhyt ? bhxhBhytBase * INSURANCE_RATES.healthInsurance : 0;
-  const employeeBhtn = insuranceOptions.bhtn ? bhtnBase * INSURANCE_RATES.unemploymentInsurance : 0;
-  const employeeInsuranceTotal = employeeBhxh + employeeBhyt + employeeBhtn;
-
-  // Employer insurance (company pays)
-  const employerBhxh = insuranceOptions.bhxh ? bhxhBhytBase * EMPLOYER_RATES.socialInsurance : 0;
-  const employerBhyt = insuranceOptions.bhyt ? bhxhBhytBase * EMPLOYER_RATES.healthInsurance : 0;
-  const employerBhtn = insuranceOptions.bhtn ? bhtnBase * EMPLOYER_RATES.unemploymentInsurance : 0;
-  const employerUnionFee = includeUnionFee ? grossSalary * EMPLOYER_RATES.unionFee : 0;
-  const employerInsuranceTotal = employerBhxh + employerBhyt + employerBhtn + employerUnionFee;
-
-  // Tax calculation
-  const personalDeduction = DEDUCTIONS.personal;
-  const dependentDeduction = dependents * DEDUCTIONS.dependent;
-  const taxableIncome = Math.max(0, grossSalary - employeeInsuranceTotal - personalDeduction - dependentDeduction);
-
-  // Calculate tax using brackets
-  let tax = 0;
-  let remainingIncome = taxableIncome;
-  for (const bracket of TAX_BRACKETS) {
-    if (remainingIncome <= 0) break;
-    const bracketWidth = bracket.max - bracket.min;
-    const taxableInBracket = Math.min(remainingIncome, bracketWidth);
-    tax += taxableInBracket * bracket.rate;
-    remainingIncome -= taxableInBracket;
-  }
-
-  // Final results
-  const employeeNetIncome = grossSalary - employeeInsuranceTotal - tax;
-  const totalEmployerCost = grossSalary + employerInsuranceTotal;
-  const yearlyEmployerCost = totalEmployerCost * 12;
-  const totalCostPercentOfGross = grossSalary > 0 ? (totalEmployerCost / grossSalary) * 100 : 0;
+  // Bảo hiểm, kinh phí công đoàn, thuế: dùng engine trung tâm (trần theo ngày, biểu thuế hiện hành)
+  const cost = getFullEmployerCostResult({
+    grossIncome: grossSalary,
+    declaredSalary: useDeclaredSalary && declaredSalary > 0 ? declaredSalary : undefined,
+    dependents,
+    region,
+    insuranceOptions,
+    includeUnionFee,
+  });
+  const {
+    bhxh: employerBhxh,
+    bhyt: employerBhyt,
+    bhtn: employerBhtn,
+    unionFee: employerUnionFee,
+    total: employerInsuranceTotal,
+  } = cost.employerInsurance;
+  const employeeInsuranceTotal = cost.employeeInsurance.total;
+  const tax = cost.employeeTax;
+  const employeeNetIncome = cost.employeeNetIncome;
+  const totalEmployerCost = cost.totalEmployerCost;
+  const yearlyEmployerCost = cost.yearlyEmployerCost;
+  const totalCostPercentOfGross = cost.totalCostPercentOfGross;
 
   // ========== HANDLERS ==========
 
@@ -220,7 +182,7 @@ export default function EmployerCostCalculator({
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Inputs */}
         <div className="space-y-4">
           {/* Gross Salary */}
@@ -232,7 +194,7 @@ export default function EmployerCostCalculator({
               type="text"
               value={grossSalary > 0 ? formatNumber(grossSalary) : ''}
               onChange={(e) => handleGrossChange(e.target.value)}
-              placeholder="30,000,000"
+              placeholder="30.000.000"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             {grossWarning && (
@@ -308,7 +270,7 @@ export default function EmployerCostCalculator({
                 onChange={(e) => handleInsuranceChange('bhxh', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
-              <span className="text-sm">BHXH (NLĐ: 8%, DN: 17.5%)</span>
+              <span className="text-sm">BHXH (NLĐ: {pct(INSURANCE_RATES.socialInsurance)}, DN: {pct(EMPLOYER_INSURANCE_RATES.socialInsurance)})</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -317,7 +279,7 @@ export default function EmployerCostCalculator({
                 onChange={(e) => handleInsuranceChange('bhyt', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
-              <span className="text-sm">BHYT (NLĐ: 1.5%, DN: 3%)</span>
+              <span className="text-sm">BHYT (NLĐ: {pct(INSURANCE_RATES.healthInsurance)}, DN: {pct(EMPLOYER_INSURANCE_RATES.healthInsurance)})</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -326,7 +288,7 @@ export default function EmployerCostCalculator({
                 onChange={(e) => handleInsuranceChange('bhtn', e.target.checked)}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded"
               />
-              <span className="text-sm">BHTN (NLĐ: 1%, DN: 1%)</span>
+              <span className="text-sm">BHTN (NLĐ: {pct(INSURANCE_RATES.unemploymentInsurance)}, DN: {pct(EMPLOYER_INSURANCE_RATES.unemploymentInsurance)})</span>
             </label>
           </div>
 
@@ -338,7 +300,7 @@ export default function EmployerCostCalculator({
               onChange={(e) => handleUnionFeeChange(e.target.checked)}
               className="w-4 h-4 text-primary-600 border-gray-300 rounded"
             />
-            <span className="text-sm text-gray-700">Phí công đoàn (DN: 2%)</span>
+            <span className="text-sm text-gray-700">Kinh phí công đoàn (DN: {pct(EMPLOYER_INSURANCE_RATES.unionFee)}, bắt buộc)</span>
           </label>
 
         </div>
@@ -352,7 +314,7 @@ export default function EmployerCostCalculator({
                 <div className="text-sm opacity-90 mb-1">Tổng chi phí doanh nghiệp</div>
                 <div className="text-3xl font-bold">{formatNumber(totalEmployerCost)} VND</div>
                 <div className="text-sm opacity-90 mt-1">
-                  = {totalCostPercentOfGross.toFixed(1)}% lương GROSS
+                  = {pct(totalCostPercentOfGross / 100)} lương GROSS
                 </div>
               </div>
 
@@ -369,30 +331,30 @@ export default function EmployerCostCalculator({
                   </div>
                   {employerBhxh > 0 && (
                     <div className="flex justify-between text-gray-600">
-                      <span>BHXH (17.5%)</span>
+                      <span>BHXH ({pct(EMPLOYER_INSURANCE_RATES.socialInsurance)})</span>
                       <span className="text-red-600">+{formatNumber(employerBhxh)}</span>
                     </div>
                   )}
                   {employerBhyt > 0 && (
                     <div className="flex justify-between text-gray-600">
-                      <span>BHYT (3%)</span>
+                      <span>BHYT ({pct(EMPLOYER_INSURANCE_RATES.healthInsurance)})</span>
                       <span className="text-red-600">+{formatNumber(employerBhyt)}</span>
                     </div>
                   )}
                   {employerBhtn > 0 && (
                     <div className="flex justify-between text-gray-600">
-                      <span>BHTN (1%)</span>
+                      <span>BHTN ({pct(EMPLOYER_INSURANCE_RATES.unemploymentInsurance)})</span>
                       <span className="text-red-600">+{formatNumber(employerBhtn)}</span>
                     </div>
                   )}
                   {employerUnionFee > 0 && (
                     <div className="flex justify-between text-gray-600">
-                      <span>Công đoàn (2%)</span>
+                      <span>Kinh phí công đoàn ({pct(EMPLOYER_INSURANCE_RATES.unionFee)})</span>
                       <span className="text-red-600">+{formatNumber(employerUnionFee)}</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t border-gray-200 font-medium">
-                    <span>Tổng BH công ty</span>
+                    <span>Tổng công ty đóng thêm</span>
                     <span className="text-red-600">+{formatNumber(employerInsuranceTotal)}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-300 font-bold text-base">
@@ -440,7 +402,7 @@ export default function EmployerCostCalculator({
               <div className="bg-gray-100 rounded-xl p-4 text-center">
                 <div className="text-sm text-gray-600 mb-1">Tỷ lệ hiệu quả</div>
                 <div className="text-2xl font-bold text-gray-800">
-                  {((employeeNetIncome / totalEmployerCost) * 100).toFixed(1)}%
+                  {pct(totalEmployerCost > 0 ? employeeNetIncome / totalEmployerCost : 0)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   (NLĐ thực nhận / DN chi trả)
@@ -464,9 +426,9 @@ export default function EmployerCostCalculator({
           <div className="text-sm text-gray-600">
             <div className="font-medium mb-1">Lưu ý về bảo hiểm</div>
             <ul className="list-disc list-inside space-y-1 text-gray-500">
-              <li>BHXH, BHYT: Giới hạn mức đóng tối đa 20 lần lương cơ sở (46.8 triệu)</li>
-              <li>BHTN: Giới hạn 20 lần lương tối thiểu vùng</li>
-              <li>Phí công đoàn: 2% không giới hạn, chỉ một số doanh nghiệp có</li>
+              <li>BHXH, BHYT: mức đóng tối đa 20 lần lương cơ sở ({formatNumber(maxSocialInsuranceSalary)} đồng)</li>
+              <li>BHTN: mức đóng tối đa 20 lần lương tối thiểu vùng</li>
+              <li>Kinh phí công đoàn: 2% quỹ tiền lương làm căn cứ đóng BHXH, bắt buộc với doanh nghiệp (Luật Công đoàn 2024 Điều 29)</li>
             </ul>
           </div>
         </div>

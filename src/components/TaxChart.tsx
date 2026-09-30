@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  ReferenceLine,
 } from 'recharts';
 import { calculateTaxRange, formatCurrency } from '@/lib/taxCalculator';
 
@@ -16,6 +17,12 @@ interface TaxChartProps {
   dependents: number;
   currentIncome: number;
 }
+
+const RANGE = { min: 10_000_000, max: 150_000_000, step: 5_000_000 };
+
+// Trục dạng "15tr", "2,5tr" (dấu phẩy thập phân kiểu Việt Nam)
+const formatMillions = (value: number) =>
+  `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(value / 1_000_000)}tr`;
 
 // Memoized CustomTooltip component to prevent unnecessary re-renders
 const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: any) {
@@ -38,8 +45,14 @@ const CustomTooltip = memo(function CustomTooltip({ active, payload, label }: an
 
 function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
   const chartData = useMemo(() => {
-    return calculateTaxRange(10_000_000, 150_000_000, 5_000_000, dependents);
+    return calculateTaxRange(RANGE.min, RANGE.max, RANGE.step, dependents);
   }, [dependents]);
+
+  // Trục X là danh mục theo bước 5tr → làm tròn lương hiện tại về mốc gần nhất; ngoài dải thì không vẽ
+  const currentTick =
+    currentIncome >= RANGE.min && currentIncome <= RANGE.max
+      ? Math.round(currentIncome / RANGE.step) * RANGE.step
+      : null;
 
   return (
     <div className="card">
@@ -49,6 +62,11 @@ function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
         </svg>
         Biểu đồ thuế TNCN theo thu nhập
       </h3>
+      <p className="text-xs text-gray-500 -mt-4 mb-4">
+        Thuế/tháng theo lương GROSS, {dependents} người phụ thuộc; giả định đóng đủ BHXH, BHYT, BHTN
+        theo lương GROSS (có mức trần), vùng I, không phụ cấp, không giảm trừ khác. Kết quả của bạn
+        ở trên đã tính theo đúng thông tin đã nhập.
+      </p>
 
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -62,7 +80,7 @@ function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="income"
-              tickFormatter={(value) => `${value / 1_000_000}tr`}
+              tickFormatter={formatMillions}
               stroke="#9ca3af"
               fontSize={11}
               interval="preserveStartEnd"
@@ -72,11 +90,19 @@ function TaxChartComponent({ dependents, currentIncome }: TaxChartProps) {
               height={50}
             />
             <YAxis
-              tickFormatter={(value) => `${value / 1_000_000}tr`}
+              tickFormatter={formatMillions}
               stroke="#9ca3af"
               fontSize={12}
             />
             <Tooltip content={<CustomTooltip />} />
+            {currentTick !== null && (
+              <ReferenceLine
+                x={currentTick}
+                stroke="#B42318"
+                strokeDasharray="4 4"
+                label={{ value: 'Lương của bạn', position: 'insideTopRight', fill: '#B42318', fontSize: 11 }}
+              />
+            )}
             <Area
               type="monotone"
               dataKey="newTax"

@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { MAX_MONTHLY_INCOME } from '@/utils/inputSanitizers';
 import {
   OtherIncomeState,
   DEFAULT_OTHER_INCOME,
   calculateOtherIncomeTax,
   formatCurrency,
   formatNumber,
+  getCasualWithholdingThreshold,
+  getPerTransactionThreshold,
+  getRentalIncomeThreshold,
   OtherIncomeTaxResult,
 } from '@/lib/taxCalculator';
 
@@ -45,8 +49,8 @@ function NumericInputField({
     // Update display với số thuần (không format khi đang nhập)
     setDisplayValue(filtered);
 
-    // Update parent
-    const numericValue = parseInt(filtered, 10) || 0;
+    // Update parent (chặn tối đa như các ô tiền khác)
+    const numericValue = Math.min(parseInt(filtered, 10) || 0, MAX_MONTHLY_INCOME);
     onChange(numericValue);
   }, [onChange]);
 
@@ -90,7 +94,6 @@ interface OtherIncomeInputProps {
 interface IncomeFieldConfig {
   key: keyof OtherIncomeState;
   label: string;
-  icon: string;
   description: string;
   placeholder: string;
 }
@@ -99,37 +102,32 @@ const incomeFields: IncomeFieldConfig[] = [
   {
     key: 'freelance',
     label: 'Thu nhập dịch vụ / Freelance',
-    icon: '💼',
-    description: 'Thu nhập từ cung cấp dịch vụ, tư vấn, thiết kế... (10% doanh thu)',
-    placeholder: 'VD: 20,000,000',
+    description: `Thù lao dịch vụ, tư vấn, thiết kế... không đăng ký kinh doanh: tổ chức chi trả tạm khấu trừ 10% với khoản từ ${formatNumber(getCasualWithholdingThreshold())} đ/lần, quyết toán lũy tiến cùng tiền lương`,
+    placeholder: 'VD: 20.000.000',
   },
   {
     key: 'rental',
     label: 'Cho thuê tài sản',
-    icon: '🏠',
-    description: 'Cho thuê nhà, phòng trọ, mặt bằng... (tổng doanh thu/năm)',
-    placeholder: 'VD: 120,000,000',
+    description: `Cho thuê nhà, phòng trọ, mặt bằng... (tổng doanh thu/năm; đến ${formatNumber(getRentalIncomeThreshold())} đ không nộp thuế)`,
+    placeholder: 'VD: 120.000.000',
   },
   {
     key: 'investment',
     label: 'Cổ tức / Lãi đầu tư vốn',
-    icon: '📈',
-    description: 'Thu nhập từ cổ tức, lãi đầu tư vốn (5%). Lãi tiền gửi ngân hàng được miễn thuế.',
-    placeholder: 'VD: 5,000,000',
+    description: 'Cổ tức, lãi cho vay, lãi trái phiếu doanh nghiệp (5%). Lãi tiền gửi ngân hàng, trái phiếu Chính phủ được miễn thuế.',
+    placeholder: 'VD: 5.000.000',
   },
   {
     key: 'transfer',
     label: 'Chuyển nhượng chứng khoán',
-    icon: '📊',
-    description: 'Giá trị giao dịch bán chứng khoán (0.1% giá bán)',
-    placeholder: 'VD: 100,000,000',
+    description: 'Giá trị giao dịch bán chứng khoán (0,1% giá bán)',
+    placeholder: 'VD: 100.000.000',
   },
   {
     key: 'lottery',
     label: 'Trúng thưởng',
-    icon: '🎰',
-    description: 'Trúng xổ số, casino, khuyến mãi... (10% phần > 10 triệu)',
-    placeholder: 'VD: 50,000,000',
+    description: `Xổ số, khuyến mại, trò chơi có thưởng (10% phần vượt ${formatNumber(getPerTransactionThreshold())} đ mỗi lần; trúng thưởng casino không chịu thuế TNCN)`,
+    placeholder: 'VD: 50.000.000',
   },
 ];
 
@@ -143,14 +141,16 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
     )
   );
 
-  // Sync activeFields when otherIncome changes externally (e.g., loading from history)
+  // Mở thêm các ô có giá trị (VD nạp từ lịch sử); không đóng ô đang mở khi người dùng xóa trắng số.
+  // Đóng ô chỉ qua toggleField/resetAll.
   useEffect(() => {
-    const newActiveFields = new Set(
-      Object.entries(otherIncome)
-        .filter(([, value]) => value > 0)
-        .map(([key]) => key as keyof OtherIncomeState)
-    );
-    setActiveFields(newActiveFields);
+    setActiveFields(prev => {
+      const next = new Set(prev);
+      for (const [key, value] of Object.entries(otherIncome)) {
+        if (value > 0) next.add(key as keyof OtherIncomeState);
+      }
+      return next.size === prev.size ? prev : next;
+    });
   }, [otherIncome]);
 
   const taxResult = calculateOtherIncomeTax(otherIncome);
@@ -232,7 +232,6 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent'
                   }`}
                 >
-                  <span>{field.icon}</span>
                   <span>{field.label.split('/')[0].trim()}</span>
                   {activeFields.has(field.key) && (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,8 +251,7 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
                 .map((field) => (
                   <div key={field.key} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                        <span>{field.icon}</span>
+                      <label className="block text-sm font-medium text-gray-700">
                         {field.label}
                       </label>
                       <button
@@ -284,7 +282,7 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
               <h4 className="font-semibold text-gray-800 mb-3">Chi tiết thuế thu nhập khác</h4>
               <div className="space-y-2">
                 <TaxResultRow
-                  label="Freelance / Dịch vụ"
+                  label="Freelance / Dịch vụ (tạm khấu trừ)"
                   result={taxResult.freelance}
                   show={taxResult.freelance.income > 0}
                 />
@@ -295,7 +293,7 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
                   isRental
                 />
                 <TaxResultRow
-                  label="Cổ tức / Lãi tiền gửi"
+                  label="Cổ tức / Lãi đầu tư vốn"
                   result={taxResult.investment}
                   show={taxResult.investment.income > 0}
                 />
@@ -318,7 +316,11 @@ export default function OtherIncomeInput({ otherIncome, onChange }: OtherIncomeI
                     <span className="font-bold">{formatCurrency(taxResult.totalIncome)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-red-600">
-                    <span className="font-medium">Tổng thuế phải nộp:</span>
+                    <span className="font-medium">
+                      {taxResult.freelance.income > 0
+                        ? 'Tổng thuế (gồm 10% tạm khấu trừ freelance):'
+                        : 'Tổng thuế phải nộp:'}
+                    </span>
                     <span className="font-bold">-{formatCurrency(taxResult.totalTax)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-green-600">

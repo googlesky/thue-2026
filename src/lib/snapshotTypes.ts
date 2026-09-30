@@ -16,12 +16,14 @@ import {
   DependentInfo,
   createDefaultMonthlyIncome,
 } from './annualSettlementCalculator';
-import type { VATMethod, BusinessCategory } from './vatCalculator';
+import type { VATMethod, BusinessCategory, VATTaxpayerType } from './vatCalculator';
 import type { IncomeType, ResidencyStatus, ForeignContractorType } from './withholdingTaxCalculator';
 import type { IncomeSource, IncomeSourceType } from './multiSourceIncomeCalculator';
 import type { CryptoAssetType, TransactionType } from './cryptoTaxCalculator';
 import type { MonthlyEntry } from './monthlyPlannerCalculator';
+import { DEFAULT_INCOME_SUMMARY_INPUT, type IncomeSummaryInput } from './incomeSummaryCalculator';
 import { createDefaultMonths } from './monthlyPlannerCalculator';
+import { annualDeadline } from './taxDeadlines';
 
 // Withholding Tax Tab State - defined here to avoid Turbopack import issues
 export interface WithholdingTaxTabState {
@@ -242,10 +244,13 @@ export interface VATTabState {
   businessCategory: BusinessCategory;
   salesRevenue: number;
   purchaseValue: number;
-  outputRate: number;
+  outputRate: number; // thuế suất theo luật (0,1 = nhóm 10%, tự giảm còn 8% khi đủ điều kiện)
   inputRate: number;
   useCurrentDate: boolean;
   customDate: string;
+  outputNotReduced?: boolean; // hàng bán ra thuộc nhóm không được giảm thuế GTGT
+  inputNotReduced?: boolean;
+  taxpayerType?: VATTaxpayerType;
 }
 
 export const DEFAULT_VAT_STATE: VATTabState = {
@@ -256,7 +261,10 @@ export const DEFAULT_VAT_STATE: VATTabState = {
   outputRate: 0.10,
   inputRate: 0.10,
   useCurrentDate: true,
-  customDate: new Date().toISOString().split('T')[0],
+  customDate: getCurrentDateString(),
+  outputNotReduced: false,
+  inputNotReduced: false,
+  taxpayerType: 'business',
 };
 
 /**
@@ -312,6 +320,8 @@ export interface AnnualSettlementTabState {
   dependents: DependentInfo[];
   charitableContributions: number;
   voluntaryPension: number;
+  medicalExpenses?: number; // Chi y tế (năm 2026+), optional để snapshot cũ vẫn đọc được
+  educationExpenses?: number; // Học phí (năm 2026+)
   insuranceOptions: InsuranceOptions;
   region: RegionType;
   manualTaxPaidMode: boolean;
@@ -326,13 +336,15 @@ export interface BonusTabState {
   selectedScenarioId: string | null;
 }
 
-// ESOP/Stock Options Calculator tab state
+// ESOP / cổ phiếu thưởng tab state (NĐ 253/2026 Điều 50.3.a: tính thuế khi chuyển nhượng).
+// Link cũ (mô hình "giá thực hiện") còn exercisePrice/exerciseDate/selectedPeriodId - bị bỏ qua.
 export interface ESOPTabState {
-  grantPrice: number;
-  exercisePrice: number;
-  numberOfShares: number;
-  exerciseDate: string;
-  selectedPeriodId: string | null;
+  shareType: 'esop' | 'bonus';
+  grantPrice: number; // Giá người lao động đã trả/cổ phiếu (ESOP)
+  numberOfShares: number; // Số cổ phiếu chuyển nhượng
+  parValue: number; // Mệnh giá/cổ phiếu
+  bookAmount: number; // Số tiền ghi sổ kế toán (0 = không xác định)
+  sellPrice: number; // Giá bán/cổ phiếu
 }
 
 // Pension Calculator tab state
@@ -364,7 +376,8 @@ export interface ForeignerTaxTabState {
   };
   hasVietnameseInsurance: boolean;
   taxYear: 2025 | 2026;
-  isSecondHalf2026: boolean;
+  // Đào tạo phù hợp công việc/theo kế hoạch công ty: không tính vào TN chịu thuế (NĐ 253 Điều 8.4.i)
+  languageTrainingJobRelated?: boolean;
 }
 
 // Late Payment Interest Calculator tab state
@@ -378,10 +391,11 @@ export interface LatePaymentTabState {
 // Business Form Comparison tab state
 export interface BusinessFormComparisonTabState {
   annualRevenue: number;
-  businessCategory: 'distribution' | 'services' | 'production' | 'other';
+  businessCategory: import('./householdBusinessTaxCalculator').BusinessCategory;
   region: RegionType;
   dependents: number;
   hasSelfInsurance: boolean;
+  expenseRatio?: number; // Tỷ lệ chi phí tự chịu của freelancer, hộ KD (0-1); link cũ không có -> 0,3
 }
 
 // Severance/Retirement Pay Calculator tab state
@@ -390,7 +404,8 @@ export interface SeveranceTabState {
   totalAmount: number;
   averageSalary: number;
   yearsWorked: number;
-  contributionAmount: number; // For voluntary pension
+  unemploymentInsuranceYears?: number; // thời gian đã đóng BHTN (năm) - trừ khi tính trợ cấp
+  paidYears?: number; // thời gian đã được chi trả trợ cấp thôi việc, mất việc (năm)
 }
 
 /**
@@ -420,6 +435,7 @@ export interface TabStates {
   goldTax: GoldTaxTabState;
   monthlyPlanner: MonthlyPlannerTabState;
   mortgage: MortgageTabState;
+  incomeSummary?: IncomeSummaryInput; // Tổng hợp thu nhập (snapshot cũ không có)
 }
 
 /**
@@ -488,12 +504,12 @@ export const DEFAULT_OVERTIME_STATE: OvertimeTabState = {
   workingDaysPerMonth: DEFAULT_WORKING_DAYS,
   hoursPerDay: DEFAULT_HOURS_PER_DAY,
   entries: [],
-  includeHolidayBasePay: true,
+  includeHolidayBasePay: false, // lương ngày lễ chỉ cộng thêm cho người hưởng lương ngày (BLLĐ Điều 98.1.c)
   useNewLaw: true,
 };
 
 export const DEFAULT_ANNUAL_SETTLEMENT_STATE: AnnualSettlementTabState = {
-  year: 2025,
+  year: 2026, // lần quyết toán sắp tới
   useAverageSalary: true,
   averageSalary: 0,
   monthlyIncome: createDefaultMonthlyIncome(0, 0, 0),
@@ -514,11 +530,12 @@ export const DEFAULT_BONUS_STATE: BonusTabState = {
 };
 
 export const DEFAULT_ESOP_STATE: ESOPTabState = {
+  shareType: 'esop',
   grantPrice: 0,
-  exercisePrice: 0,
   numberOfShares: 0,
-  exerciseDate: '',
-  selectedPeriodId: null,
+  parValue: 10_000,
+  bookAmount: 0,
+  sellPrice: 0,
 };
 
 export const DEFAULT_PENSION_STATE: PensionTabState = {
@@ -548,28 +565,22 @@ export const DEFAULT_FOREIGNER_TAX_STATE: ForeignerTaxTabState = {
   },
   hasVietnameseInsurance: false,
   taxYear: 2026,
-  isSecondHalf2026: true,
+  languageTrainingJobRelated: false,
 };
 
-// Helper to get current date in YYYY-MM-DD format
-function getCurrentDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+// Helper: ngày local dạng YYYY-MM-DD (mặc định hôm nay)
+function getCurrentDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-// Helper to get default due date (31/3 of current year)
-function getDefaultDueDateString(): string {
-  const year = new Date().getFullYear();
-  return `${year}-03-31`;
 }
 
 export const DEFAULT_LATE_PAYMENT_STATE: LatePaymentTabState = {
   taxType: 'annual_pit',
   taxAmount: 10_000_000,
-  dueDate: getDefaultDueDateString(),
+  // Hạn cá nhân tự quyết toán TNCN năm trước (cuối tháng 4, đã dời ngày nghỉ)
+  dueDate: getCurrentDateString(annualDeadline(new Date().getFullYear() - 1, 'individual')),
   paymentDate: getCurrentDateString(),
 };
 
@@ -579,6 +590,7 @@ export const DEFAULT_BUSINESS_FORM_COMPARISON_STATE: BusinessFormComparisonTabSt
   region: 1,
   dependents: 0,
   hasSelfInsurance: true,
+  expenseRatio: 0.3, // % chi phí trên doanh thu (tab tự điền nếu thiếu)
 };
 
 export const DEFAULT_SEVERANCE_STATE: SeveranceTabState = {
@@ -586,7 +598,8 @@ export const DEFAULT_SEVERANCE_STATE: SeveranceTabState = {
   totalAmount: 100_000_000,
   averageSalary: 20_000_000,
   yearsWorked: 5,
-  contributionAmount: 0,
+  unemploymentInsuranceYears: 0,
+  paidYears: 0,
 };
 
 export const DEFAULT_TAB_STATES: TabStates = {
@@ -948,11 +961,59 @@ export function mergeSnapshotWithDefaults(
         ...DEFAULT_MORTGAGE_STATE,
         ...(partial.tabs?.mortgage || {}),
       },
+      ...(partial.tabs?.incomeSummary && {
+        incomeSummary: {
+          ...DEFAULT_INCOME_SUMMARY_INPUT,
+          ...partial.tabs.incomeSummary,
+          entries: partial.tabs.incomeSummary.entries?.map(e => ({ ...e })) || [],
+        },
+      }),
     },
     meta: {
       createdAt: partial.meta?.createdAt || Date.now(),
       label: partial.meta?.label,
       description: partial.meta?.description,
     },
+  };
+}
+
+/**
+ * Chặn giá trị bất thường của sharedState đến từ URL/localStorage (link sửa tay, dữ liệu cũ):
+ * số không hữu hạn/chuỗi → mặc định, tiền kẹp [0, MAX_MONTHLY_INCOME], người phụ thuộc [0, 20],
+ * vùng ngoài 1–4 → vùng I.
+ */
+export function sanitizeSharedState(s: SharedTaxState): SharedTaxState {
+  const MAX = 10_000_000_000; // = MAX_MONTHLY_INCOME (utils/inputSanitizers)
+  const num = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? Number(v) : v);
+  const money = (v: unknown, fallback = 0) => {
+    const n = num(v);
+    return typeof n === 'number' && Number.isFinite(n) ? Math.min(Math.max(0, Math.round(n)), MAX) : fallback;
+  };
+  const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
+  const moneyFields = <T extends object>(o: unknown, defaults: T): T =>
+    Object.fromEntries(
+      Object.keys(defaults).map((k) => [k, money((o as Record<string, unknown> | undefined)?.[k])])
+    ) as T;
+  const deps = num(s.dependents);
+  const region = num(s.region);
+  // Link cũ chỉ có hasInsurance: các loại BH mặc định theo cờ này
+  const hasInsurance = bool(s.hasInsurance, true);
+  return {
+    ...s,
+    grossIncome: money(s.grossIncome, DEFAULT_SHARED_STATE.grossIncome),
+    declaredSalary: s.declaredSalary === undefined ? undefined : money(s.declaredSalary),
+    dependents:
+      typeof deps === 'number' && Number.isFinite(deps) ? Math.min(Math.max(0, Math.floor(deps)), 20) : 0,
+    otherDeductions: money(s.otherDeductions),
+    pensionContribution: money(s.pensionContribution),
+    region: region === 1 || region === 2 || region === 3 || region === 4 ? region : 1,
+    hasInsurance,
+    insuranceOptions: {
+      bhxh: bool(s.insuranceOptions?.bhxh, hasInsurance),
+      bhyt: bool(s.insuranceOptions?.bhyt, hasInsurance),
+      bhtn: bool(s.insuranceOptions?.bhtn, hasInsurance),
+    },
+    otherIncome: s.otherIncome && moneyFields(s.otherIncome, DEFAULT_OTHER_INCOME),
+    allowances: s.allowances && moneyFields(s.allowances, DEFAULT_ALLOWANCES),
   };
 }

@@ -1,15 +1,22 @@
 /**
  * Bonus Calculator - Tính thuế lương tháng 13 và thưởng Tết
- * So sánh các phương án thời điểm trả để tối ưu thuế
+ *
+ * Thưởng là thu nhập từ tiền lương, tiền công (NĐ 253/2026/NĐ-CP Điều 8.2): cộng vào lương
+ * tháng chi trả để TẠM khấu trừ; nghĩa vụ cuối cùng xác định khi quyết toán năm theo biểu năm
+ * (Luật Thuế TNCN 109/2025/QH15 Điều 8, 9). Thưởng nhận năm nào tính vào quyết toán năm đó
+ * (Điều 8.3: thời điểm xác định thu nhập là thời điểm trả). Thưởng không đóng BH bắt buộc.
  */
 
 import {
   calculateOldTax,
   calculateNewTax,
-  TaxResult,
-  SharedTaxState,
-  DEFAULT_INSURANCE_OPTIONS,
+  OLD_TAX_BRACKETS,
+  NEW_TAX_BRACKETS,
+  AllowancesState,
+  InsuranceOptions,
+  TaxInputWithDate,
 } from './taxCalculator';
+import { calculateAnnualSalaryTax as calculateAnnualTax } from './taxCalculator';
 
 export interface BonusInput {
   monthlySalary: number;
@@ -19,133 +26,109 @@ export interface BonusInput {
   dependents: number;
   region: 1 | 2 | 3 | 4;
   hasInsurance: boolean;
+  // Như tab Tính thuế (tùy chọn) để lương nền tính giống tab chính
+  insuranceOptions?: InsuranceOptions;
+  declaredSalary?: number; // Lương đóng BH (mặc định = lương tháng)
+  otherDeductions?: number;
+  pensionContribution?: number;
+  allowances?: AllowancesState;
 }
 
 export interface BonusScenario {
   id: string;
   name: string;
   description: string;
-  period: string;
   taxLaw: 'old' | 'new';
-  timing: 'dec-2025' | 'h1-2026' | 'h2-2026';
+  taxYear: number; // Kỳ quyết toán chứa khoản thưởng
+  payMonth: number; // Tháng chi trả (1-12) để tính tạm khấu trừ
 }
 
 export interface BonusScenarioResult {
   scenario: BonusScenario;
   totalBonus: number;
-  monthlyTaxWithBonus: number;
-  monthlyTaxWithoutBonus: number;
-  additionalTax: number;
-  netBonus: number;
+  withholdingTax: number; // Tạm khấu trừ thêm trong tháng nhận thưởng
+  finalTax: number; // Thuế thực trên thưởng sau quyết toán năm
+  netBonus: number; // Thưởng thực nhận sau quyết toán
   effectiveTaxRate: number;
-  annualIncome: number;
-  annualTax: number;
 }
 
 export interface BonusComparisonResult {
   input: BonusInput;
   scenarios: BonusScenarioResult[];
-  recommendation: BonusScenario;
-  maxSavings: number;
+  maxSavings: number; // Chênh thuế sau quyết toán giữa phương án cao nhất và thấp nhất
   savingsDetails: string;
 }
 
-// Available scenarios for bonus payment
-// Note: Luật mới (5 bậc) áp dụng từ 01/01/2026 cho thu nhập từ tiền lương, tiền công
+// Kỳ hiện hành: cuối năm 2026 hay đầu năm 2027 (cùng biểu 5 bậc); T12/2025 chỉ để tham khảo luật cũ.
 export const BONUS_SCENARIOS: BonusScenario[] = [
   {
-    id: 'dec-2025',
-    name: 'Tháng 12/2025',
-    description: 'Trả thưởng trong tháng 12/2025 (luật cũ 7 bậc)',
-    period: '12/2025',
-    taxLaw: 'old',
-    timing: 'dec-2025',
-  },
-  {
-    id: 'h1-2026',
-    name: 'Nửa đầu 2026',
-    description: 'Trả thưởng tháng 1-6/2026 (luật mới 5 bậc)',
-    period: '01-06/2026',
-    taxLaw: 'new',
-    timing: 'h1-2026',
-  },
-  {
     id: 'h2-2026',
-    name: 'Nửa cuối 2026',
-    description: 'Trả thưởng tháng 7-12/2026 (luật mới 5 bậc)',
-    period: '07-12/2026',
+    name: 'Cuối năm 2026',
+    description: 'Trả trong T10–T12/2026, quyết toán cùng thu nhập năm 2026',
     taxLaw: 'new',
-    timing: 'h2-2026',
+    taxYear: 2026,
+    payMonth: 12,
+  },
+  {
+    id: 'jan-2027',
+    name: 'Đầu năm 2027',
+    description: 'Trả T1–T2/2027 (trước Tết), quyết toán vào năm 2027',
+    taxLaw: 'new',
+    taxYear: 2027,
+    payMonth: 1,
+  },
+  {
+    id: 'dec-2025',
+    name: 'T12/2025 (luật cũ)',
+    description: 'Tham khảo: nếu đã trả trong 12/2025 (7 bậc, giảm trừ 11tr/4,4tr)',
+    taxLaw: 'old',
+    taxYear: 2025,
+    payMonth: 12,
   },
 ];
 
-/**
- * Calculate tax for a scenario with bonus included
- */
-function calculateScenarioTax(
-  input: BonusInput,
-  scenario: BonusScenario
-): BonusScenarioResult {
-  const totalBonus = input.thirteenthMonthSalary + input.tetBonus + input.otherBonuses;
+const money = (v: number | undefined) => (Number.isFinite(v) && (v as number) > 0 ? (v as number) : 0);
 
-  // Calculate monthly income with bonus added to that month
-  const monthlyIncomeWithBonus = input.monthlySalary + totalBonus;
+function calculateScenarioTax(input: BonusInput, scenario: BonusScenario): BonusScenarioResult {
+  const salary = money(input.monthlySalary);
+  const totalBonus = money(input.thirteenthMonthSalary) + money(input.tetBonus) + money(input.otherBonuses);
+  const calc = scenario.taxLaw === 'old' ? calculateOldTax : calculateNewTax;
 
-  // Build tax input
-  const taxInputWithBonus: SharedTaxState = {
-    grossIncome: monthlyIncomeWithBonus,
-    dependents: input.dependents,
-    otherDeductions: 0,
+  const salaryInput = (month: number): TaxInputWithDate => ({
+    grossIncome: salary,
+    declaredSalary: input.declaredSalary ?? salary, // BH chỉ trên lương, không trên thưởng
+    dependents: Math.max(0, Math.floor(input.dependents || 0)),
+    otherDeductions: input.otherDeductions,
+    pensionContribution: input.pensionContribution,
     hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
+    insuranceOptions: input.insuranceOptions,
     region: input.region,
-    pensionContribution: 0,
-  };
+    allowances: input.allowances,
+    calculationDate: new Date(scenario.taxYear, month - 1, 1),
+  });
 
-  const taxInputWithoutBonus: SharedTaxState = {
-    grossIncome: input.monthlySalary,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
+  // Tạm khấu trừ: thưởng cộng vào lương tháng chi trả
+  const payMonth = salaryInput(scenario.payMonth);
+  const withholdingTax =
+    calc({ ...payMonth, grossIncome: salary + totalBonus }).taxAmount - calc(payMonth).taxAmount;
 
-  // Calculate tax based on which law applies
-  let resultWithBonus: TaxResult;
-  let resultWithoutBonus: TaxResult;
-
-  if (scenario.taxLaw === 'old') {
-    resultWithBonus = calculateOldTax(taxInputWithBonus);
-    resultWithoutBonus = calculateOldTax(taxInputWithoutBonus);
-  } else {
-    resultWithBonus = calculateNewTax(taxInputWithBonus);
-    resultWithoutBonus = calculateNewTax(taxInputWithoutBonus);
+  // Quyết toán năm: 12 tháng lương (trần BH, mức phụ cấp theo từng tháng) + thưởng
+  let annualTaxable = 0; // chưa chặn 0: tháng lương thấp bù cho thưởng
+  for (let month = 1; month <= 12; month++) {
+    const r = calc(salaryInput(month));
+    annualTaxable += r.grossIncome + (r.allowancesBreakdown?.taxable ?? 0) - r.totalDeductions;
   }
-
-  const monthlyTaxWithBonus = resultWithBonus.taxAmount;
-  const monthlyTaxWithoutBonus = resultWithoutBonus.taxAmount;
-  const additionalTax = monthlyTaxWithBonus - monthlyTaxWithoutBonus;
-  const netBonus = totalBonus - additionalTax;
-  const effectiveTaxRate = totalBonus > 0 ? (additionalTax / totalBonus) * 100 : 0;
-
-  // Calculate approximate annual figures
-  // 11 months normal + 1 month with bonus
-  const annualTaxNormalMonths = monthlyTaxWithoutBonus * 11;
-  const annualTax = annualTaxNormalMonths + monthlyTaxWithBonus;
-  const annualIncome = input.monthlySalary * 12 + totalBonus;
+  const brackets = scenario.taxLaw === 'old' ? OLD_TAX_BRACKETS : NEW_TAX_BRACKETS;
+  const finalTax =
+    calculateAnnualTax(annualTaxable + totalBonus, brackets) - calculateAnnualTax(annualTaxable, brackets);
 
   return {
     scenario,
     totalBonus,
-    monthlyTaxWithBonus,
-    monthlyTaxWithoutBonus,
-    additionalTax,
-    netBonus,
-    effectiveTaxRate,
-    annualIncome,
-    annualTax,
+    withholdingTax,
+    finalTax,
+    netBonus: totalBonus - finalTax,
+    effectiveTaxRate: totalBonus > 0 ? (finalTax / totalBonus) * 100 : 0,
   };
 }
 
@@ -155,172 +138,25 @@ function calculateScenarioTax(
 export function calculateBonusComparison(input: BonusInput): BonusComparisonResult {
   const scenarios = BONUS_SCENARIOS.map(scenario => calculateScenarioTax(input, scenario));
 
-  // Find the best scenario (lowest additional tax)
-  const sortedByTax = [...scenarios].sort((a, b) => a.additionalTax - b.additionalTax);
-  const bestScenario = sortedByTax[0];
-  const worstScenario = sortedByTax[sortedByTax.length - 1];
+  const taxes = scenarios.map(s => s.finalTax);
+  const worst = scenarios[taxes.indexOf(Math.max(...taxes))];
+  const maxSavings = worst.finalTax - Math.min(...taxes);
 
-  const maxSavings = worstScenario.additionalTax - bestScenario.additionalTax;
-
-  // Generate savings description
-  let savingsDetails = '';
-  if (maxSavings > 0) {
-    savingsDetails = `Tiết kiệm tối đa ${formatMoney(maxSavings)} so với ${worstScenario.scenario.name}`;
-  } else {
-    savingsDetails = 'Các phương án có mức thuế tương đương';
-  }
+  const savingsDetails = maxSavings > 0
+    ? `Thuế sau quyết toán thấp hơn tối đa ${formatMoney(maxSavings)} so với ${worst.scenario.name}`
+    : 'Các phương án có mức thuế sau quyết toán tương đương';
 
   return {
     input,
     scenarios,
-    recommendation: bestScenario.scenario,
     maxSavings,
     savingsDetails,
   };
 }
 
 /**
- * Calculate effective marginal tax rate on bonus
- * This shows what percentage of the bonus goes to taxes
- */
-export function calculateMarginalBonusTaxRate(
-  input: BonusInput,
-  useNewLaw: boolean
-): number {
-  const totalBonus = input.thirteenthMonthSalary + input.tetBonus + input.otherBonuses;
-  if (totalBonus <= 0) return 0;
-
-  const taxInputWithBonus: SharedTaxState = {
-    grossIncome: input.monthlySalary + totalBonus,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
-
-  const taxInputWithoutBonus: SharedTaxState = {
-    grossIncome: input.monthlySalary,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
-
-  const resultWithBonus = useNewLaw
-    ? calculateNewTax(taxInputWithBonus)
-    : calculateOldTax(taxInputWithBonus);
-
-  const resultWithoutBonus = useNewLaw
-    ? calculateNewTax(taxInputWithoutBonus)
-    : calculateOldTax(taxInputWithoutBonus);
-
-  const additionalTax = resultWithBonus.taxAmount - resultWithoutBonus.taxAmount;
-  return (additionalTax / totalBonus) * 100;
-}
-
-/**
  * Format money for display
  */
 function formatMoney(amount: number): string {
-  return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
-}
-
-/**
- * Calculate optimal bonus split between periods
- * Sometimes splitting the bonus can result in lower overall tax
- */
-export function calculateOptimalBonusSplit(
-  input: BonusInput,
-  splitRatio: number // 0-1, portion paid in H1
-): {
-  h1Portion: number;
-  h2Portion: number;
-  h1Tax: number;
-  h2Tax: number;
-  totalTax: number;
-  totalNetBonus: number;
-} {
-  const totalBonus = input.thirteenthMonthSalary + input.tetBonus + input.otherBonuses;
-  const h1Portion = totalBonus * splitRatio;
-  const h2Portion = totalBonus * (1 - splitRatio);
-
-  // Calculate H1 tax (new law - áp dụng từ kỳ tính thuế 2026)
-  const h1TaxInput: SharedTaxState = {
-    grossIncome: input.monthlySalary + h1Portion,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
-  const h1Result = calculateNewTax(h1TaxInput);
-
-  // Calculate H2 tax (new law)
-  const h2TaxInput: SharedTaxState = {
-    grossIncome: input.monthlySalary + h2Portion,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
-  const h2Result = calculateNewTax(h2TaxInput);
-
-  // Calculate base tax (no bonus) - cả H1 và H2 đều dùng luật mới
-  const baseTaxInput: SharedTaxState = {
-    grossIncome: input.monthlySalary,
-    dependents: input.dependents,
-    otherDeductions: 0,
-    hasInsurance: input.hasInsurance,
-    insuranceOptions: DEFAULT_INSURANCE_OPTIONS,
-    region: input.region,
-    pensionContribution: 0,
-  };
-  const baseResult = calculateNewTax(baseTaxInput);
-
-  const h1Tax = h1Result.taxAmount - baseResult.taxAmount;
-  const h2Tax = h2Result.taxAmount - baseResult.taxAmount;
-  const totalTax = h1Tax + h2Tax;
-  const totalNetBonus = totalBonus - totalTax;
-
-  return {
-    h1Portion,
-    h2Portion,
-    h1Tax,
-    h2Tax,
-    totalTax,
-    totalNetBonus,
-  };
-}
-
-/**
- * Find the optimal split ratio that minimizes total tax
- */
-export function findOptimalSplitRatio(input: BonusInput): {
-  optimalRatio: number;
-  result: ReturnType<typeof calculateOptimalBonusSplit>;
-} {
-  let bestRatio = 0;
-  let bestResult = calculateOptimalBonusSplit(input, 0);
-
-  // Try different split ratios - use integer loop to avoid floating point precision issues
-  for (let i = 0; i <= 10; i++) {
-    const ratio = i / 10;
-    const result = calculateOptimalBonusSplit(input, ratio);
-    if (result.totalTax < bestResult.totalTax) {
-      bestRatio = ratio;
-      bestResult = result;
-    }
-  }
-
-  return {
-    optimalRatio: bestRatio,
-    result: bestResult,
-  };
+  return new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + ' đ';
 }

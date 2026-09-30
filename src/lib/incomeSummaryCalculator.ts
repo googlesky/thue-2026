@@ -1,25 +1,31 @@
 /**
  * Income Summary Calculator
- * Tổng hợp thu nhập và thuế từ nhiều nguồn trong năm
+ * Tổng hợp thu nhập và thuế TNCN cả năm từ các khoản nhập theo tháng (cá nhân cư trú)
  *
- * Dashboard hiển thị:
- * - Tổng thu nhập cả năm theo từng nguồn
- * - Tổng thuế phải nộp
- * - Biểu đồ phân bổ thu nhập
- * - So sánh với năm trước
+ * - Lương, thưởng, thù lao dịch vụ không đăng ký kinh doanh: gộp cả năm, quyết toán lũy tiến
+ *   theo luật của năm chọn (2025: 7 bậc, 11tr/4,4tr; từ 2026: 5 bậc, 15,5tr/6,2tr)
+ * - Kinh doanh, cho thuê, nội dung số: ngưỡng doanh thu năm chung (1 tỷ từ 2026; 100 triệu năm 2025)
+ * - Trúng thưởng, thừa kế/quà tặng, thu nhập khác: phần vượt ngưỡng theo từng lần (10 → 20 triệu từ 01/7/2026)
  */
 
-import { getMaxSocialInsuranceSalary, NEW_TAX_BRACKETS, NEW_DEDUCTIONS } from './taxCalculator';
+import { EFFECTIVE_DATES, getPerTransactionThreshold } from './taxCalculator';
+import {
+  allocate,
+  calculateAnnualInsurance,
+  calculateAnnualWageTax,
+  calculateBusinessTaxable,
+  formatPercent as formatRate,
+} from './multiSourceIncomeCalculator';
 
 // Income source categories
 export type IncomeCategory =
   | 'salary'           // Lương, tiền công
   | 'bonus'            // Thưởng, lương 13
-  | 'freelance'        // Thu nhập tự do, hợp đồng dịch vụ
+  | 'freelance'        // Thù lao dịch vụ không đăng ký kinh doanh (tiền công)
   | 'rental'           // Cho thuê tài sản
-  | 'investment'       // Đầu tư (cổ tức, lãi vay)
+  | 'investment'       // Đầu tư (cổ tức, lãi cho vay)
   | 'securities'       // Chứng khoán
-  | 'crypto'           // Crypto/NFT
+  | 'crypto'           // Tài sản số
   | 'content_creator'  // Content creator (YouTube, TikTok)
   | 'business'         // Kinh doanh cá thể/HKD
   | 'real_estate'      // Chuyển nhượng BĐS
@@ -31,129 +37,122 @@ export type IncomeCategory =
 export interface IncomeCategoryConfig {
   id: IncomeCategory;
   name: string;
-  icon: string;
   color: string;
-  taxMethod: 'progressive' | 'flat' | 'exempt';
-  defaultTaxRate?: number; // For flat rate
+  // progressive: gộp tiền lương, tiền công tính lũy tiến; flat: % trên giá trị;
+  // per_time: % phần vượt ngưỡng mỗi lần; business: % phần doanh thu năm vượt ngưỡng (chung mọi hoạt động)
+  taxMethod: 'progressive' | 'flat' | 'per_time' | 'business';
+  defaultTaxRate?: number;
+  taxableFrom?: Date; // Chỉ chịu thuế với khoản phát sinh từ ngày này
   description: string;
 }
+
+// Thu nhập khác mới của Luật 109/2025 (tài sản số, tên miền .vn, tín chỉ carbon, biển số) chịu thuế từ 01/7/2026
+const LAW_109_OTHER_INCOME_FROM = EFFECTIVE_DATES.PER_TRANSACTION_THRESHOLD_2026;
 
 // Category configurations
 export const INCOME_CATEGORIES: IncomeCategoryConfig[] = [
   {
     id: 'salary',
     name: 'Lương, tiền công',
-    icon: '💼',
     color: '#3B82F6', // blue
     taxMethod: 'progressive',
-    description: 'Thu nhập từ lương chính, phụ cấp, trợ cấp',
+    description: 'Lương, phụ cấp chịu thuế hằng tháng (tính BH bắt buộc)',
   },
   {
     id: 'bonus',
     name: 'Thưởng',
-    icon: '🎁',
     color: '#8B5CF6', // violet
     taxMethod: 'progressive',
-    description: 'Thưởng Tết, lương tháng 13, thưởng hiệu suất',
+    description: 'Thưởng Tết, lương tháng 13, thưởng hiệu suất (gộp với lương, không tính BH)',
   },
   {
     id: 'freelance',
     name: 'Thu nhập tự do',
-    icon: '👤',
     color: '#EC4899', // pink
-    taxMethod: 'flat',
-    defaultTaxRate: 0.10,
-    description: 'Hợp đồng dịch vụ, tư vấn, freelance',
+    taxMethod: 'progressive',
+    description: 'Thù lao dịch vụ, tư vấn không đăng ký kinh doanh: tính như tiền công, gộp với lương (tổ chức chi trả tạm khấu trừ 10% khoản từ 5 triệu/lần)',
   },
   {
     id: 'rental',
     name: 'Cho thuê tài sản',
-    icon: '🏠',
     color: '#F59E0B', // amber
-    taxMethod: 'flat',
+    taxMethod: 'business',
     defaultTaxRate: 0.05,
-    description: 'Cho thuê nhà, đất, xe, thiết bị',
+    description: 'Cho thuê nhà, đất, xe, thiết bị: 5% phần doanh thu năm vượt 1 tỷ (tính chung ngưỡng với kinh doanh)',
   },
   {
     id: 'investment',
     name: 'Đầu tư',
-    icon: '📈',
     color: '#10B981', // emerald
     taxMethod: 'flat',
     defaultTaxRate: 0.05,
-    description: 'Cổ tức, lãi vay, lãi tiền gửi',
+    description: 'Cổ tức, lãi cho vay, lãi trái phiếu doanh nghiệp (lãi tiền gửi, trái phiếu Chính phủ được miễn)',
   },
   {
     id: 'securities',
     name: 'Chứng khoán',
-    icon: '📊',
     color: '#06B6D4', // cyan
     taxMethod: 'flat',
     defaultTaxRate: 0.001,
-    description: 'Mua bán cổ phiếu, trái phiếu',
+    description: 'Tổng giá bán cổ phiếu, chứng chỉ quỹ, trái phiếu (0,1% mỗi lần bán)',
   },
   {
     id: 'crypto',
-    name: 'Crypto/NFT',
-    icon: '₿',
+    name: 'Tài sản số',
     color: '#F97316', // orange
     taxMethod: 'flat',
     defaultTaxRate: 0.001,
-    description: 'Bitcoin, Ethereum, NFT',
+    taxableFrom: LAW_109_OTHER_INCOME_FROM,
+    description: 'Giá chuyển nhượng tài sản số, tiền mã hóa, NFT (0,1% từ 01/7/2026)',
   },
   {
     id: 'content_creator',
     name: 'Content Creator',
-    icon: '🎬',
     color: '#EF4444', // red
-    taxMethod: 'flat',
-    defaultTaxRate: 0.07,
-    description: 'YouTube, TikTok, KOL, Affiliate',
+    taxMethod: 'business',
+    defaultTaxRate: 0.05,
+    description: 'YouTube, TikTok, KOL, quảng cáo số: 5% phần doanh thu năm vượt 1 tỷ',
   },
   {
     id: 'business',
     name: 'Kinh doanh',
-    icon: '🏪',
     color: '#84CC16', // lime
-    taxMethod: 'flat',
+    taxMethod: 'business',
     defaultTaxRate: 0.015,
-    description: 'Hộ kinh doanh, cá thể',
+    description: 'Hộ, cá nhân kinh doanh: tạm tính 1,5% phần doanh thu năm vượt 1 tỷ (phân phối hàng hóa 0,5%, dịch vụ 2%)',
   },
   {
     id: 'real_estate',
     name: 'Bất động sản',
-    icon: '🏡',
     color: '#A855F7', // purple
     taxMethod: 'flat',
     defaultTaxRate: 0.02,
-    description: 'Chuyển nhượng nhà, đất',
+    description: 'Giá chuyển nhượng nhà, đất (2%; nhà, đất ở duy nhất được miễn)',
   },
   {
     id: 'lottery',
     name: 'Trúng thưởng',
-    icon: '🎰',
     color: '#F43F5E', // rose
-    taxMethod: 'flat',
+    taxMethod: 'per_time',
     defaultTaxRate: 0.10,
-    description: 'Xổ số, casino, game show',
+    description: 'Xổ số, khuyến mại, game show: 10% phần vượt 20 triệu mỗi lần (trúng thưởng casino không chịu thuế TNCN)',
   },
   {
     id: 'inheritance',
     name: 'Thừa kế/Quà tặng',
-    icon: '🎀',
     color: '#14B8A6', // teal
-    taxMethod: 'flat',
+    taxMethod: 'per_time',
     defaultTaxRate: 0.10,
-    description: 'Nhận thừa kế, quà tặng > 10 triệu',
+    description: 'Chứng khoán, phần vốn, BĐS, tài sản phải đăng ký: 10% phần vượt 20 triệu mỗi lần (BĐS giữa người thân được miễn)',
   },
   {
     id: 'other',
     name: 'Thu nhập khác',
-    icon: '💰',
     color: '#6B7280', // gray
-    taxMethod: 'flat',
-    defaultTaxRate: 0.10,
-    description: 'Các khoản thu nhập khác',
+    taxMethod: 'per_time',
+    defaultTaxRate: 0.05,
+    taxableFrom: LAW_109_OTHER_INCOME_FROM,
+    description: 'Chuyển nhượng tên miền .vn, tín chỉ carbon, biển số xe trúng đấu giá: 5% phần vượt 20 triệu mỗi lần',
   },
 ];
 
@@ -163,12 +162,14 @@ export interface IncomeEntry {
   category: IncomeCategory;
   description: string;
   amount: number;
-  taxableAmount: number;
-  taxAmount: number;
   month: number; // 1-12
-  date?: Date;
   notes?: string;
+  // Do calculateIncomeSummary tính, không cần nhập
+  taxableAmount?: number;
+  taxAmount?: number;
 }
+
+type TaxedEntry = IncomeEntry & { taxableAmount: number; taxAmount: number };
 
 // Monthly summary
 export interface MonthlySummary {
@@ -202,6 +203,13 @@ export interface IncomeSummaryInput {
   hasInsurance: boolean;
 }
 
+export const DEFAULT_INCOME_SUMMARY_INPUT: IncomeSummaryInput = {
+  year: new Date().getFullYear(),
+  entries: [],
+  dependents: 0,
+  hasInsurance: true,
+};
+
 // Result
 export interface IncomeSummaryResult {
   // Totals
@@ -210,7 +218,7 @@ export interface IncomeSummaryResult {
   totalTax: number;
   effectiveTaxRate: number;
 
-  // Net income
+  // Net income (sau BH bắt buộc và thuế)
   totalNetIncome: number;
 
   // Deductions applied
@@ -234,20 +242,10 @@ export interface IncomeSummaryResult {
   averageMonthlyIncome: number;
   averageMonthlyTax: number;
 
-  // Entries
+  // Entries (đã có thuế từng khoản)
   totalEntries: number;
-  entries: IncomeEntry[];
+  entries: TaxedEntry[];
 }
-
-// Tái dùng biểu thuế 5 bậc trung tâm (Luật 109/2025/QH15)
-const TAX_BRACKETS_2026 = NEW_TAX_BRACKETS;
-
-// Giảm trừ - tái dùng mức trung tâm (NQ 110/2025/UBTVQH15)
-const DEDUCTIONS = {
-  personal: NEW_DEDUCTIONS.personal,
-  dependent: NEW_DEDUCTIONS.dependent,
-  insuranceRate: 0.105, // 10.5% BHXH (trần dùng getMaxSocialInsuranceSalary date-aware)
-};
 
 // Month names in Vietnamese
 const MONTH_NAMES = [
@@ -271,232 +269,171 @@ export function getCategoryConfig(category: IncomeCategory): IncomeCategoryConfi
 }
 
 /**
- * Calculate progressive tax on salary income
- */
-function calculateProgressiveTax(annualTaxableIncome: number): number {
-  // Biểu thuế lũy tiến là ngưỡng THÁNG -> quy đổi thu nhập năm về tháng,
-  // tính thuế tháng rồi nhân 12 (đúng phương pháp tính thuế TNCN từ tiền lương).
-  const monthlyTaxableIncome = Math.max(0, annualTaxableIncome) / 12;
-  let monthlyTax = 0;
-  let remaining = monthlyTaxableIncome;
-
-  for (const bracket of TAX_BRACKETS_2026) {
-    const taxableInBracket = Math.min(
-      Math.max(0, remaining),
-      bracket.max - bracket.min
-    );
-    monthlyTax += taxableInBracket * bracket.rate;
-    remaining -= taxableInBracket;
-    if (remaining <= 0) break;
-  }
-
-  return Math.round(monthlyTax * 12);
-}
-
-/**
  * Main calculation function
  */
 export function calculateIncomeSummary(input: IncomeSummaryInput): IncomeSummaryResult {
-  const { year, entries, dependents, hasInsurance } = input;
+  const { year, hasInsurance } = input;
+  const dependents = Math.min(20, Math.max(0, Math.floor(Number(input.dependents) || 0)));
+  const rateOf = (e: IncomeEntry) => getCategoryConfig(e.category).defaultTaxRate ?? 0;
 
-  // Group entries by category
-  const categoryMap = new Map<IncomeCategory, IncomeEntry[]>();
-  const monthMap = new Map<number, IncomeEntry[]>();
+  // Theo thứ tự tháng: ngưỡng doanh thu năm được trừ vào các tháng sớm trước
+  const entries: TaxedEntry[] = input.entries
+    .map((e) => ({
+      ...e,
+      amount: Math.max(0, Number(e.amount) || 0),
+      month: Math.min(12, Math.max(1, Math.round(Number(e.month)) || 1)), // dữ liệu snapshot có thể lệch
+      taxableAmount: 0,
+      taxAmount: 0,
+    }))
+    .sort((a, b) => a.month - b.month);
+  const byMethod = (method: IncomeCategoryConfig['taxMethod']) =>
+    entries.filter((e) => getCategoryConfig(e.category).taxMethod === method);
 
-  for (const entry of entries) {
-    // By category
-    const categoryEntries = categoryMap.get(entry.category) || [];
-    categoryEntries.push(entry);
-    categoryMap.set(entry.category, categoryEntries);
-
-    // By month
-    const monthEntries = monthMap.get(entry.month) || [];
-    monthEntries.push(entry);
-    monthMap.set(entry.month, monthEntries);
+  // 1) Tiền lương, tiền công: gộp cả năm, quyết toán lũy tiến; BH chỉ tính trên lương từng tháng
+  const wage = byMethod('progressive');
+  const monthlySalaries = Array<number>(12).fill(0);
+  for (const e of wage) {
+    if (e.category === 'salary') monthlySalaries[e.month - 1] += e.amount;
   }
+  const insurance = hasInsurance ? calculateAnnualInsurance(monthlySalaries, year) : 0;
+  const wageTax = calculateAnnualWageTax({
+    year,
+    income: wage.reduce((sum, e) => sum + e.amount, 0),
+    insurance,
+    dependents,
+  });
+  const wageWeights = wage.map((e) => e.amount);
+  allocate(wageTax.tax, wageWeights).forEach((tax, i) => { wage[i].taxAmount = tax; });
+  allocate(wageTax.taxableIncome, wageWeights).forEach((taxable, i) => { wage[i].taxableAmount = taxable; });
 
-  // Calculate totals
-  let totalGrossIncome = 0;
-  let totalTaxableIncome = 0;
-  let totalTax = 0;
-
-  // Calculate salary/bonus separately for progressive tax
-  let salaryBonusIncome = 0;
-  let otherIncome = 0;
-  let otherTax = 0;
-
-  // By category
-  const byCategory: CategorySummary[] = [];
-
-  for (const [category, catEntries] of categoryMap) {
-    const config = getCategoryConfig(category);
-    let categoryIncome = 0;
-    let categoryTax = 0;
-
-    for (const entry of catEntries) {
-      categoryIncome += entry.amount;
-
-      if (config.taxMethod === 'progressive') {
-        // Will calculate later with deductions
-        salaryBonusIncome += entry.amount;
-      } else if (config.taxMethod === 'flat' && config.defaultTaxRate) {
-        const tax = Math.round(entry.taxableAmount * config.defaultTaxRate);
-        categoryTax += tax;
-        otherIncome += entry.amount;
-        otherTax += tax;
-      }
-    }
-
-    totalGrossIncome += categoryIncome;
-
-    byCategory.push({
-      category,
-      config,
-      totalIncome: categoryIncome,
-      totalTax: categoryTax,
-      entries: catEntries.length,
-      percentage: 0, // Will calculate after total
+  // 2) Kinh doanh, cho thuê: ngưỡng doanh thu năm chung, trừ vào hoạt động thuế suất cao trước
+  const business = byMethod('business');
+  calculateBusinessTaxable(business.map((e) => ({ revenue: e.amount, rate: rateOf(e) })), year)
+    .forEach((taxable, i) => {
+      business[i].taxableAmount = taxable;
+      business[i].taxAmount = Math.round(taxable * rateOf(business[i]));
     });
+
+  // 3) Thuế suất cố định / phần vượt ngưỡng theo từng lần (ngưỡng theo tháng phát sinh)
+  for (const e of entries) {
+    const config = getCategoryConfig(e.category);
+    if (config.taxMethod !== 'flat' && config.taxMethod !== 'per_time') continue;
+    const date = new Date(year, e.month - 1, 1);
+    if (config.taxableFrom && date < config.taxableFrom) continue;
+    e.taxableAmount = config.taxMethod === 'per_time'
+      ? Math.max(0, e.amount - getPerTransactionThreshold(date))
+      : e.amount;
+    e.taxAmount = Math.round(e.taxableAmount * rateOf(e));
   }
 
-  // Calculate deductions for progressive income
-  const monthlyDeduction = DEDUCTIONS.personal + (dependents * DEDUCTIONS.dependent);
-  const annualDeduction = monthlyDeduction * 12;
+  // Tổng hợp theo loại và theo tháng từ thuế từng khoản (luôn khớp tổng)
+  const categoryMap = new Map<IncomeCategory, CategorySummary>();
+  const byMonth: MonthlySummary[] = MONTH_NAMES.map((monthName, i) => ({
+    month: i + 1,
+    monthName,
+    totalIncome: 0,
+    totalTax: 0,
+    entries: 0,
+    byCategory: [],
+  }));
 
-  let insuranceDeduction = 0;
-  if (hasInsurance && salaryBonusIncome > 0) {
-    const monthlyInsurance = Math.min(salaryBonusIncome / 12, getMaxSocialInsuranceSalary()) * DEDUCTIONS.insuranceRate;
-    insuranceDeduction = monthlyInsurance * 12;
-  }
+  for (const e of entries) {
+    const cat = categoryMap.get(e.category) ?? {
+      category: e.category,
+      config: getCategoryConfig(e.category),
+      totalIncome: 0,
+      totalTax: 0,
+      entries: 0,
+      percentage: 0,
+    };
+    cat.totalIncome += e.amount;
+    cat.totalTax += e.taxAmount;
+    cat.entries += 1;
+    categoryMap.set(e.category, cat);
 
-  const totalDeductions = annualDeduction + insuranceDeduction;
-
-  // Calculate progressive tax on salary/bonus
-  const salaryTaxableIncome = Math.max(0, salaryBonusIncome - totalDeductions);
-  const salaryTax = calculateProgressiveTax(salaryTaxableIncome);
-
-  // Update salary/bonus category tax
-  for (const cat of byCategory) {
-    if (cat.config.taxMethod === 'progressive') {
-      // Distribute tax proportionally
-      if (salaryBonusIncome > 0) {
-        cat.totalTax = Math.round((cat.totalIncome / salaryBonusIncome) * salaryTax);
-      }
+    const month = byMonth[e.month - 1];
+    month.totalIncome += e.amount;
+    month.totalTax += e.taxAmount;
+    month.entries += 1;
+    const monthCat = month.byCategory.find((c) => c.category === e.category);
+    if (monthCat) {
+      monthCat.amount += e.amount;
+      monthCat.tax += e.taxAmount;
+    } else {
+      month.byCategory.push({ category: e.category, amount: e.amount, tax: e.taxAmount });
     }
   }
 
-  // Calculate totals
-  totalTaxableIncome = salaryTaxableIncome + otherIncome;
-  totalTax = salaryTax + otherTax;
+  const totalGrossIncome = entries.reduce((sum, e) => sum + e.amount, 0);
+  const totalTaxableIncome = entries.reduce((sum, e) => sum + e.taxableAmount, 0);
+  const totalTax = entries.reduce((sum, e) => sum + e.taxAmount, 0);
 
-  // Update percentages
+  // Sort categories by income (descending)
+  const sortedCategories = [...categoryMap.values()].sort((a, b) => b.totalIncome - a.totalIncome);
   if (totalGrossIncome > 0) {
-    for (const cat of byCategory) {
+    for (const cat of sortedCategories) {
       cat.percentage = (cat.totalIncome / totalGrossIncome) * 100;
     }
   }
 
-  // By month
-  const byMonth: MonthlySummary[] = [];
-  for (let month = 1; month <= 12; month++) {
-    const monthEntries = monthMap.get(month) || [];
-    let monthlyIncome = 0;
-    let monthlyTax = 0;
-    const categoryBreakdown: { category: IncomeCategory; amount: number; tax: number }[] = [];
-
-    // Group by category within month
-    const monthCategoryMap = new Map<IncomeCategory, { amount: number; tax: number }>();
-
-    for (const entry of monthEntries) {
-      monthlyIncome += entry.amount;
-      monthlyTax += entry.taxAmount;
-
-      const existing = monthCategoryMap.get(entry.category) || { amount: 0, tax: 0 };
-      existing.amount += entry.amount;
-      existing.tax += entry.taxAmount;
-      monthCategoryMap.set(entry.category, existing);
-    }
-
-    for (const [category, data] of monthCategoryMap) {
-      categoryBreakdown.push({ category, ...data });
-    }
-
-    byMonth.push({
-      month,
-      monthName: MONTH_NAMES[month - 1],
-      totalIncome: monthlyIncome,
-      totalTax: monthlyTax,
-      entries: monthEntries.length,
-      byCategory: categoryBreakdown,
-    });
-  }
-
-  // Sort categories by income (descending)
-  const sortedCategories = [...byCategory].sort((a, b) => b.totalIncome - a.totalIncome);
-  const topCategories = sortedCategories.slice(0, 5);
-
   // Average monthly
   const monthsWithIncome = byMonth.filter(m => m.totalIncome > 0).length || 1;
-  const averageMonthlyIncome = totalGrossIncome / monthsWithIncome;
-  const averageMonthlyTax = totalTax / monthsWithIncome;
-
-  // Effective tax rate
-  const effectiveTaxRate = totalGrossIncome > 0
-    ? (totalTax / totalGrossIncome) * 100
-    : 0;
 
   return {
     totalGrossIncome,
     totalTaxableIncome,
     totalTax,
-    effectiveTaxRate,
-    totalNetIncome: totalGrossIncome - totalTax,
+    effectiveTaxRate: totalGrossIncome > 0 ? (totalTax / totalGrossIncome) * 100 : 0,
+    totalNetIncome: totalGrossIncome - insurance - totalTax,
     deductions: {
-      personal: DEDUCTIONS.personal * 12,
-      dependent: DEDUCTIONS.dependent * dependents * 12,
-      insurance: insuranceDeduction,
-      total: totalDeductions,
+      personal: wageTax.personalDeduction,
+      dependent: wageTax.dependentDeduction,
+      insurance,
+      total: wageTax.personalDeduction + wageTax.dependentDeduction + insurance,
     },
     byCategory: sortedCategories,
     byMonth,
-    topCategories,
-    averageMonthlyIncome: Math.round(averageMonthlyIncome),
-    averageMonthlyTax: Math.round(averageMonthlyTax),
+    topCategories: sortedCategories.slice(0, 5),
+    averageMonthlyIncome: Math.round(totalGrossIncome / monthsWithIncome),
+    averageMonthlyTax: Math.round(totalTax / monthsWithIncome),
     totalEntries: entries.length,
     entries,
   };
 }
 
 /**
- * Format currency
+ * Cách tính thuế của loại thu nhập, VD "10% phần vượt ngưỡng mỗi lần"
  */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+export function formatTaxMethod(config: IncomeCategoryConfig): string {
+  const rate = formatRate(config.defaultTaxRate ?? 0);
+  switch (config.taxMethod) {
+    case 'progressive':
+      return 'Lũy tiến (gộp với lương)';
+    case 'per_time':
+      return `${rate} phần vượt ngưỡng mỗi lần`;
+    case 'business':
+      return `${rate} phần doanh thu vượt ngưỡng năm`;
+    default:
+      return rate;
+  }
 }
 
 /**
- * Format short currency (e.g., 30M, 1.5B)
+ * Rút gọn số tiền: 360.000.000 → "360 tr", 1.500.000.000 → "1,5 tỷ"
  */
 export function formatShortCurrency(amount: number): string {
-  if (amount >= 1_000_000_000) {
-    return `${(amount / 1_000_000_000).toFixed(1)}B`;
-  }
-  if (amount >= 1_000_000) {
-    return `${(amount / 1_000_000).toFixed(1)}M`;
-  }
-  if (amount >= 1_000) {
-    return `${(amount / 1_000).toFixed(0)}K`;
-  }
-  return amount.toString();
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const abs = Math.abs(safe);
+  const format = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+  if (abs >= 1_000_000_000) return `${format(safe / 1_000_000_000)} tỷ`;
+  if (abs >= 1_000_000) return `${format(safe / 1_000_000)} tr`;
+  if (abs >= 1_000) return `${format(safe / 1_000)} nghìn`;
+  return format(safe);
 }
 
 /**
- * Format percentage
+ * Định dạng phần trăm (đầu vào đã nhân 100): 12.345 → "12,35%"
  */
 export function formatPercent(value: number): string {
-  return `${value.toFixed(2)}%`;
+  return `${value.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 }

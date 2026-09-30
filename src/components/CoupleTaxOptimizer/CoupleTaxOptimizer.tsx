@@ -5,11 +5,11 @@ import {
   optimizeCoupleTax,
   formatCurrency,
   getCategoryLabel,
-  getCategoryColor,
+  MAX_COUPLE_DEPENDENTS,
   type CoupleOptimizationResult,
-  type AllocationScenario,
 } from '@/lib/coupleTaxOptimizer';
-import { CoupleOptimizerTabState, DEFAULT_COUPLE_OPTIMIZER_STATE } from '@/lib/snapshotTypes';
+import { getVoluntaryPensionCap } from '@/lib/taxCalculator';
+import { CoupleOptimizerTabState } from '@/lib/snapshotTypes';
 
 interface CoupleTaxOptimizerProps {
   tabState: CoupleOptimizerTabState;
@@ -39,10 +39,10 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
         otherDeductions: tabState.person2OtherDeductions,
       },
       totalDependents: tabState.totalDependents,
-      charitableContribution: tabState.charitableContribution,
-      voluntaryPension: tabState.voluntaryPension,
     });
   }, [tabState]);
+
+  const pensionCap = getVoluntaryPensionCap();
 
   // Update field helper
   const updateField = <K extends keyof CoupleOptimizerTabState>(
@@ -99,7 +99,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
                 const value = e.target.value.replace(/\D/g, '');
                 updateField('person1Income', value ? parseInt(value, 10) : 0);
               }}
-              placeholder="30,000,000"
+              placeholder="30.000.000"
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
@@ -118,7 +118,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hưu trí tự nguyện (VND/tháng)
+              Hưu trí, BH nhân thọ (VND/tháng)
             </label>
             <input
               type="text"
@@ -131,11 +131,16 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
               placeholder="0"
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
+            {tabState.person1Pension > pensionCap && (
+              <p className="text-xs text-amber-700 mt-1">
+                Chỉ được trừ tối đa {formatCurrency(pensionCap)}/tháng (gộp hưu trí bổ sung, hưu trí tự nguyện, BH nhân thọ).
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Giảm trừ khác (VND/tháng)
+              Từ thiện, nhân đạo (VND/tháng)
             </label>
             <input
               type="text"
@@ -187,7 +192,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
                 const value = e.target.value.replace(/\D/g, '');
                 updateField('person2Income', value ? parseInt(value, 10) : 0);
               }}
-              placeholder="20,000,000"
+              placeholder="20.000.000"
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
@@ -206,7 +211,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hưu trí tự nguyện (VND/tháng)
+              Hưu trí, BH nhân thọ (VND/tháng)
             </label>
             <input
               type="text"
@@ -219,11 +224,16 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
               placeholder="0"
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
+            {tabState.person2Pension > pensionCap && (
+              <p className="text-xs text-amber-700 mt-1">
+                Chỉ được trừ tối đa {formatCurrency(pensionCap)}/tháng (gộp hưu trí bổ sung, hưu trí tự nguyện, BH nhân thọ).
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Giảm trừ khác (VND/tháng)
+              Từ thiện, nhân đạo (VND/tháng)
             </label>
             <input
               type="text"
@@ -254,43 +264,14 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
             <input
               type="number"
               min="0"
-              max="10"
-              value={tabState.totalDependents}
-              onChange={(e) => updateField('totalDependents', parseInt(e.target.value) || 0)}
-              className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Đóng góp từ thiện (VND/tháng)
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={tabState.charitableContribution === 0 ? '' : tabState.charitableContribution.toLocaleString('vi-VN')}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '');
-                updateField('charitableContribution', value ? parseInt(value, 10) : 0);
-              }}
-              placeholder="0"
-              className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hưu trí tự nguyện (VND/tháng)
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={tabState.voluntaryPension === 0 ? '' : tabState.voluntaryPension.toLocaleString('vi-VN')}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '');
-                updateField('voluntaryPension', value ? parseInt(value, 10) : 0);
-              }}
-              placeholder="0"
+              max={MAX_COUPLE_DEPENDENTS}
+              value={Math.min(MAX_COUPLE_DEPENDENTS, Math.max(0, Math.floor(tabState.totalDependents || 0)))}
+              onChange={(e) =>
+                updateField(
+                  'totalDependents',
+                  Math.min(MAX_COUPLE_DEPENDENTS, Math.max(0, parseInt(e.target.value, 10) || 0))
+                )
+              }
               className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2"
             />
           </div>
@@ -303,7 +284,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
           {/* Summary */}
           <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
             <h3 className="text-md font-medium text-gray-900 mb-4">
-              Kết quả tối ưu
+              Kết quả tối ưu (theo tháng)
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -318,7 +299,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
 
               <div className="p-3 bg-red-50 rounded-lg">
                 <div className="text-xs text-red-600 mb-1">
-                  Thuế hiện tại
+                  Thuế chia đều NPT
                 </div>
                 <div className="font-medium text-red-700">
                   {formatCurrency(result.currentScenario.totalTax)}
@@ -347,7 +328,9 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
             {/* Optimal allocation */}
             <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-green-600">✓</span>
+                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
                 <span className="font-medium text-green-700">
                   Phân bổ tối ưu
                 </span>
@@ -361,7 +344,7 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
           {/* All Scenarios */}
           <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
             <h3 className="text-md font-medium text-gray-900 mb-4">
-              So sánh các phương án phân bổ
+              So sánh các phương án phân bổ (thuế/tháng)
             </h3>
 
             <div className="overflow-x-auto">
@@ -467,10 +450,12 @@ export function CoupleTaxOptimizer({ tabState, onTabStateChange }: CoupleTaxOpti
         <p className="font-medium mb-2">Lưu ý quan trọng:</p>
         <ul className="list-disc list-inside space-y-1">
           <li>Người phụ thuộc chỉ được đăng ký cho 1 người nộp thuế</li>
+          <li>Con đã thành niên đang đi học, cha mẹ, vợ/chồng không có khả năng lao động... chỉ là NPT khi thu nhập bình quân tháng không quá 3 triệu đồng</li>
           <li>Cần có hồ sơ đăng ký NPT hợp lệ tại cơ quan thuế</li>
-          <li>Đóng góp từ thiện phải qua tổ chức được công nhận có hóa đơn chứng từ</li>
-          <li>Hưu trí tự nguyện tối đa 1 triệu VND/tháng/người</li>
-          <li>Căn cứ: Luật Thuế TNCN, Thông tư 111/2013/TT-BTC</li>
+          <li>Đóng góp từ thiện phải qua tổ chức được công nhận, có chứng từ; khoản này trừ cho người trực tiếp đóng góp</li>
+          <li>Hưu trí bổ sung, hưu trí tự nguyện, bảo hiểm nhân thọ: tổng tối đa {formatCurrency(pensionCap)}/tháng/người, kể cả phần công ty đóng</li>
+          <li>Chi khám chữa bệnh (tối đa 23 triệu/năm) và học phí (tối đa 24 triệu/năm) cho bản thân và NPT được giảm trừ khi tự quyết toán; người đăng ký NPT được trừ phần chi cho NPT đó (chưa tính trong công cụ này)</li>
+          <li>Căn cứ: Luật Thuế TNCN số 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16), NĐ 253/2026/NĐ-CP, TT 87/2026/TT-BTC</li>
         </ul>
       </div>
     </div>

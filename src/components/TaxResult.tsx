@@ -9,6 +9,11 @@ import {
 } from "@/lib/taxCalculator";
 import { PDFExportButton } from "@/components/PDFExport";
 
+const PERCENT_FORMAT = new Intl.NumberFormat("vi-VN", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const IncomeWaterfallChart = lazy(
   () => import("@/components/IncomeWaterfallChart"),
 );
@@ -24,10 +29,9 @@ function TaxResultComponent({
   otherIncomeTax,
   declaredSalary,
 }: TaxResultProps) {
-  // Calculate totals including other income
   const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
-  const totalTax =
-    result.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
+  // Thuế GTGT cho thuê tài sản không phải thuế TNCN → tách riêng
+  const otherVAT = hasOtherIncome ? otherIncomeTax.rental.taxVAT : 0;
 
   // Check if using declared salary for insurance
   const hasDeclaredSalary =
@@ -78,7 +82,7 @@ function TaxResultComponent({
         />
       </div>
 
-      {/* Other income summary */}
+      {/* Other income summary: kỳ theo số đã nhập từng khoản, không cộng với lương tháng */}
       {hasOtherIncome && (
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 text-white">
           <div className="flex items-center gap-3 mb-2">
@@ -97,6 +101,10 @@ function TaxResultComponent({
             </svg>
             <h3 className="text-xl font-bold">Thu nhập khác</h3>
           </div>
+          <p className="text-blue-100 text-xs mb-4">
+            Theo số tiền đã nhập cho từng khoản (cho thuê tài sản tính theo
+            năm), tính riêng, không cộng với lương tháng.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-blue-100 text-sm">Tổng thu nhập</div>
@@ -105,63 +113,20 @@ function TaxResultComponent({
               </div>
             </div>
             <div>
-              <div className="text-blue-100 text-sm">Thuế phải nộp</div>
+              <div className="text-blue-100 text-sm">Thuế TNCN</div>
               <div className="text-2xl font-bold font-mono tabular-nums">
-                {formatCurrency(otherIncomeTax.totalTax)}
+                {formatCurrency(otherIncomeTax.totalTax - otherVAT)}
               </div>
+              {otherVAT > 0 && (
+                <div className="text-blue-100 text-xs mt-1">
+                  + thuế GTGT cho thuê {formatCurrency(otherVAT)}
+                </div>
+              )}
             </div>
             <div>
               <div className="text-blue-100 text-sm">Thực nhận</div>
               <div className="text-2xl font-bold font-mono tabular-nums">
                 {formatCurrency(otherIncomeTax.totalNet)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Total summary when having other income */}
-      {hasOtherIncome && (
-        <div className="bg-gray-800 rounded-xl p-6 text-white">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            Tổng kết tất cả nguồn thu nhập
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-gray-300 text-sm">Lương GROSS</div>
-              <div className="text-xl font-bold font-mono tabular-nums">
-                {formatCurrency(result.grossIncome)}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-300 text-sm">Thu nhập khác</div>
-              <div className="text-xl font-bold font-mono tabular-nums">
-                {formatCurrency(otherIncomeTax.totalIncome)}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-300 text-sm">Tổng thuế</div>
-              <div className="text-xl font-bold text-red-400 font-mono tabular-nums">
-                {formatCurrency(totalTax)}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-300 text-sm">Tổng thực nhận</div>
-              <div className="text-xl font-bold text-green-400 font-mono tabular-nums">
-                {formatCurrency(result.netIncome + otherIncomeTax.totalNet)}
               </div>
             </div>
           </div>
@@ -241,6 +206,9 @@ const ResultDetails = memo(function ResultDetails({
   const otherDeductions = Number.isFinite(result.otherDeductions)
     ? result.otherDeductions
     : 0;
+  const insuranceDeduction = Number.isFinite(result.insuranceDeduction)
+    ? result.insuranceDeduction
+    : 0;
 
   const items: Array<{
     label: string;
@@ -278,20 +246,18 @@ const ResultDetails = memo(function ResultDetails({
 
   // Thêm chi tiết bảo hiểm nếu có
   if (hasInsurance) {
-    if (hasDeclaredSalary) {
-      items.push({
-        label: `Bảo hiểm (trên ${formatCurrency(declaredSalary)})`,
-        value: -(Number.isFinite(result.insuranceDeduction)
-          ? result.insuranceDeduction
-          : 0),
-        isHeader: true,
-      });
-    }
+    items.push({
+      label: hasDeclaredSalary
+        ? `Bảo hiểm (trên ${formatCurrency(declaredSalary)})`
+        : "Bảo hiểm",
+      value: -insuranceDeduction,
+      isHeader: true,
+    });
     if (insuranceDetail.bhxh > 0) {
       items.push({ label: "  └ BHXH (8%)", value: -insuranceDetail.bhxh });
     }
     if (insuranceDetail.bhyt > 0) {
-      items.push({ label: "  └ BHYT (1.5%)", value: -insuranceDetail.bhyt });
+      items.push({ label: "  └ BHYT (1,5%)", value: -insuranceDetail.bhyt });
     }
     if (insuranceDetail.bhtn > 0) {
       items.push({ label: "  └ BHTN (1%)", value: -insuranceDetail.bhtn });
@@ -299,12 +265,12 @@ const ResultDetails = memo(function ResultDetails({
   }
 
   items.push(
-    { label: "Giảm trừ bản thân", value: -result.personalDeduction },
-    { label: "Giảm trừ người phụ thuộc", value: -result.dependentDeduction },
+    { label: "Giảm trừ bản thân", value: -personalDeduction },
+    { label: "Giảm trừ người phụ thuộc", value: -dependentDeduction },
   );
 
-  if (result.otherDeductions > 0) {
-    items.push({ label: "Giảm trừ khác", value: -result.otherDeductions });
+  if (otherDeductions > 0) {
+    items.push({ label: "Giảm trừ khác", value: -otherDeductions });
   }
 
   return (
@@ -353,7 +319,7 @@ const ResultDetails = memo(function ResultDetails({
         </div>
         <div className="flex justify-between text-sm mt-2 text-gray-500">
           <span>Thuế suất thực tế</span>
-          <span>{effectiveRate.toFixed(2)}%</span>
+          <span>{PERCENT_FORMAT.format(effectiveRate)}%</span>
         </div>
       </div>
 

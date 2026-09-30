@@ -10,14 +10,20 @@ export const EFFECTIVE_DATES = {
   // (5 bậc, giảm trừ 15.5M) - áp dụng từ kỳ tính thuế năm 2026
   // Theo điều khoản chuyển tiếp Luật Thuế TNCN sửa đổi 2025
   NEW_TAX_LAW_2026: new Date(2026, 0, 1),
-  // Thuế chuyển nhượng vàng miếng 0.1% (Luật Thuế TNCN sửa đổi 2025)
-  GOLD_TRANSFER_TAX_2026: new Date(2026, 6, 1),
-  // Lương cơ sở/mức tham chiếu tăng 2.34M -> 2.53M từ 01/7/2026
+  // Lương cơ sở tăng 2.34M -> 2.53M từ 01/7/2026 (NĐ 161/2026/NĐ-CP)
   // -> trần đóng BHXH, BHYT (20 lần) tăng 46.8M -> 50.6M
   BASE_SALARY_2026: new Date(2026, 6, 1),
   // Ngưỡng chịu thuế theo từng lần phát sinh (trúng thưởng, thừa kế, quà tặng,
   // nhượng quyền...) tăng 10M -> 20M từ 01/7/2026 (Luật Thuế TNCN sửa đổi 2025)
   PER_TRANSACTION_THRESHOLD_2026: new Date(2026, 6, 1),
+  // Tiền ăn giữa ca: TT 003/2025/TT-BNV bãi bỏ mức 730.000đ từ 15/6/2025;
+  // NĐ 253/2026/NĐ-CP đặt lại mức 1,2tr từ 01/7/2026 (Điều 8.2.g, Điều 69.1.b)
+  MEAL_ALLOWANCE_UNCAPPED_2025: new Date(2025, 5, 15),
+  MEAL_ALLOWANCE_2026: new Date(2026, 6, 1),
+  // Khấu trừ 10% thu nhập vãng lai (không HĐLĐ/HĐLĐ dưới 3 tháng): 2tr -> 5tr/lần
+  // từ ngày NĐ 253/2026/NĐ-CP có hiệu lực (Điều 50.2). Khoản đã khấu trừ theo mức cũ
+  // trong 6 tháng đầu 2026 được điều chỉnh khi quyết toán (Điều 70.2).
+  CASUAL_WITHHOLDING_2026: new Date(2026, 6, 1),
 };
 
 // Ngưỡng chịu thuế theo từng lần phát sinh (Điều 23 Luật Thuế TNCN)
@@ -31,24 +37,70 @@ export function getPerTransactionThreshold(date: Date = new Date()): number {
     : PER_TRANSACTION_THRESHOLD;
 }
 
-// Mức lương tối thiểu vùng 2025 (đến 31/12/2025)
+// Tiền ăn giữa ca bằng tiền: phần không tính vào thu nhập chịu thuế (VNĐ/tháng).
+// Công ty tự nấu, mua suất ăn, phát phiếu ăn thì không tính (NĐ 253/2026 Điều 8.2.g).
+export const MEAL_ALLOWANCE_LIMIT_2025 = 730_000; // đến 14/6/2025
+export const MEAL_ALLOWANCE_LIMIT_2026 = 1_200_000; // từ 01/7/2026
+
+export function getMealAllowanceLimit(date: Date = new Date()): number {
+  if (date >= EFFECTIVE_DATES.MEAL_ALLOWANCE_2026) return MEAL_ALLOWANCE_LIMIT_2026;
+  // 15/6/2025 – 30/6/2026: không có mức trần cố định (theo HĐLĐ/quy chế công ty)
+  if (date >= EFFECTIVE_DATES.MEAL_ALLOWANCE_UNCAPPED_2025) return Infinity;
+  return MEAL_ALLOWANCE_LIMIT_2025;
+}
+
+// Hưu trí bổ sung + hưu trí tự nguyện + bảo hiểm nhân thọ: TỔNG mức được trừ/tháng,
+// gồm cả phần công ty đóng và người lao động tự đóng.
+// Từ kỳ tính thuế 2026: 3tr (NĐ 253/2026 Điều 46.2.a, Điều 69.1.a); trước đó 1tr.
+export const VOLUNTARY_PENSION_CAP = 1_000_000;
+export const VOLUNTARY_PENSION_CAP_2026 = 3_000_000;
+
+export function getVoluntaryPensionCap(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.NEW_TAX_LAW_2026
+    ? VOLUNTARY_PENSION_CAP_2026
+    : VOLUNTARY_PENSION_CAP;
+}
+
+// Ngưỡng khấu trừ 10% thu nhập vãng lai (VNĐ/lần chi trả)
+export const CASUAL_WITHHOLDING_THRESHOLD = 2_000_000; // đến 30/6/2026
+export const CASUAL_WITHHOLDING_THRESHOLD_2026 = 5_000_000; // từ 01/7/2026
+export const CASUAL_WITHHOLDING_RATE = 0.10;
+
+export function getCasualWithholdingThreshold(date: Date = new Date()): number {
+  return date >= EFFECTIVE_DATES.CASUAL_WITHHOLDING_2026
+    ? CASUAL_WITHHOLDING_THRESHOLD_2026
+    : CASUAL_WITHHOLDING_THRESHOLD;
+}
+
+// Không phải quyết toán phần thu nhập vãng lai đã khấu trừ 10% nếu bình quân tháng
+// không quá mức này (NĐ 253/2026 Điều 51.1.b, kỳ tính thuế 2026; trước: 10tr)
+export const CASUAL_INCOME_NO_SETTLEMENT_LIMIT = 15_000_000;
+
+// Giảm trừ chi y tế, giáo dục - đào tạo của NNT và người phụ thuộc (VNĐ/năm), chỉ khi tự quyết toán
+// (NĐ 253/2026 Điều 49.2, 51.3; kỳ tính thuế 2026)
+export const MEDICAL_DEDUCTION_CAP = 23_000_000;
+export const EDUCATION_DEDUCTION_CAP = 24_000_000;
+
+// Người phụ thuộc: thu nhập bình quân tháng từ mọi nguồn không quá mức này
+// (TT 87/2026/TT-BTC; trước đây 1tr theo TT 111/2013)
+export const DEPENDENT_INCOME_LIMIT = 3_000_000;
+
+// Mức lương tối thiểu vùng 2025 (đến 31/12/2025 - Nghị định 74/2024)
 export const REGIONAL_MINIMUM_WAGES_2025 = {
-  1: { name: 'Vùng I', wage: 4_960_000, description: 'Hà Nội, TP.HCM, Hải Phòng, Đà Nẵng...' },
+  1: { name: 'Vùng I', wage: 4_960_000, description: 'Nội thành Hà Nội, TP.HCM, Hải Phòng...' },
   2: { name: 'Vùng II', wage: 4_410_000, description: 'Các thành phố thuộc tỉnh, huyện ngoại thành...' },
   3: { name: 'Vùng III', wage: 3_860_000, description: 'Thị xã, các huyện thuộc các tỉnh...' },
   4: { name: 'Vùng IV', wage: 3_450_000, description: 'Các huyện miền núi, vùng sâu vùng xa...' },
 };
 
-// Mức lương tối thiểu vùng 2026 (từ 01/01/2026 - Nghị định 293/2025)
+// Mức lương tối thiểu vùng 2026 (từ 01/01/2026 - Nghị định 293/2025).
+// Địa bàn chia theo xã, phường của 34 tỉnh, thành sau sắp xếp (Phụ lục NĐ 293/2025).
 export const REGIONAL_MINIMUM_WAGES_2026 = {
-  1: { name: 'Vùng I', wage: 5_310_000, description: 'Hà Nội, TP.HCM, Hải Phòng, Đà Nẵng...' },
-  2: { name: 'Vùng II', wage: 4_730_000, description: 'Các thành phố thuộc tỉnh, huyện ngoại thành...' },
-  3: { name: 'Vùng III', wage: 4_140_000, description: 'Thị xã, các huyện thuộc các tỉnh...' },
-  4: { name: 'Vùng IV', wage: 3_700_000, description: 'Các huyện miền núi, vùng sâu vùng xa...' },
+  1: { name: 'Vùng I', wage: 5_310_000, description: 'Phần lớn Hà Nội, TP.HCM, Hải Phòng; một phần Quảng Ninh, Đồng Nai, Tây Ninh, Khánh Hòa' },
+  2: { name: 'Vùng II', wage: 4_730_000, description: 'Xã, phường Vùng II theo NĐ 293/2025 (VD: trung tâm Đà Nẵng)' },
+  3: { name: 'Vùng III', wage: 4_140_000, description: 'Xã, phường Vùng III theo NĐ 293/2025' },
+  4: { name: 'Vùng IV', wage: 3_700_000, description: 'Các xã còn lại theo NĐ 293/2025' },
 };
-
-// Legacy export for backward compatibility (default to 2025)
-export const REGIONAL_MINIMUM_WAGES = REGIONAL_MINIMUM_WAGES_2025;
 
 export type RegionType = 1 | 2 | 3 | 4;
 
@@ -62,7 +114,7 @@ export function getRegionalMinimumWages(date: Date = new Date()) {
 
 // Lương cơ sở (dùng để tính mức đóng BHXH tối đa)
 export const BASE_SALARY = 2_340_000; // Lương cơ sở từ 01/07/2024 (đến 30/6/2026)
-export const BASE_SALARY_2026 = 2_530_000; // Lương cơ sở từ 01/7/2026 (mức tham chiếu - Luật BHXH 2024)
+export const BASE_SALARY_2026 = 2_530_000; // Lương cơ sở từ 01/7/2026 (NĐ 161/2026/NĐ-CP)
 
 // Lấy lương cơ sở (mức tham chiếu) theo ngày
 export function getBaseSalary(date: Date = new Date()): number {
@@ -133,7 +185,7 @@ export function getTaxConfigForDate(date: Date = new Date()): TaxConfig {
     deductions: OLD_DEDUCTIONS,
     isNew2026: false,
     lawName: 'Luật Thuế TNCN 2007 (7 bậc)',
-    effectiveDate: new Date('2007-01-01'),
+    effectiveDate: new Date(2009, 0, 1), // Luật 04/2007/QH12 có hiệu lực 01/01/2009
   };
 }
 
@@ -145,42 +197,6 @@ export function isAfterMilestone(
   milestone: keyof typeof EFFECTIVE_DATES
 ): boolean {
   return date >= EFFECTIVE_DATES[milestone];
-}
-
-/**
- * Lấy thông tin về các mốc thay đổi sắp tới
- */
-export function getUpcomingMilestones(fromDate: Date = new Date()): {
-  key: keyof typeof EFFECTIVE_DATES;
-  date: Date;
-  description: string;
-}[] {
-  const milestones: {
-    key: keyof typeof EFFECTIVE_DATES;
-    description: string;
-  }[] = [
-    {
-      key: 'NEW_TAX_LAW_2026',
-      description: 'Luật Thuế TNCN sửa đổi 2025 (5 bậc, giảm trừ 15.5M)',
-    },
-    {
-      key: 'REGIONAL_MINIMUM_WAGE_2026',
-      description: 'Lương tối thiểu vùng 2026 (Nghị định 293/2025)',
-    },
-    {
-      key: 'GOLD_TRANSFER_TAX_2026',
-      description: 'Thuế chuyển nhượng vàng miếng 0.1%',
-    },
-  ];
-
-  return milestones
-    .filter((m) => EFFECTIVE_DATES[m.key] > fromDate)
-    .map((m) => ({
-      key: m.key,
-      date: EFFECTIVE_DATES[m.key],
-      description: m.description,
-    }))
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
 // Tỷ lệ bảo hiểm bắt buộc (người lao động đóng)
@@ -229,8 +245,6 @@ export const MAX_UNEMPLOYMENT_INSURANCE_SALARY_2026 = {
   4: 74_000_000,  // Vùng IV: 20 * 3.700.000
 };
 
-// Legacy export for backward compatibility (default to 2025)
-export const MAX_UNEMPLOYMENT_INSURANCE_SALARY = MAX_UNEMPLOYMENT_INSURANCE_SALARY_2025;
 
 // Lấy mức BHTN cap theo ngày
 export function getMaxUnemploymentInsuranceSalary(date: Date = new Date()) {
@@ -250,13 +264,13 @@ export interface InsuranceOptions {
 
 // Phụ cấp miễn thuế và chịu thuế
 export interface AllowancesState {
-  // Miễn thuế hoàn toàn
-  meal: number;           // Tiền ăn trưa/ăn ca
+  // Miễn thuế (trong mức khoán theo quy chế công ty)
   phone: number;          // Phụ cấp điện thoại
   transport: number;      // Xăng xe, đi lại
   hazardous: number;      // Phụ cấp độc hại (nếu đủ điều kiện)
 
   // Miễn thuế có giới hạn
+  meal: number;           // Tiền ăn trưa/ăn ca (1,2tr/tháng từ 01/7/2026)
   clothing: number;       // Trang phục (max 5tr/năm miễn thuế)
 
   // Chịu thuế hoàn toàn
@@ -275,8 +289,9 @@ export const DEFAULT_ALLOWANCES: AllowancesState = {
 };
 
 // Giới hạn phụ cấp miễn thuế
+// Trang phục bằng tiền: theo mức chi được trừ TNDN (NĐ 253/2026 Điều 8.2.đ; NĐ 320/2025: 5tr/người/năm)
 export const ALLOWANCE_LIMITS = {
-  clothingYearlyMax: 5_000_000,   // 5tr/năm (Thông tư 111/2013)
+  clothingYearlyMax: 5_000_000,   // 5tr/năm
   clothingMonthlyMax: 416_666,    // ~416.6k/tháng (5tr/12 làm tròn xuống)
 };
 
@@ -285,16 +300,23 @@ export interface AllowancesBreakdown {
   taxExempt: number;      // Tổng miễn thuế
   taxable: number;        // Tổng chịu thuế
   total: number;          // Tổng cộng
+  mealExempt: number;     // Phần tiền ăn ca miễn thuế
+  mealTaxable: number;    // Phần tiền ăn ca chịu thuế (vượt mức)
   clothingExempt: number; // Phần trang phục miễn thuế
   clothingTaxable: number; // Phần trang phục chịu thuế (vượt mức)
 }
 
-export function calculateAllowancesBreakdown(allowances?: AllowancesState): AllowancesBreakdown {
+export function calculateAllowancesBreakdown(
+  allowances?: AllowancesState,
+  date: Date = new Date()
+): AllowancesBreakdown {
   if (!allowances) {
     return {
       taxExempt: 0,
       taxable: 0,
       total: 0,
+      mealExempt: 0,
+      mealTaxable: 0,
       clothingExempt: 0,
       clothingTaxable: 0,
     };
@@ -309,21 +331,28 @@ export function calculateAllowancesBreakdown(allowances?: AllowancesState): Allo
   const housing = allowances.housing ?? 0;
   const position = allowances.position ?? 0;
 
+  // Tiền ăn ca: miễn đến mức trần theo ngày, phần vượt chịu thuế
+  const mealLimit = getMealAllowanceLimit(date);
+  const mealExempt = Math.min(meal, mealLimit);
+  const mealTaxable = Math.max(0, meal - mealLimit);
+
   // Phần trang phục miễn thuế (tối đa 417k/tháng)
   const clothingExempt = Math.min(clothing, ALLOWANCE_LIMITS.clothingMonthlyMax);
   // Phần trang phục vượt mức → chịu thuế
   const clothingTaxable = Math.max(0, clothing - ALLOWANCE_LIMITS.clothingMonthlyMax);
 
   // Tổng miễn thuế
-  const taxExempt = meal + phone + transport + hazardous + clothingExempt;
+  const taxExempt = mealExempt + phone + transport + hazardous + clothingExempt;
 
   // Tổng chịu thuế
-  const taxable = housing + position + clothingTaxable;
+  const taxable = housing + position + clothingTaxable + mealTaxable;
 
   return {
     taxExempt,
     taxable,
     total: taxExempt + taxable,
+    mealExempt,
+    mealTaxable,
     clothingExempt,
     clothingTaxable,
   };
@@ -350,7 +379,7 @@ export interface OtherIncomeState {
   freelance: number;         // Thu nhập tự do / dịch vụ
   rental: number;            // Cho thuê tài sản
   investment: number;        // Đầu tư (cổ tức, lãi đầu tư vốn)
-  transfer: number;          // Chuyển nhượng vốn
+  transfer: number;          // Chuyển nhượng chứng khoán (giá bán)
   lottery: number;           // Trúng thưởng
 }
 
@@ -364,17 +393,16 @@ export const DEFAULT_OTHER_INCOME: OtherIncomeState = {
 
 // Tax rates for other income types
 export const OTHER_INCOME_TAX_RATES = {
-  freelance: 0.10,      // 10% trên doanh thu (cá nhân không đăng ký kinh doanh)
+  freelance: 0.10,      // 10% tạm khấu trừ thù lao (tiền công) của cá nhân không ĐKKD
   rental: 0.05,         // 5% thuế TNCN + 5% VAT = 10% tổng
   rentalVAT: 0.05,      // VAT cho thuê tài sản
   investment: 0.05,     // 5% cổ tức, lãi
   transfer: 0.001,      // 0.1% giá chuyển nhượng (chứng khoán)
-  lottery: 0.10,        // 10% phần vượt 10 triệu
+  lottery: 0.10,        // 10% phần vượt ngưỡng từng lần (getPerTransactionThreshold)
 };
 
 // Ngưỡng miễn thuế
 export const OTHER_INCOME_THRESHOLDS = {
-  lottery: 10_000_000,  // Trúng thưởng miễn thuế dưới 10 triệu
   rental2025: 100_000_000,  // Cho thuê tài sản dưới 100 triệu/năm (đến 31/12/2025)
   rental2026: 1_000_000_000,  // Cho thuê tài sản dưới 1 tỷ/năm (Nghị định 141/2026/NĐ-CP, từ 01/01/2026)
 };
@@ -389,11 +417,11 @@ export interface TaxInput {
   grossIncome: number; // Thu nhập gộp (lương thực tế)
   declaredSalary?: number; // Lương khai báo với nhà nước (nếu khác lương thực)
   dependents: number; // Số người phụ thuộc
-  otherDeductions?: number; // Các khoản giảm trừ khác (từ thiện, quỹ hưu trí...)
+  otherDeductions?: number; // Giảm trừ khác: từ thiện, nhân đạo... (hưu trí truyền qua pensionContribution)
   hasInsurance?: boolean; // Có đóng BHXH không (deprecated, dùng insuranceOptions)
   insuranceOptions?: InsuranceOptions; // Tùy chọn từng loại bảo hiểm
   region?: RegionType; // Vùng lương tối thiểu
-  pensionContribution?: number; // Quỹ hưu trí tự nguyện (tối đa 1tr/tháng)
+  pensionContribution?: number; // Hưu trí tự nguyện + BH nhân thọ (xem getVoluntaryPensionCap)
   allowances?: AllowancesState; // Phụ cấp (ăn trưa, điện thoại, độc hại...)
 }
 
@@ -516,6 +544,15 @@ function calculateTaxWithBrackets(
   return { tax: totalTax, breakdown };
 }
 
+// Thuế tiền lương cả năm khi quyết toán: biểu năm = biểu tháng × 12 (Luật 109/2025 Điều 9).
+// Lấy trên TỔNG thu nhập tính thuế năm, không cộng thuế từng tháng.
+export function calculateAnnualSalaryTax(
+  annualTaxableIncome: number,
+  brackets: typeof OLD_TAX_BRACKETS = NEW_TAX_BRACKETS
+): number {
+  return 12 * calculateTaxWithBrackets(annualTaxableIncome / 12, brackets).tax;
+}
+
 // Phương pháp tính nhanh
 function calculateTaxQuick(
   taxableIncome: number,
@@ -531,17 +568,29 @@ function calculateTaxQuick(
   return 0;
 }
 
-export function calculateOldTax(input: TaxInput): TaxResult {
+// Tính thuế tiền lương theo một bộ luật (biểu thuế + giảm trừ gia cảnh).
+// Trần bảo hiểm và mức miễn phụ cấp lấy theo input.calculationDate (mặc định hôm nay).
+function calculateSalaryTax(
+  input: TaxInputWithDate,
+  brackets: typeof OLD_TAX_BRACKETS,
+  deductions: typeof OLD_DEDUCTIONS
+): TaxResult {
   const {
     grossIncome,
     declaredSalary,
     dependents,
-    otherDeductions = 0,
+    otherDeductions: charityAndOther = 0,
+    pensionContribution = 0,
     hasInsurance = true,
     insuranceOptions,
     region = 1,
     allowances,
   } = input;
+  const date = input.calculationDate ?? new Date();
+
+  // Hưu trí tự nguyện + BH nhân thọ chặn trần theo kỳ tính thuế; gộp vào "giảm trừ khác"
+  const pensionDeduction = Math.min(Math.max(0, pensionContribution), getVoluntaryPensionCap(date));
+  const otherDeductions = charityAndOther + pensionDeduction;
 
   // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
   const insuranceBaseSalary = declaredSalary ?? grossIncome;
@@ -554,19 +603,19 @@ export function calculateOldTax(input: TaxInput): TaxResult {
   };
 
   // Tính phụ cấp miễn thuế và chịu thuế
-  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
+  const allowancesBreakdown = calculateAllowancesBreakdown(allowances, date);
 
   // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
-  const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
+  const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions, date);
   const insuranceDeduction = insuranceDetail.total;
-  const personalDeduction = OLD_DEDUCTIONS.personal;
-  const dependentDeduction = dependents * OLD_DEDUCTIONS.dependent;
+  const personalDeduction = deductions.personal;
+  const dependentDeduction = dependents * deductions.dependent;
 
   const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
   // Thu nhập tính thuế = lương thực + phụ cấp chịu thuế - các khoản giảm trừ
   const taxableIncome = Math.max(0, grossIncome + allowancesBreakdown.taxable - totalDeductions);
 
-  const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, OLD_TAX_BRACKETS);
+  const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, brackets);
   // Thu nhập thực nhận = lương + tổng phụ cấp - bảo hiểm - thuế
   const totalIncome = grossIncome + allowancesBreakdown.total;
   const netIncome = totalIncome - insuranceDeduction - tax;
@@ -590,63 +639,12 @@ export function calculateOldTax(input: TaxInput): TaxResult {
   };
 }
 
-export function calculateNewTax(input: TaxInput): TaxResult {
-  const {
-    grossIncome,
-    declaredSalary,
-    dependents,
-    otherDeductions = 0,
-    hasInsurance = true,
-    insuranceOptions,
-    region = 1,
-    allowances,
-  } = input;
+export function calculateOldTax(input: TaxInputWithDate): TaxResult {
+  return calculateSalaryTax(input, OLD_TAX_BRACKETS, OLD_DEDUCTIONS);
+}
 
-  // Lương đóng bảo hiểm (mặc định = lương thực nếu không khai báo riêng)
-  const insuranceBaseSalary = declaredSalary ?? grossIncome;
-
-  // Xác định các loại bảo hiểm được bật
-  const insOptions: InsuranceOptions = insuranceOptions ?? {
-    bhxh: hasInsurance,
-    bhyt: hasInsurance,
-    bhtn: hasInsurance,
-  };
-
-  // Tính phụ cấp miễn thuế và chịu thuế
-  const allowancesBreakdown = calculateAllowancesBreakdown(allowances);
-
-  // Tính bảo hiểm dựa trên lương đóng BH (có thể khác lương thực)
-  const insuranceDetail = calculateInsuranceDetailed(insuranceBaseSalary, region, insOptions);
-  const insuranceDeduction = insuranceDetail.total;
-  const personalDeduction = NEW_DEDUCTIONS.personal;
-  const dependentDeduction = dependents * NEW_DEDUCTIONS.dependent;
-
-  const totalDeductions = insuranceDeduction + personalDeduction + dependentDeduction + otherDeductions;
-  // Thu nhập tính thuế = lương thực + phụ cấp chịu thuế - các khoản giảm trừ
-  const taxableIncome = Math.max(0, grossIncome + allowancesBreakdown.taxable - totalDeductions);
-
-  const { tax, breakdown } = calculateTaxWithBrackets(taxableIncome, NEW_TAX_BRACKETS);
-  // Thu nhập thực nhận = lương + tổng phụ cấp - bảo hiểm - thuế
-  const totalIncome = grossIncome + allowancesBreakdown.total;
-  const netIncome = totalIncome - insuranceDeduction - tax;
-  const effectiveRate = totalIncome > 0 ? (tax / totalIncome) * 100 : 0;
-
-  return {
-    grossIncome,
-    insuranceDeduction,
-    insuranceDetail,
-    personalDeduction,
-    dependentDeduction,
-    otherDeductions,
-    totalDeductions,
-    taxableIncome,
-    taxAmount: tax,
-    netIncome,
-    effectiveRate,
-    taxBreakdown: breakdown,
-    allowancesBreakdown,
-    totalIncome,
-  };
+export function calculateNewTax(input: TaxInputWithDate): TaxResult {
+  return calculateSalaryTax(input, NEW_TAX_BRACKETS, NEW_DEDUCTIONS);
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
@@ -826,7 +824,7 @@ export function calculateOtherIncomeTax(
       income: otherIncome.freelance,
       tax: freelanceTax,
       rate: OTHER_INCOME_TAX_RATES.freelance * 100,
-      note: '10% trên doanh thu (không ĐKKD)',
+      note: `10% tạm khấu trừ (từ ${formatNumber(getCasualWithholdingThreshold(calculationDate))}/lần), quyết toán lũy tiến cùng tiền lương`,
     },
     rental: {
       income: otherIncome.rental,
@@ -846,13 +844,13 @@ export function calculateOtherIncomeTax(
       income: otherIncome.investment,
       tax: investmentTax,
       rate: OTHER_INCOME_TAX_RATES.investment * 100,
-      note: '5% cổ tức/lãi đầu tư vốn (không gồm lãi tiền gửi ngân hàng)',
+      note: '5% cổ tức, lãi cho vay, lãi trái phiếu doanh nghiệp (lãi tiền gửi được miễn)',
     },
     transfer: {
       income: otherIncome.transfer,
       tax: transferTax,
       rate: OTHER_INCOME_TAX_RATES.transfer * 100,
-      note: '0.1% giá chuyển nhượng',
+      note: '0,1% giá bán chứng khoán',
     },
     lottery: {
       income: otherIncome.lottery,
@@ -908,8 +906,9 @@ export function calculateEmployerInsurance(
   const bhtnBase = Math.min(grossIncome, maxBhtn);
   const bhtn = options.bhtn ? bhtnBase * EMPLOYER_INSURANCE_RATES.unemploymentInsurance : 0;
 
-  // Công đoàn 2% (tùy chọn) - không giới hạn
-  const unionFee = includeUnionFee ? grossIncome * EMPLOYER_INSURANCE_RATES.unionFee : 0;
+  // Kinh phí công đoàn 2% quỹ lương làm căn cứ đóng BHXH (Luật Công đoàn 2024 Điều 29),
+  // nên cùng trần 20 lần lương cơ sở như BHXH
+  const unionFee = includeUnionFee ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.unionFee : 0;
 
   return {
     bhxh,

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, getMaxSocialInsuranceSalary, getMaxUnemploymentInsuranceSalary, RegionType, getRegionalMinimumWages, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
+import { formatCurrency, INSURANCE_RATES, EMPLOYER_INSURANCE_RATES, getMaxSocialInsuranceSalary, getMaxUnemploymentInsuranceSalary, getInsuranceDetailed, calculateEmployerInsurance, RegionType, getRegionalMinimumWages, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS } from '@/lib/taxCalculator';
 
 interface InsuranceBreakdownProps {
   grossIncome: number;
@@ -8,6 +8,9 @@ interface InsuranceBreakdownProps {
   insuranceOptions?: InsuranceOptions;
   declaredSalary?: number;
 }
+
+// Tỷ lệ kiểu Việt Nam: 0,015 → "1,5%"
+const pct = (rate: number) => `${(rate * 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 
 export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceOptions = DEFAULT_INSURANCE_OPTIONS, declaredSalary }: InsuranceBreakdownProps) {
   // Sử dụng lương khai báo nếu có, ngược lại dùng lương thực tế
@@ -27,21 +30,22 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
   const maxBhtn = maxUnemploymentInsuranceSalary[region];
   const bhtnBase = Math.min(insuranceBaseSalary, maxBhtn);
 
-  // Calculate based on enabled options
-  const bhxh = insuranceOptions.bhxh ? bhxhBhytBase * INSURANCE_RATES.socialInsurance : 0;
-  const bhyt = insuranceOptions.bhyt ? bhxhBhytBase * INSURANCE_RATES.healthInsurance : 0;
-  const bhtn = insuranceOptions.bhtn ? bhtnBase * INSURANCE_RATES.unemploymentInsurance : 0;
-  const total = bhxh + bhyt + bhtn;
+  // Người lao động đóng / công ty đóng (engine trung tâm, không gồm kinh phí công đoàn)
+  const { bhxh, bhyt, bhtn, total } = getInsuranceDetailed(insuranceBaseSalary, region, insuranceOptions, currentDate);
+  const {
+    bhxh: companyBhxh,
+    bhyt: companyBhyt,
+    bhtn: companyBhtn,
+    total: companyTotal,
+  } = calculateEmployerInsurance(insuranceBaseSalary, region, insuranceOptions, false, currentDate);
 
-  // Phần công ty đóng (based on enabled options)
-  const companyBhxh = insuranceOptions.bhxh ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.socialInsurance : 0;
-  const companyBhyt = insuranceOptions.bhyt ? bhxhBhytBase * EMPLOYER_INSURANCE_RATES.healthInsurance : 0;
-  const companyBhtn = insuranceOptions.bhtn ? bhtnBase * EMPLOYER_INSURANCE_RATES.unemploymentInsurance : 0;
-  const companyTotal = companyBhxh + companyBhyt + companyBhtn;
-
-  // Calculate actual rates
-  const employeeRate = (insuranceOptions.bhxh ? 8 : 0) + (insuranceOptions.bhyt ? 1.5 : 0) + (insuranceOptions.bhtn ? 1 : 0);
-  const companyRate = (insuranceOptions.bhxh ? 17.5 : 0) + (insuranceOptions.bhyt ? 3 : 0) + (insuranceOptions.bhtn ? 1 : 0);
+  // Tỷ lệ theo các loại bảo hiểm đang bật
+  const employeeRate = (insuranceOptions.bhxh ? INSURANCE_RATES.socialInsurance : 0)
+    + (insuranceOptions.bhyt ? INSURANCE_RATES.healthInsurance : 0)
+    + (insuranceOptions.bhtn ? INSURANCE_RATES.unemploymentInsurance : 0);
+  const companyRate = (insuranceOptions.bhxh ? EMPLOYER_INSURANCE_RATES.socialInsurance : 0)
+    + (insuranceOptions.bhyt ? EMPLOYER_INSURANCE_RATES.healthInsurance : 0)
+    + (insuranceOptions.bhtn ? EMPLOYER_INSURANCE_RATES.unemploymentInsurance : 0);
   const totalRate = employeeRate + companyRate;
 
   return (
@@ -77,7 +81,7 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           <span className="text-gray-600">Mức lương đóng BHXH, BHYT:</span>
           <span className="font-semibold">{formatCurrency(bhxhBhytBase)}</span>
         </div>
-        {grossIncome > maxSocialInsuranceSalary && (
+        {insuranceBaseSalary > maxSocialInsuranceSalary && (
           <p className="text-sm text-orange-600">
             * Tối đa 20 lần lương cơ sở ({formatCurrency(maxSocialInsuranceSalary)})
           </p>
@@ -86,14 +90,14 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           <span className="text-gray-600">Mức lương đóng BHTN ({regionalMinimumWages[region].name}):</span>
           <span className="font-semibold">{formatCurrency(bhtnBase)}</span>
         </div>
-        {grossIncome > maxBhtn && (
+        {insuranceBaseSalary > maxBhtn && (
           <p className="text-sm text-orange-600">
             * Tối đa 20 lần lương tối thiểu vùng ({formatCurrency(maxBhtn)})
           </p>
         )}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Người lao động đóng */}
         <div>
           <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -102,19 +106,19 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           </h4>
           <div className="space-y-3">
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhxh ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHXH (8%)</span>
+              <span className="text-gray-600">BHXH ({pct(INSURANCE_RATES.socialInsurance)})</span>
               <span className="font-medium">{formatCurrency(bhxh)}</span>
             </div>
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhyt ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHYT (1.5%)</span>
+              <span className="text-gray-600">BHYT ({pct(INSURANCE_RATES.healthInsurance)})</span>
               <span className="font-medium">{formatCurrency(bhyt)}</span>
             </div>
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhtn ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHTN (1%)</span>
+              <span className="text-gray-600">BHTN ({pct(INSURANCE_RATES.unemploymentInsurance)})</span>
               <span className="font-medium">{formatCurrency(bhtn)}</span>
             </div>
             <div className="border-t pt-3 flex justify-between">
-              <span className="font-semibold">Tổng ({employeeRate}%)</span>
+              <span className="font-semibold">Tổng ({pct(employeeRate)})</span>
               <span className="font-bold text-primary-600">{formatCurrency(total)}</span>
             </div>
           </div>
@@ -128,19 +132,19 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
           </h4>
           <div className="space-y-3">
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhxh ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHXH (17.5%)</span>
+              <span className="text-gray-600">BHXH ({pct(EMPLOYER_INSURANCE_RATES.socialInsurance)})</span>
               <span className="font-medium">{formatCurrency(companyBhxh)}</span>
             </div>
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhyt ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHYT (3%)</span>
+              <span className="text-gray-600">BHYT ({pct(EMPLOYER_INSURANCE_RATES.healthInsurance)})</span>
               <span className="font-medium">{formatCurrency(companyBhyt)}</span>
             </div>
             <div className={`flex justify-between text-sm ${!insuranceOptions.bhtn ? 'opacity-40 line-through' : ''}`}>
-              <span className="text-gray-600">BHTN (1%)</span>
+              <span className="text-gray-600">BHTN ({pct(EMPLOYER_INSURANCE_RATES.unemploymentInsurance)})</span>
               <span className="font-medium">{formatCurrency(companyBhtn)}</span>
             </div>
             <div className="border-t pt-3 flex justify-between">
-              <span className="font-semibold">Tổng ({companyRate}%)</span>
+              <span className="font-semibold">Tổng ({pct(companyRate)})</span>
               <span className="font-bold text-green-600">{formatCurrency(companyTotal)}</span>
             </div>
           </div>
@@ -150,11 +154,12 @@ export default function InsuranceBreakdown({ grossIncome, region = 1, insuranceO
       {/* Tổng chi phí */}
       <div className="mt-6 bg-gray-100 rounded-lg p-4">
         <div className="flex justify-between items-center">
-          <span className="font-semibold text-gray-700">Tổng chi phí bảo hiểm ({totalRate}%)</span>
+          <span className="font-semibold text-gray-700">Tổng bảo hiểm đóng ({pct(totalRate)})</span>
           <span className="text-xl font-bold text-gray-800">{formatCurrency(total + companyTotal)}</span>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          = Chi phí thực của công ty cho mỗi nhân viên (ngoài lương Gross)
+          = Người lao động đóng {formatCurrency(total)} (trừ vào lương Gross) + công ty đóng thêm {formatCurrency(companyTotal)} ngoài lương Gross.
+          Chi phí thêm của công ty chưa gồm kinh phí công đoàn 2% (xem tab Chi phí nhà tuyển dụng).
         </p>
       </div>
     </div>

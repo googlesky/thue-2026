@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { convertGrossNet, GrossNetResult } from "@/lib/grossNetCalculator";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   formatCurrency,
   formatNumber,
@@ -9,8 +8,10 @@ import {
   getRegionalMinimumWages,
   SharedTaxState,
   DEFAULT_INSURANCE_OPTIONS,
-  AllowancesState,
-  DEFAULT_ALLOWANCES,
+  TaxInput,
+  TaxResult,
+  calculateNewTax,
+  DEPENDENT_INCOME_LIMIT,
 } from "@/lib/taxCalculator";
 import {
   CurrencyInputIssues,
@@ -20,8 +21,46 @@ import {
 import Tooltip from "@/components/ui/Tooltip";
 
 interface GrossNetConverterProps {
-  sharedState?: SharedTaxState;
-  onStateChange?: (updates: Partial<SharedTaxState>) => void;
+  sharedState: SharedTaxState;
+  onStateChange: (updates: Partial<SharedTaxState>) => void;
+}
+
+const MAX_DEPENDENTS = 20; // = giới hạn khi nạp snapshot (sanitizeSharedState)
+
+// Cùng đầu vào engine với tab Tính thuế: BH từng loại, giảm trừ khác, hưu trí (engine tự chặn trần), phụ cấp
+export function toEngineInput(state: SharedTaxState): TaxInput {
+  return {
+    grossIncome: state.grossIncome,
+    declaredSalary: state.declaredSalary,
+    dependents: state.dependents,
+    otherDeductions: state.otherDeductions,
+    pensionContribution: state.pensionContribution,
+    hasInsurance: state.hasInsurance,
+    insuranceOptions: state.insuranceOptions,
+    region: state.region,
+    allowances: state.allowances,
+  };
+}
+
+// NET → GROSS: tìm nhị phân trên engine (NET tăng theo GROSS), GROSS làm tròn đồng.
+// Không có GROSS cho đúng NET (NET nhỏ hơn phụ cấp miễn thuế, vượt giới hạn) → trả kết quả gần nhất.
+export function netToGrossResult(targetNet: number, base: TaxInput): TaxResult {
+  const calc = (gross: number) => calculateNewTax({ ...base, grossIncome: gross });
+  const current = calc(base.grossIncome);
+  // GROSS hiện tại đã cho đúng NET (VD vừa đổi chế độ GROSS → NET): giữ nguyên, không trôi 1đ
+  if (Math.round(current.netIncome) === targetNet) return current;
+
+  let low = 0;
+  let high = Math.max(targetNet, 1);
+  while (high < MAX_MONTHLY_INCOME && calc(high).netIncome < targetNet) high *= 2;
+  high = Math.min(high, MAX_MONTHLY_INCOME);
+  for (let i = 0; i < 100 && high - low > 0.5; i++) {
+    const mid = (low + high) / 2;
+    if (calc(mid).netIncome < targetNet) low = mid;
+    else high = mid;
+  }
+  const [a, b] = [Math.floor(high), Math.ceil(high)].map(calc);
+  return Math.abs(a.netIncome - targetNet) <= Math.abs(b.netIncome - targetNet) ? a : b;
 }
 
 // Info icon component for tooltips
@@ -45,6 +84,25 @@ function InfoIcon() {
   );
 }
 
+const buildWarning = (
+  issues: CurrencyInputIssues,
+  max?: number,
+): string | null => {
+  const messages: string[] = [];
+  if (issues.negative) {
+    messages.push("Không hỗ trợ số âm.");
+  }
+  if (issues.decimal) {
+    messages.push("Không hỗ trợ số thập phân, đã bỏ phần lẻ.");
+  }
+  if (issues.overflow && max) {
+    messages.push(
+      `Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`,
+    );
+  }
+  return messages.length ? messages.join(" ") : null;
+};
+
 export default function GrossNetConverter({
   sharedState,
   onStateChange,
@@ -55,292 +113,146 @@ export default function GrossNetConverter({
     [],
   );
 
-  // Store both GROSS and NET values to avoid recalculation drift
-  const [grossValue, setGrossValue] = useState<number>(
-    sharedState?.grossIncome ?? 30000000,
-  );
-  const [netValue, setNetValue] = useState<number>(0);
+  // GROSS luôn nằm ở sharedState; chế độ NET giữ số NET người dùng gõ (chuỗi, cho phép rỗng)
   const [type, setType] = useState<"gross" | "net">("gross");
-  const [dependents, setDependents] = useState<number>(
-    sharedState?.dependents ?? 0,
-  );
-  const [hasInsurance, setHasInsurance] = useState<boolean>(
-    sharedState?.hasInsurance ?? true,
-  );
-  const [region, setRegion] = useState<RegionType>(sharedState?.region ?? 1);
-
-  // Lương đóng BH khác lương thực
-  const [useDeclaredSalary, setUseDeclaredSalary] = useState<boolean>(
-    sharedState?.declaredSalary !== undefined,
-  );
-  const [declaredSalary, setDeclaredSalary] = useState<number>(
-    sharedState?.declaredSalary ?? sharedState?.grossIncome ?? 30000000,
-  );
-
-  // Phụ cấp (synced from sharedState)
-  const [allowances, setAllowances] = useState<AllowancesState>(
-    sharedState?.allowances ?? DEFAULT_ALLOWANCES,
-  );
+  const [grossEmpty, setGrossEmpty] = useState(false);
+  const [netText, setNetText] = useState("");
+  const [declaredEmpty, setDeclaredEmpty] = useState(false);
   const [amountWarning, setAmountWarning] = useState<string | null>(null);
   const [declaredWarning, setDeclaredWarning] = useState<string | null>(null);
 
-  const [result, setResult] = useState<GrossNetResult | null>(null);
+  const { dependents, hasInsurance, region, declaredSalary } = sharedState;
+  const useDeclaredSalary = declaredSalary !== undefined;
+  const insuranceOptions = sharedState.insuranceOptions ?? DEFAULT_INSURANCE_OPTIONS;
+  const netTarget = netText === "" ? 0 : Number(netText);
 
-  // Track if we're the source of the change to prevent sync loops
-  const isLocalChange = useRef(false);
-  const isInitialized = useRef(false);
-  const isCalculatingFromNet = useRef(false);
+  // Nhập 0/xóa trống → không có kết quả (không hiện số cũ)
+  const result = useMemo<TaxResult | null>(() => {
+    const input = toEngineInput(sharedState);
+    if (type === "gross") {
+      return sharedState.grossIncome > 0 ? calculateNewTax(input) : null;
+    }
+    return netTarget > 0 ? netToGrossResult(netTarget, input) : null;
+  }, [type, netTarget, sharedState]);
 
-  // Get effective declared salary for calculations
-  const getEffectiveDeclaredSalary = useCallback(() => {
-    return useDeclaredSalary ? declaredSalary : undefined;
-  }, [useDeclaredSalary, declaredSalary]);
+  const netMismatch =
+    type === "net" && result !== null && Math.abs(result.netIncome - netTarget) > 1;
 
-  // Calculate results from GROSS (always calculate from gross to ensure consistency)
-  const calculateFromGross = useCallback(
-    (gross: number) => {
-      if (gross <= 0) return;
-
-      const effectiveDeclared = getEffectiveDeclaredSalary();
-
-      const res = convertGrossNet({
-        amount: gross,
-        type: "gross",
-        dependents,
-        hasInsurance,
-        useNewLaw: true,
-        region,
-        declaredSalary: effectiveDeclared,
-        allowances,
-      });
-
-      setResult(res);
-      setNetValue(res.net);
-
-      return res;
-    },
-    [dependents, hasInsurance, region, getEffectiveDeclaredSalary, allowances],
-  );
-
-  // Calculate GROSS from NET (only when user inputs NET)
-  const calculateFromNet = useCallback(
-    (net: number) => {
-      if (net <= 0) return;
-
-      // Mark that we're calculating from NET to prevent the recalc effect from overwriting
-      isCalculatingFromNet.current = true;
-
-      const effectiveDeclared = getEffectiveDeclaredSalary();
-
-      const res = convertGrossNet({
-        amount: net,
-        type: "net",
-        dependents,
-        hasInsurance,
-        useNewLaw: true,
-        region,
-        declaredSalary: effectiveDeclared,
-        allowances,
-      });
-
-      setResult(res);
-      setGrossValue(res.gross);
-
-      // Sync gross to shared state
-      if (onStateChange) {
-        isLocalChange.current = true;
-        onStateChange({ grossIncome: res.gross });
-      }
-
-      return res;
-    },
-    [
-      dependents,
-      hasInsurance,
-      region,
-      onStateChange,
-      getEffectiveDeclaredSalary,
-      allowances,
-    ],
-  );
-
-  // Initial calculation
+  // Chế độ NET: đẩy GROSS tìm được sang các tab khác.
+  // GROSS bị tab khác/snapshot đổi (khác số mình đã đẩy) → quay về chế độ GROSS.
+  const syncedGross = useRef(sharedState.grossIncome);
   useEffect(() => {
-    if (!isInitialized.current) {
-      calculateFromGross(grossValue);
-      isInitialized.current = true;
+    if (type !== "net") {
+      syncedGross.current = sharedState.grossIncome;
+      return;
     }
-  }, [grossValue, calculateFromGross]);
-
-  // Recalculate when parameters change (dependents, insurance, region, allowances, etc.)
-  // Must recalculate from the value the user is currently working with
-  useEffect(() => {
-    if (isInitialized.current) {
-      // Skip if this was triggered by a NET calculation (grossValue changed from NET input)
-      if (isCalculatingFromNet.current) {
-        isCalculatingFromNet.current = false;
-        return;
-      }
-      // Recalculate based on which mode the user is in
-      if (type === "net" && netValue > 0) {
-        // User is in NET mode - recalculate from NET to find new GROSS
-        calculateFromNet(netValue);
-      } else {
-        // User is in GROSS mode - recalculate from GROSS to find new NET
-        calculateFromGross(grossValue);
-      }
+    if (sharedState.grossIncome !== syncedGross.current) {
+      syncedGross.current = sharedState.grossIncome;
+      setType("gross");
+      return;
     }
-  }, [
-    dependents,
-    hasInsurance,
-    region,
-    useDeclaredSalary,
-    declaredSalary,
-    allowances,
-    type,
-    netValue,
-    calculateFromGross,
-    calculateFromNet,
-    grossValue,
-  ]);
-
-  // Sync with sharedState when it changes from other tabs
-  // NOTE: Don't call calculateFromGross here - let the main recalc effect handle it
-  // after re-render when all values are updated. Otherwise, callbacks use stale closure values.
-  useEffect(() => {
-    if (sharedState && !isLocalChange.current) {
-      // Update all values from sharedState
-      if (sharedState.grossIncome !== grossValue) {
-        setGrossValue(sharedState.grossIncome);
-      }
-      setDependents(sharedState.dependents);
-      setHasInsurance(sharedState.hasInsurance);
-      setRegion(sharedState.region);
-
-      // Sync declared salary
-      const hasDeclared = sharedState.declaredSalary !== undefined;
-      setUseDeclaredSalary(hasDeclared);
-      if (sharedState.declaredSalary !== undefined) {
-        setDeclaredSalary(sharedState.declaredSalary);
-      }
-
-      // Sync allowances
-      setAllowances(sharedState.allowances ?? DEFAULT_ALLOWANCES);
-
-      // When syncing from external source, switch to GROSS mode
-      // This ensures the synced GROSS value is the source of truth
-      if (sharedState.grossIncome !== grossValue) {
-        setType("gross");
-      }
+    if (result && result.grossIncome !== sharedState.grossIncome) {
+      syncedGross.current = result.grossIncome;
+      onStateChange({ grossIncome: result.grossIncome });
     }
-    isLocalChange.current = false;
-  }, [sharedState, grossValue]);
-
-  // Handle amount change based on current type
-  const buildWarning = (
-    issues: CurrencyInputIssues,
-    max?: number,
-  ): string | null => {
-    const messages: string[] = [];
-    if (issues.negative) {
-      messages.push("Không hỗ trợ số âm.");
-    }
-    if (issues.decimal) {
-      messages.push("Không hỗ trợ số thập phân, đã bỏ phần lẻ.");
-    }
-    if (issues.overflow && max) {
-      messages.push(
-        `Giá trị quá lớn, giới hạn tối đa ${formatNumber(max)} VNĐ.`,
-      );
-    }
-    return messages.length ? messages.join(" ") : null;
-  };
+  }, [type, result, sharedState.grossIncome, onStateChange]);
 
   const handleAmountChange = (value: string) => {
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    const numericValue = parsed.value;
     setAmountWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
+    const empty = !/\d/.test(value);
 
     if (type === "gross") {
-      setGrossValue(numericValue);
-      calculateFromGross(numericValue);
-      // Sync to shared state
-      if (onStateChange) {
-        isLocalChange.current = true;
-        onStateChange({ grossIncome: numericValue });
-      }
+      setGrossEmpty(empty);
+      onStateChange({ grossIncome: parsed.value });
     } else {
-      setNetValue(numericValue);
-      calculateFromNet(numericValue);
+      setNetText(empty ? "" : String(parsed.value));
     }
   };
 
-  // Handle switching between GROSS and NET modes
-  // Just swap display, NO recalculation
+  const handleAmountBlur = () => {
+    setGrossEmpty(false);
+    if (type === "net" && netText === "") setNetText("0");
+  };
+
+  // Đổi chế độ: ô NET nhận NET hiện tại, không tính lại GROSS
   const handleTypeChange = (newType: "gross" | "net") => {
     if (newType === type) return;
+    if (newType === "net") {
+      setNetText(result ? String(Math.round(result.netIncome)) : "");
+    }
+    setGrossEmpty(false);
+    setAmountWarning(null);
     setType(newType);
-    // Don't recalculate - just change which value is shown in input
   };
 
   const handleDependentsChange = (newDependents: number) => {
-    setDependents(newDependents);
-    isLocalChange.current = true;
-    if (onStateChange) {
-      onStateChange({ dependents: newDependents });
-    }
+    onStateChange({
+      dependents: Math.min(Math.max(0, newDependents), MAX_DEPENDENTS),
+    });
   };
 
   const handleInsuranceChange = (newHasInsurance: boolean) => {
-    setHasInsurance(newHasInsurance);
-    isLocalChange.current = true;
-    if (onStateChange) {
-      onStateChange({
-        hasInsurance: newHasInsurance,
-        insuranceOptions: newHasInsurance
-          ? DEFAULT_INSURANCE_OPTIONS
-          : { bhxh: false, bhyt: false, bhtn: false },
-      });
-    }
+    onStateChange({
+      hasInsurance: newHasInsurance,
+      insuranceOptions: newHasInsurance
+        ? DEFAULT_INSURANCE_OPTIONS
+        : { bhxh: false, bhyt: false, bhtn: false },
+    });
   };
 
   const handleRegionChange = (newRegion: RegionType) => {
-    setRegion(newRegion);
-    isLocalChange.current = true;
-    if (onStateChange) {
-      onStateChange({ region: newRegion });
-    }
+    onStateChange({ region: newRegion });
   };
 
   const handleUseDeclaredSalaryChange = (use: boolean) => {
-    setUseDeclaredSalary(use);
-    isLocalChange.current = true;
-    if (onStateChange) {
-      onStateChange({
-        declaredSalary: use ? declaredSalary : undefined,
-      });
-    }
+    setDeclaredEmpty(false);
+    setDeclaredWarning(null);
+    onStateChange({
+      declaredSalary: use ? sharedState.grossIncome : undefined,
+    });
   };
 
   const handleDeclaredSalaryChange = (value: string) => {
     const parsed = parseCurrencyInput(value, { max: MAX_MONTHLY_INCOME });
-    const numericValue = parsed.value;
-    setDeclaredSalary(numericValue);
+    setDeclaredEmpty(!/\d/.test(value));
     setDeclaredWarning(buildWarning(parsed.issues, MAX_MONTHLY_INCOME));
-    isLocalChange.current = true;
-    if (onStateChange) {
-      onStateChange({ declaredSalary: numericValue });
-    }
+    onStateChange({ declaredSalary: parsed.value });
   };
 
-  // Current display value based on type
-  const displayValue = type === "gross" ? grossValue : netValue;
+  // Current display value based on type (rỗng khi người dùng xóa hết)
+  const displayValue =
+    type === "gross"
+      ? grossEmpty
+        ? ""
+        : formatNumber(sharedState.grossIncome)
+      : netText === ""
+        ? ""
+        : formatNumber(netTarget);
+
+  const partialInsurance =
+    hasInsurance &&
+    !(insuranceOptions.bhxh && insuranceOptions.bhyt && insuranceOptions.bhtn);
+  const allowancesTotal = result?.allowancesBreakdown?.total ?? 0;
 
   return (
     <div className="card">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl">💰</span>
+        <div className="w-12 h-12 rounded-xl bg-primary-600 flex items-center justify-center flex-shrink-0">
+          <svg
+            className="w-6 h-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+            />
+          </svg>
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900">
@@ -353,26 +265,24 @@ export default function GrossNetConverter({
       </div>
 
       {/* Sync indicator */}
-      {sharedState && (
-        <div className="mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-          Dữ liệu được đồng bộ với các tab khác
-        </div>
-      )}
+      <div className="mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+        <svg
+          className="w-4 h-4 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
+        </svg>
+        Dữ liệu được đồng bộ với các tab khác (gồm phụ cấp, giảm trừ khác, hưu trí tự nguyện)
+      </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Input */}
         <div className="space-y-4">
           {/* Loại lương */}
@@ -439,8 +349,10 @@ export default function GrossNetConverter({
             <input
               id="salary-amount"
               type="text"
-              value={formatNumber(displayValue)}
+              inputMode="numeric"
+              value={displayValue}
               onChange={(e) => handleAmountChange(e.target.value)}
+              onBlur={handleAmountBlur}
               className="input-field text-lg font-semibold"
               aria-required="true"
             />
@@ -485,8 +397,10 @@ export default function GrossNetConverter({
                   <input
                     id="gn-declared-salary"
                     type="text"
-                    value={formatNumber(declaredSalary)}
+                    inputMode="numeric"
+                    value={declaredEmpty ? "" : formatNumber(declaredSalary)}
                     onChange={(e) => handleDeclaredSalaryChange(e.target.value)}
+                    onBlur={() => setDeclaredEmpty(false)}
                     className="input-field text-sm"
                     placeholder="Ví dụ: 5.000.000"
                     aria-describedby="gn-declared-salary-hint"
@@ -514,7 +428,7 @@ export default function GrossNetConverter({
               className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2"
             >
               Số người phụ thuộc
-              <Tooltip content="Con cái, cha mẹ được giảm trừ theo quy định">
+              <Tooltip content={`Con, vợ/chồng, cha mẹ... có thu nhập bình quân không quá ${formatNumber(DEPENDENT_INCOME_LIMIT)}đ/tháng`}>
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -526,9 +440,7 @@ export default function GrossNetConverter({
               aria-labelledby="gn-dependents-label"
             >
               <button
-                onClick={() =>
-                  handleDependentsChange(Math.max(0, dependents - 1))
-                }
+                onClick={() => handleDependentsChange(dependents - 1)}
                 aria-label="Giảm số người phụ thuộc"
                 disabled={dependents === 0}
                 className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold"
@@ -544,7 +456,8 @@ export default function GrossNetConverter({
               <button
                 onClick={() => handleDependentsChange(dependents + 1)}
                 aria-label="Tăng số người phụ thuộc"
-                className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-primary-100 hover:bg-primary-200 flex items-center justify-center text-lg font-bold text-primary-700"
+                disabled={dependents >= MAX_DEPENDENTS}
+                className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-primary-100 hover:bg-primary-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-primary-700"
               >
                 +
               </button>
@@ -552,26 +465,40 @@ export default function GrossNetConverter({
           </div>
 
           {/* Bảo hiểm */}
-          <label
-            htmlFor="gn-has-insurance"
-            className="flex items-center gap-3 cursor-pointer min-h-[44px]"
-          >
-            <input
-              id="gn-has-insurance"
-              type="checkbox"
-              checked={hasInsurance}
-              onChange={(e) => handleInsuranceChange(e.target.checked)}
-              className="w-5 h-5 text-primary-600 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              Có đóng BHXH, BHYT, BHTN
-              <Tooltip content="Các loại bảo hiểm bắt buộc: BHXH 8%, BHYT 1.5%, BHTN 1%">
-                <span className="text-gray-500 hover:text-gray-700 cursor-help">
-                  <InfoIcon />
-                </span>
-              </Tooltip>
-            </span>
-          </label>
+          <div>
+            <label
+              htmlFor="gn-has-insurance"
+              className="flex items-center gap-3 cursor-pointer min-h-[44px]"
+            >
+              <input
+                id="gn-has-insurance"
+                type="checkbox"
+                checked={hasInsurance}
+                onChange={(e) => handleInsuranceChange(e.target.checked)}
+                className="w-5 h-5 text-primary-600 rounded"
+              />
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                Có đóng BHXH, BHYT, BHTN
+                <Tooltip content="Các loại bảo hiểm bắt buộc: BHXH 8%, BHYT 1,5%, BHTN 1%">
+                  <span className="text-gray-500 hover:text-gray-700 cursor-help">
+                    <InfoIcon />
+                  </span>
+                </Tooltip>
+              </span>
+            </label>
+            {partialInsurance && (
+              <p className="text-xs text-gray-500 ml-8">
+                Theo tab Tính thuế: không đóng{" "}
+                {[
+                  !insuranceOptions.bhxh && "BHXH",
+                  !insuranceOptions.bhyt && "BHYT",
+                  !insuranceOptions.bhtn && "BHTN",
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+              </p>
+            )}
+          </div>
 
           {/* Vùng lương */}
           {hasInsurance && (
@@ -616,8 +543,14 @@ export default function GrossNetConverter({
 
         {/* Result */}
         <div className="space-y-4">
-          {result && (
+          {result ? (
             <>
+              {netMismatch && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  Không có mức GROSS cho ra đúng NET {formatCurrency(netTarget)}
+                  {" "}(phụ cấp miễn thuế hoặc giới hạn nhập). Dưới đây là kết quả gần nhất.
+                </p>
+              )}
               {/* Kết quả */}
               <div className="bg-primary-50 rounded-lg p-4">
                 <div className="text-xs text-primary-600 font-medium mb-2">
@@ -627,25 +560,33 @@ export default function GrossNetConverter({
                   <div className="flex justify-between">
                     <span className="text-gray-600">GROSS:</span>
                     <span className="font-medium">
-                      {formatCurrency(result.gross)}
+                      {formatCurrency(result.grossIncome)}
                     </span>
                   </div>
+                  {allowancesTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phụ cấp:</span>
+                      <span className="text-gray-500">
+                        +{formatCurrency(allowancesTotal)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Bảo hiểm:</span>
                     <span className="text-gray-500">
-                      -{formatCurrency(result.insurance)}
+                      -{formatCurrency(result.insuranceDeduction)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Thuế TNCN:</span>
                     <span className="text-primary-600 font-medium">
-                      -{formatCurrency(result.tax)}
+                      -{formatCurrency(result.taxAmount)}
                     </span>
                   </div>
                   <div className="border-t pt-2 flex justify-between">
                     <span className="font-medium">NET:</span>
                     <span className="font-bold text-gray-800 font-mono tabular-nums">
-                      {formatCurrency(result.net)}
+                      {formatCurrency(result.netIncome)}
                     </span>
                   </div>
                 </div>
@@ -662,20 +603,26 @@ export default function GrossNetConverter({
                     {formatCurrency(declaredSalary)}
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between gap-2">
                     <span className="text-gray-600">Giảm trừ bản thân:</span>
-                    <span>{formatCurrency(result.deductions.personal)}</span>
+                    <span>{formatCurrency(result.personalDeduction)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <span className="text-gray-600">Giảm trừ NPT:</span>
-                    <span>{formatCurrency(result.deductions.dependent)}</span>
+                    <span>{formatCurrency(result.dependentDeduction)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-2">
                     <span className="text-gray-600">BHXH, BHYT, BHTN:</span>
-                    <span>{formatCurrency(result.deductions.insurance)}</span>
+                    <span>{formatCurrency(result.insuranceDeduction)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  {result.otherDeductions > 0 && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-600">Giảm trừ khác, hưu trí:</span>
+                      <span>{formatCurrency(result.otherDeductions)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-2">
                     <span className="text-gray-600">Thu nhập tính thuế:</span>
                     <span className="font-medium">
                       {formatCurrency(result.taxableIncome)}
@@ -684,6 +631,10 @@ export default function GrossNetConverter({
                 </div>
               </div>
             </>
+          ) : (
+            <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+              Nhập số tiền lớn hơn 0 để xem kết quả quy đổi.
+            </p>
           )}
         </div>
       </div>

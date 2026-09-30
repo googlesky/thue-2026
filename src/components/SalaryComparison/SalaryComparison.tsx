@@ -105,15 +105,9 @@ export default function SalaryComparison({
   useEffect(() => {
     if (sharedState && !isLocalChange.current) {
       setDependents(sharedState.dependents);
-      // Nếu có grossIncome, điền vào công ty đầu tiên nếu trống
-      if (sharedState.grossIncome > 0 && companies.length > 0 && companies[0]?.grossSalary === 0) {
-        setCompanies(prev => prev.map((c, i) =>
-          i === 0 ? { ...c, grossSalary: sharedState.grossIncome, region: sharedState.region } : c
-        ));
-      }
     }
     isLocalChange.current = false;
-  }, [sharedState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sharedState]);
 
   // Sync from tab state
   useEffect(() => {
@@ -212,7 +206,7 @@ export default function SalaryComparison({
             }}
             className="px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
           >
-            {[0, 1, 2, 3, 4, 5].map(n => (
+            {Array.from({ length: Math.max(10, dependents) + 1 }, (_, n) => (
               <option key={n} value={n}>{n} người</option>
             ))}
           </select>
@@ -231,7 +225,7 @@ export default function SalaryComparison({
       </div>
 
       {/* Company Inputs */}
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {companies.map((company, index) => (
           <div
             key={company.id}
@@ -263,7 +257,7 @@ export default function SalaryComparison({
                   type="text"
                   value={company.grossSalary > 0 ? formatNumber(company.grossSalary) : ''}
                   onChange={(e) => handleMoneyChange(company.id, 'grossSalary', e.target.value)}
-                  placeholder="30,000,000"
+                  placeholder="30.000.000"
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
@@ -446,7 +440,7 @@ export default function SalaryComparison({
                 <tr>
                   <td className="py-2 px-3 text-gray-600">Thuế suất thực tế</td>
                   {result.companies.map(c => (
-                    <td key={c.companyId} className="text-right py-2 px-3 text-gray-500">{c.effectiveRate.toFixed(1)}%</td>
+                    <td key={c.companyId} className="text-right py-2 px-3 text-gray-500">{c.effectiveRate.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</td>
                   ))}
                 </tr>
               </tbody>
@@ -503,7 +497,7 @@ export default function SalaryComparison({
           <div className="text-sm text-gray-600">
             <div className="font-medium mb-1">Hướng dẫn</div>
             <ul className="list-disc list-inside space-y-1 text-gray-500">
-              <li>Thưởng tháng 13 được tính thuế như thu nhập trong tháng nhận thưởng</li>
+              <li>Thuế cả năm tính theo quyết toán: thưởng gộp vào thu nhập năm. Tháng nhận thưởng công ty có thể khấu trừ tạm nhiều hơn, phần chênh được hoàn hoặc bù trừ khi quyết toán</li>
               <li>Phụ cấp được giả định là <strong>không chịu thuế</strong> (phụ cấp công tác, xăng xe, ăn trưa...)</li>
               <li>Nếu phụ cấp của bạn <strong>chịu thuế</strong>, hãy cộng vào lương GROSS thay vì nhập riêng</li>
               <li>Vùng lương ảnh hưởng đến mức đóng BHTN tối đa</li>

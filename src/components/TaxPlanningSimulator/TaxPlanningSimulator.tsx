@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo, memo, useCallback } from 'react';
+import { useState, useMemo, memo } from 'react';
 import {
   SimulationBaseInput,
   SimulationResult,
-  BonusTaxResult,
-  YearlyProjectionResult,
   generateSalaryAdjustmentScenarios,
   getSalaryAdjustmentPresets,
   generateDependentChangeScenarios,
@@ -13,11 +11,10 @@ import {
   calculateBonusTaxScenarios,
   generateMultiYearProjection,
   runSimulations,
-  findOptimalBonusStrategy,
   SalaryAdjustmentParams,
   DependentChangeParams,
 } from '@/lib/taxPlanningSimulator';
-import { formatNumber } from '@/lib/taxCalculator';
+import { formatNumber, parseCurrency } from '@/lib/taxCalculator';
 
 // ===== TYPES =====
 
@@ -110,19 +107,6 @@ function ChevronUpIcon({ className }: { className?: string }) {
   );
 }
 
-function CheckCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-  );
-}
-
 // ===== TAB BUTTON COMPONENT =====
 
 interface TabButtonProps {
@@ -157,7 +141,6 @@ interface ResultCardProps {
   taxAmount: number;
   netIncome: number;
   effectiveRate: number;
-  isOptimal?: boolean;
   comparison?: {
     taxChange: number;
     netChange: number;
@@ -171,28 +154,13 @@ const ResultCard = memo(function ResultCard({
   taxAmount,
   netIncome,
   effectiveRate,
-  isOptimal,
   comparison,
 }: ResultCardProps) {
   return (
-    <div
-      className={`p-4 rounded-lg border transition-all ${
-        isOptimal
-          ? 'bg-green-50 border-green-200 ring-1 ring-green-300'
-          : 'bg-white border-gray-200'
-      }`}
-    >
+    <div className="p-4 rounded-lg border transition-all bg-white border-gray-200">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-            {title}
-            {isOptimal && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                <CheckCircleIcon className="w-3 h-3" />
-                Tối ưu
-              </span>
-            )}
-          </h4>
+          <h4 className="font-semibold text-gray-800">{title}</h4>
           {subtitle && (
             <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
           )}
@@ -221,7 +189,7 @@ const ResultCard = memo(function ResultCard({
         <div>
           <div className="text-xs text-gray-500">Thuế suất</div>
           <div className="font-semibold text-gray-800">
-            {effectiveRate.toFixed(1)}%
+            {effectiveRate.toFixed(1).replace('.', ',')}%
           </div>
         </div>
       </div>
@@ -267,19 +235,19 @@ interface SalaryAdjustmentTabProps {
   baselineResult: SimulationResult | null;
 }
 
+const SALARY_ADJUSTMENT_PRESETS = getSalaryAdjustmentPresets();
+
 function SalaryAdjustmentTab({ input, baselineResult }: SalaryAdjustmentTabProps) {
   const [customAdjustment, setCustomAdjustment] = useState<number>(10);
   const [adjustmentType, setAdjustmentType] = useState<'percentage' | 'amount'>('percentage');
 
-  const presets = getSalaryAdjustmentPresets();
-
   const scenarios = useMemo(() => {
     const allAdjustments: SalaryAdjustmentParams[] = [
-      ...presets,
+      ...SALARY_ADJUSTMENT_PRESETS,
       { adjustmentType, value: customAdjustment },
     ];
     return generateSalaryAdjustmentScenarios(input, allAdjustments);
-  }, [input, presets, customAdjustment, adjustmentType]);
+  }, [input, customAdjustment, adjustmentType]);
 
   const results = useMemo(() => runSimulations(input, scenarios), [input, scenarios]);
 
@@ -311,7 +279,10 @@ function SalaryAdjustmentTab({ input, baselineResult }: SalaryAdjustmentTabProps
             <input
               type="number"
               value={customAdjustment}
-              onChange={(e) => setCustomAdjustment(Number(e.target.value))}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setCustomAdjustment(Number.isFinite(value) ? value : 0);
+              }}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
               placeholder={adjustmentType === 'percentage' ? 'VD: 15' : 'VD: 5000000'}
             />
@@ -320,7 +291,7 @@ function SalaryAdjustmentTab({ input, baselineResult }: SalaryAdjustmentTabProps
       </div>
 
       {/* Results grid */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {results.map((result) => (
           <ResultCard
             key={result.scenario.id}
@@ -356,15 +327,13 @@ function DependentChangesTab({ input, baselineResult }: DependentChangesTabProps
   const [customChange, setCustomChange] = useState<number>(1);
   const [changeType, setChangeType] = useState<'add' | 'remove'>('add');
 
-  const presets = getDependentChangePresets(input.dependents);
-
   const scenarios = useMemo(() => {
     const allChanges: DependentChangeParams[] = [
-      ...presets,
+      ...getDependentChangePresets(input.dependents),
       { changeType, count: customChange },
     ];
     return generateDependentChangeScenarios(input, allChanges);
-  }, [input, presets, customChange, changeType]);
+  }, [input, customChange, changeType]);
 
   const results = useMemo(() => runSimulations(input, scenarios), [input, scenarios]);
 
@@ -406,7 +375,7 @@ function DependentChangesTab({ input, baselineResult }: DependentChangesTabProps
               min={1}
               max={10}
               value={customChange}
-              onChange={(e) => setCustomChange(Math.max(1, Number(e.target.value)))}
+              onChange={(e) => setCustomChange(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
@@ -414,7 +383,7 @@ function DependentChangesTab({ input, baselineResult }: DependentChangesTabProps
       </div>
 
       {/* Results grid */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {results.map((result) => (
           <ResultCard
             key={result.scenario.id}
@@ -448,12 +417,10 @@ interface BonusScenariosTabProps {
 function BonusScenariosTab({ input }: BonusScenariosTabProps) {
   const [annualBonus, setAnnualBonus] = useState<number>(input.grossIncome * 2); // Default: 2 tháng lương
 
-  const results = useMemo(
-    () => calculateBonusTaxScenarios(input, { annualBonus }, true),
+  const { annualTax, annualNetIncome, scenarios } = useMemo(
+    () => calculateBonusTaxScenarios(input, { annualBonus }),
     [input, annualBonus]
   );
-
-  const optimalStrategy = findOptimalBonusStrategy(results);
 
   return (
     <div className="space-y-4">
@@ -465,11 +432,13 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
             <input
-              type="number"
-              value={annualBonus}
-              onChange={(e) => setAnnualBonus(Math.max(0, Number(e.target.value)))}
+              type="text"
+              inputMode="numeric"
+              aria-label="Tổng thưởng năm (VND)"
+              value={annualBonus > 0 ? annualBonus.toLocaleString('vi-VN') : ''}
+              onChange={(e) => setAnnualBonus(parseCurrency(e.target.value))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800"
-              placeholder="VD: 50000000"
+              placeholder="VD: 50.000.000"
             />
           </div>
           <div className="flex gap-2">
@@ -494,75 +463,68 @@ function BonusScenariosTab({ input }: BonusScenariosTabProps) {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          = {formatNumber(annualBonus)} VND ({(annualBonus / input.grossIncome).toFixed(1)} tháng lương)
+          = {formatNumber(annualBonus)} VND
+          {input.grossIncome > 0 &&
+            ` (${(annualBonus / input.grossIncome).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tháng lương)`}
         </p>
       </div>
 
-      {/* Summary comparison */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {results.map((result) => {
-          const isOptimal = optimalStrategy?.scenario === result.scenario;
-          return (
-            <div
-              key={result.scenario}
-              className={`p-4 rounded-lg border ${
-                isOptimal
-                  ? 'bg-green-50 border-green-200 ring-1 ring-green-300'
-                  : 'bg-white border-gray-200'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="font-semibold text-gray-800 text-sm">
-                  {result.scenario}
-                </h4>
-                {isOptimal && (
-                  <CheckCircleIcon className="w-5 h-5 text-green-600" />
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mb-3">{result.description}</p>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tổng thuế năm:</span>
-                  <span className="font-semibold text-red-600">
-                    {formatNumber(result.totalTax)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Thực nhận năm:</span>
-                  <span className="font-semibold text-green-600">
-                    {formatNumber(result.totalNetIncome)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Optimal strategy highlight */}
-      {optimalStrategy && (
-        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-          <div className="flex items-start gap-3">
-            <CheckCircleIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-green-800">
-                Chiến lược tối ưu: {optimalStrategy.scenario}
-              </h4>
-              <p className="text-sm text-green-700 mt-1">
-                {optimalStrategy.description}
-              </p>
-              {results.length > 1 && (
-                <p className="text-sm text-green-600 mt-2">
-                  Tiết kiệm so với nhận 1 lần:{' '}
-                  <span className="font-semibold">
-                    {formatNumber(results[0].totalTax - optimalStrategy.totalTax)} VND/năm
-                  </span>
-                </p>
-              )}
-            </div>
+      {/* Thuế năm sau quyết toán: con số chính, như nhau với mọi cách chia */}
+      <div className="p-4 bg-white rounded-lg border border-gray-200">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <div className="text-xs text-gray-500">Thuế năm sau quyết toán</div>
+            <div className="font-semibold text-red-600">{formatNumber(annualTax)} VND</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Thực nhận cả năm sau quyết toán</div>
+            <div className="font-semibold text-green-600">{formatNumber(annualNetIncome)} VND</div>
           </div>
         </div>
-      )}
+        <p className="text-xs text-gray-500 mt-3">
+          Thuế tiền lương tính theo năm và quyết toán, nên chia hay dời thưởng trong cùng năm không làm thay đổi
+          thuế năm. Các cách chia dưới đây chỉ khác số thuế tạm khấu trừ hằng tháng; phần chênh lệch được hoàn hoặc
+          nộp thêm khi quyết toán.
+        </p>
+      </div>
+
+      {/* Tạm khấu trừ theo từng cách chia (thông tin phụ) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {scenarios.map((result) => (
+          <div key={result.scenario} className="p-4 rounded-lg border bg-white border-gray-200">
+            <h4 className="font-semibold text-gray-800 text-sm mb-2">{result.scenario}</h4>
+            <p className="text-xs text-gray-500 mb-3">{result.description}</p>
+            <div className="space-y-1">
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-gray-600">Tạm khấu trừ trong năm:</span>
+                <span className="font-semibold text-gray-800">
+                  {formatNumber(result.withheldTax)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-gray-600">
+                  {result.settlementDiff > 0
+                    ? 'Được hoàn khi quyết toán:'
+                    : result.settlementDiff < 0
+                      ? 'Nộp thêm khi quyết toán:'
+                      : 'Chênh lệch khi quyết toán:'}
+                </span>
+                <span
+                  className={`font-semibold ${
+                    result.settlementDiff > 0
+                      ? 'text-green-600'
+                      : result.settlementDiff < 0
+                        ? 'text-red-600'
+                        : 'text-gray-800'
+                  }`}
+                >
+                  {formatNumber(Math.abs(result.settlementDiff))}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -595,7 +557,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
       {/* Settings */}
       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
         <h4 className="font-medium text-gray-800 mb-3">Tham số dự báo</h4>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">
               Số năm dự báo
@@ -618,10 +580,10 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
             </label>
             <input
               type="number"
-              min={0}
+              min={-50}
               max={50}
               value={annualSalaryIncrease}
-              onChange={(e) => setAnnualSalaryIncrease(Number(e.target.value))}
+              onChange={(e) => setAnnualSalaryIncrease(Math.min(50, Math.max(-50, Number(e.target.value) || 0)))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
@@ -634,7 +596,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
               min={0}
               max={20}
               value={inflationRate}
-              onChange={(e) => setInflationRate(Number(e.target.value))}
+              onChange={(e) => setInflationRate(Math.min(20, Math.max(0, Number(e.target.value) || 0)))}
               className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
             />
           </div>
@@ -684,7 +646,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
                   {formatNumber(year.newTax.monthly)}
                 </td>
                 <td className="px-3 py-3 text-right text-gray-600">
-                  {year.newTax.effectiveRate.toFixed(1)}%
+                  {year.newTax.effectiveRate.toFixed(1).replace('.', ',')}%
                 </td>
                 <td className="px-3 py-3 text-right text-green-600 font-medium">
                   {formatNumber(year.taxSavings)}
@@ -717,7 +679,7 @@ function MultiYearProjectionTab({ input }: MultiYearProjectionTabProps) {
       {/* Summary */}
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
         <h4 className="font-semibold text-blue-800 mb-2">Tóm tắt dự báo</h4>
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
           <div className="text-blue-700">
             <span className="text-blue-600">Lương năm cuối:</span>{' '}
             <span className="font-semibold">

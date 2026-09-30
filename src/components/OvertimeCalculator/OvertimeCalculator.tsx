@@ -20,14 +20,13 @@ import {
   ShiftType,
   generateEntryId,
   getOvertimeTypeLabel,
-  getShiftTypeLabel,
   getOvertimeRate,
   calculateHourlyRate,
-  OVERTIME_RATES,
+  OVERTIME_LIMITS,
   DEFAULT_WORKING_DAYS,
   DEFAULT_HOURS_PER_DAY,
 } from "@/lib/overtimeCalculator";
-import { OvertimeTabState, DEFAULT_OVERTIME_STATE } from "@/lib/snapshotTypes";
+import { OvertimeTabState } from "@/lib/snapshotTypes";
 import Tooltip from "@/components/ui/Tooltip";
 
 interface OvertimeCalculatorProps {
@@ -59,7 +58,7 @@ export default function OvertimeCalculator({
     tabState?.entries ?? [],
   );
   const [includeHolidayBasePay, setIncludeHolidayBasePay] = useState(
-    tabState?.includeHolidayBasePay ?? true,
+    tabState?.includeHolidayBasePay ?? false,
   );
   const [salaryWarning, setSalaryWarning] = useState<string | null>(null);
   // Auto-detect based on current date (if in 2026, default to new law)
@@ -211,9 +210,6 @@ export default function OvertimeCalculator({
   return (
     <div className="card">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl">⏰</span>
-        </div>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-gray-900">
             Tính lương tăng ca
@@ -235,7 +231,7 @@ export default function OvertimeCalculator({
                 : "bg-gray-100 text-gray-600"
             }`}
           >
-            {useNewLaw ? "Mới 2026" : "Hiện hành"}
+            {useNewLaw ? "2026 (hiện hành)" : "Trước 2026"}
           </button>
         </div>
       </div>
@@ -260,7 +256,7 @@ export default function OvertimeCalculator({
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left column - Inputs */}
         <div className="space-y-4">
           {/* Monthly Salary */}
@@ -387,7 +383,7 @@ export default function OvertimeCalculator({
               Thêm giờ tăng ca
             </label>
             <div className="flex flex-wrap gap-2">
-              <Tooltip content="Tăng ca ngoài giờ hành chính (150% lương giờ)">
+              <Tooltip content="Làm thêm vào ngày làm việc bình thường (150% lương giờ; tối đa 50% số giờ làm việc bình thường/ngày)">
                 <button
                   onClick={() => addEntry("weekday", "day")}
                   className="px-3 py-2.5 sm:py-1.5 min-h-[44px] text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
@@ -395,7 +391,7 @@ export default function OvertimeCalculator({
                   + Ngày thường
                 </button>
               </Tooltip>
-              <Tooltip content="Làm việc thứ 7, Chủ nhật (200% lương giờ)">
+              <Tooltip content="Làm thêm vào ngày nghỉ hằng tuần (200% lương giờ; tối đa 12 giờ/ngày)">
                 <button
                   onClick={() => addEntry("weekend", "day")}
                   className="px-3 py-2.5 sm:py-1.5 min-h-[44px] text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors"
@@ -403,7 +399,7 @@ export default function OvertimeCalculator({
                   + Cuối tuần
                 </button>
               </Tooltip>
-              <Tooltip content="Làm việc ngày lễ, tết (300% lương giờ + lương ngày nếu được chọn)">
+              <Tooltip content="Làm thêm vào ngày lễ, Tết (300% lương giờ; người hưởng lương ngày được cộng thêm tiền lương ngày lễ)">
                 <button
                   onClick={() => addEntry("holiday", "day")}
                   className="px-3 py-2.5 sm:py-1.5 min-h-[44px] text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
@@ -418,7 +414,7 @@ export default function OvertimeCalculator({
           {entries.length > 0 && (
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">
-                Danh sách tăng ca ({entries.length})
+                Danh sách ngày làm thêm ({entries.length}) - mỗi dòng là một ngày
               </label>
               {entries.map((entry) => (
                 <OvertimeEntryCard
@@ -469,8 +465,8 @@ export default function OvertimeCalculator({
                 className="rounded text-primary-600 focus:ring-primary-500"
               />
               <span className="text-gray-700 flex items-center gap-2">
-                Bao gồm lương ngày lễ
-                <Tooltip content="Ngày lễ được nghỉ có lương, nếu đi làm thêm được 300% + 100% = 400%">
+                Cộng lương ngày lễ (chỉ người hưởng lương ngày)
+                <Tooltip content="Người hưởng lương ngày được trả thêm tiền lương của ngày lễ, Tết ngoài 300% (BLLĐ Điều 98.1.c). Người hưởng lương tháng đã có lương ngày lễ trong lương tháng nên không chọn.">
                   <span className="inline-flex items-center justify-center w-[44px] h-[44px] -m-3 text-gray-500 hover:text-gray-700 cursor-help rounded-full hover:bg-gray-100 transition-colors">
                     <svg
                       className="w-4 h-4"
@@ -505,7 +501,7 @@ export default function OvertimeCalculator({
               </div>
               {entries.length === 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
-                  Chưa có giờ tăng ca. Kết quả hiện tại chỉ tính lương cơ bản.
+                  Chưa có giờ làm thêm. Kết quả hiện tại chỉ tính lương cơ bản.
                 </div>
               )}
 
@@ -525,7 +521,7 @@ export default function OvertimeCalculator({
                     <>
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Lương tăng ca ({result.totalOvertimeHours}h)
+                          Lương làm thêm ({result.totalOvertimeHours.toLocaleString("vi-VN")} giờ)
                         </span>
                         <span className="font-medium text-blue-600">
                           +{formatCurrency(result.totalOvertimeGross)}
@@ -539,7 +535,11 @@ export default function OvertimeCalculator({
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>- Phần chịu thuế</span>
+                          <span>
+                            - Phần chịu thuế
+                            {result.overLimitHours > 0 &&
+                              ` (${result.overLimitHours.toLocaleString("vi-VN")} giờ vượt ${OVERTIME_LIMITS.maxPerMonth} giờ/tháng)`}
+                          </span>
                           <span>
                             {formatCurrency(result.totalTaxableOvertime)}
                           </span>
@@ -551,7 +551,7 @@ export default function OvertimeCalculator({
                   {result.holidayBasePay > 0 && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">
-                        Lương ngày lễ ({result.holidayHours}h)
+                        Lương ngày lễ ({result.holidayHours.toLocaleString("vi-VN")} giờ)
                       </span>
                       <span className="font-medium text-orange-600">
                         +{formatCurrency(result.holidayBasePay)}
@@ -561,7 +561,7 @@ export default function OvertimeCalculator({
 
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Bảo hiểm (10.5%)</span>
+                      <span className="text-gray-600">Bảo hiểm (trên lương cơ bản)</span>
                       <span className="text-red-600">
                         -{formatCurrency(result.insuranceAmount)}
                       </span>
@@ -630,11 +630,13 @@ export default function OvertimeCalculator({
                     </svg>
                     <div className="text-sm text-green-800">
                       <p className="font-medium">
-                        {result.taxExemptPercentage.toFixed(1)}% lương tăng ca
+                        {result.taxExemptPercentage.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}% lương làm thêm
                         được miễn thuế
                       </p>
                       <p className="text-xs mt-1 opacity-75">
-                        Theo Thông tư 111/2013/TT-BTC
+                        {useNewLaw
+                          ? "Từ kỳ tính thuế 2026 miễn toàn bộ tiền lương làm thêm giờ, làm đêm đúng giới hạn (kể cả tiền lương ngày phép chưa nghỉ theo BLLĐ Điều 113.3); phần vượt giới hạn tính vào thu nhập chịu thuế (Luật Thuế TNCN 109/2025/QH15 Điều 4.8; NĐ 253/2026/NĐ-CP Điều 26)"
+                          : "Trước 2026 chỉ miễn phần tiền lương trả cao hơn so với làm việc trong giờ (TT 111/2013/TT-BTC)"}
                       </p>
                     </div>
                   </div>
@@ -665,7 +667,7 @@ export default function OvertimeCalculator({
       {/* Rate reference table */}
       <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
         <h4 className="font-medium text-gray-800 mb-3">
-          Bảng hệ số tăng ca (Điều 98, BLLĐ 2019)
+          Bảng hệ số làm thêm giờ (BLLĐ 2019 Điều 98; NĐ 145/2020/NĐ-CP Điều 55-57)
         </h4>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -680,10 +682,10 @@ export default function OvertimeCalculator({
               <tr>
                 <td className="py-1">Ngày thường</td>
                 <td className="py-1 text-center font-medium">150%</td>
-                <td className="py-1 text-center font-medium">210%</td>
+                <td className="py-1 text-center font-medium">200% / 210%</td>
               </tr>
               <tr>
-                <td className="py-1">Ngày nghỉ tuần</td>
+                <td className="py-1">Ngày nghỉ hằng tuần</td>
                 <td className="py-1 text-center font-medium">200%</td>
                 <td className="py-1 text-center font-medium">270%</td>
               </tr>
@@ -696,7 +698,8 @@ export default function OvertimeCalculator({
           </table>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          * Ca đêm = Hệ số ngày + 30% phụ cấp đêm + 20% tăng ca đêm
+          * Ca đêm = hệ số ngày + 30% + 20% × tiền lương giờ ban ngày của ngày đó. Ngày thường: 200% nếu không làm
+          thêm ban ngày, 210% nếu đã làm thêm ban ngày trước đó.
         </p>
       </div>
     </div>
@@ -717,7 +720,7 @@ function OvertimeEntryCard({
   onUpdate,
   onRemove,
 }: OvertimeEntryCardProps) {
-  const rate = getOvertimeRate(entry.type, entry.shift);
+  const rate = getOvertimeRate(entry.type, entry.shift, entry.afterDayOvertime);
   const amount = hourlyRate * rate * entry.hours;
 
   const typeColors: Record<OvertimeType, string> = {
@@ -782,6 +785,18 @@ function OvertimeEntryCard({
               <span className="text-xs text-gray-500">giờ</span>
             </div>
           </div>
+
+          {entry.type === "weekday" && entry.shift === "night" && (
+            <label className="flex items-center gap-2 mt-2 text-xs text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={entry.afterDayOvertime ?? false}
+                onChange={(e) => onUpdate({ afterDayOvertime: e.target.checked })}
+                className="rounded text-primary-600 focus:ring-primary-500"
+              />
+              Đã làm thêm ban ngày trước ca đêm (210%)
+            </label>
+          )}
         </div>
 
         <div className="text-right">

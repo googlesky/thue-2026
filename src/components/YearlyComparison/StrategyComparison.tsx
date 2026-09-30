@@ -1,6 +1,6 @@
 'use client';
 
-import { TwoYearResult, StrategyComparison as StrategyComparisonType } from '@/lib/yearlyTaxCalculator';
+import { TwoYearResult, StrategyComparison as StrategyComparisonType, isSameIncome } from '@/lib/yearlyTaxCalculator';
 import { formatCurrency } from '@/lib/taxCalculator';
 
 interface StrategyComparisonProps {
@@ -29,15 +29,15 @@ export default function StrategyComparison({ comparison, strategyNames }: Strate
       </div>
 
       {/* Comparison Grid */}
-      <div className={`grid gap-4 ${strategies.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${strategies.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
         {strategies.map((strategy, index) => (
           <StrategyCard
             key={index}
             strategy={strategy}
             name={names[index]}
-            isOptimal={index === bestStrategy}
-            savings={index === bestStrategy ? maxSavings : 0}
+            isOptimal={maxSavings > 0 && index === bestStrategy}
             comparedTo={index !== 0 ? strategies[0].combinedTax - strategy.combinedTax : undefined}
+            sameIncome={isSameIncome(strategy, strategies[0])}
           />
         ))}
       </div>
@@ -65,24 +65,24 @@ interface StrategyCardProps {
   strategy: TwoYearResult;
   name: string;
   isOptimal: boolean;
-  savings: number;
   comparedTo?: number; // Difference from first strategy
+  sameIncome: boolean; // Cùng tổng thu nhập với CL1 thì mới so sánh thuế
 }
 
-function StrategyCard({ strategy, name, isOptimal, comparedTo }: StrategyCardProps) {
+function StrategyCard({ strategy, name, isOptimal, comparedTo, sameIncome }: StrategyCardProps) {
   const { year2025, year2026, combinedGross, combinedTax, combinedNet, combinedEffectiveRate } = strategy;
 
   return (
     <div className={`rounded-xl p-4 ${isOptimal ? 'bg-green-50 border-2 border-green-400' : 'bg-gray-50 border border-gray-200'}`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="font-bold text-gray-800">{name}</div>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="font-bold text-gray-800 min-w-0">{name}</div>
         {isOptimal && (
-          <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+          <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
-            Tối ưu
+            Thuế thấp nhất
           </span>
         )}
       </div>
@@ -113,7 +113,7 @@ function StrategyCard({ strategy, name, isOptimal, comparedTo }: StrategyCardPro
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-gray-500">Thuế suất TB</span>
-          <span className="text-gray-500">{combinedEffectiveRate.toFixed(2)}%</span>
+          <span className="text-gray-500">{combinedEffectiveRate.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</span>
         </div>
 
         <div className="border-t pt-2 mt-2">
@@ -126,7 +126,12 @@ function StrategyCard({ strategy, name, isOptimal, comparedTo }: StrategyCardPro
         </div>
 
         {/* Comparison to first strategy */}
-        {comparedTo !== undefined && comparedTo !== 0 && (
+        {comparedTo !== undefined && !sameIncome && (
+          <div className="text-xs mt-2 p-2 rounded bg-gray-100 text-gray-600">
+            Tổng thu nhập khác CL1 nên không so sánh thuế
+          </div>
+        )}
+        {comparedTo !== undefined && sameIncome && comparedTo !== 0 && (
           <div className={`text-xs mt-2 p-2 rounded ${comparedTo > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
             {comparedTo > 0 ? (
               <span>Tiết kiệm {formatCurrency(comparedTo)} so với CL1</span>

@@ -1,12 +1,15 @@
 // Tính thuế TNCN theo năm - So sánh các kịch bản
+// Thuế tiền lương của cá nhân cư trú xác định theo kỳ NĂM và quyết toán
+// (Luật Thuế TNCN 109/2025/QH15 Điều 8, 9; NĐ 253/2026/NĐ-CP Điều 51):
+// thưởng cộng vào thu nhập năm, giảm trừ gia cảnh tính đủ 12 tháng.
 import {
   OLD_TAX_BRACKETS,
   NEW_TAX_BRACKETS,
   OLD_DEDUCTIONS,
   NEW_DEDUCTIONS,
-  INSURANCE_RATES,
-  getMaxSocialInsuranceSalary,
-  getMaxUnemploymentInsuranceSalary,
+  DEFAULT_INSURANCE_OPTIONS,
+  getInsuranceDetailed,
+  calculateAnnualSalaryTax,
   RegionType,
   formatCurrency,
   InsuranceDetail,
@@ -36,13 +39,8 @@ export interface YearScenario {
 export interface MonthlyResult {
   month: number;
   grossIncome: number;
-  insurance: number;
+  insurance: number;           // Dòng thưởng = 0: thưởng không thuộc tiền lương đóng BHXH
   insuranceDetail: InsuranceDetail;
-  personalDeduction: number;
-  dependentDeduction: number;
-  taxableIncome: number;
-  tax: number;
-  netIncome: number;
   usedLaw: 'old' | 'new';
   isBonus?: boolean;
   label?: string;
@@ -54,12 +52,13 @@ export interface YearlyResult {
   year: 2025 | 2026;
   totalGross: number;
   totalInsurance: number;
-  totalTax: number;
+  taxableIncome: number;       // Thu nhập tính thuế cả năm
+  totalTax: number;            // Thuế phải nộp cả năm (sau quyết toán)
   totalNet: number;
   effectiveRate: number;       // Thuế suất thực tế
   monthlyBreakdown: MonthlyResult[];
-  oldLawMonths: number;        // Số tháng áp dụng luật cũ
-  newLawMonths: number;        // Số tháng áp dụng luật mới
+  oldLawMonths: number;        // Số tháng lương áp dụng luật cũ
+  newLawMonths: number;        // Số tháng lương áp dụng luật mới
 }
 
 export interface TwoYearResult {
@@ -80,159 +79,72 @@ export interface StrategyComparison {
 
 // ===== CALCULATION FUNCTIONS =====
 
-function calculateInsuranceDetailed(
-  grossIncome: number,
-  hasInsurance: boolean,
-  region: RegionType = 1,
-  year: 2025 | 2026 = 2025,
-  month: number = 1
-): InsuranceDetail {
-  if (!hasInsurance) {
-    return { bhxh: 0, bhyt: 0, bhtn: 0, total: 0 };
-  }
-
-  // Ngày hiệu lực để xác định trần đóng bảo hiểm (month is 1-indexed)
-  // Trần BHXH/BHYT đổi từ 01/7/2026; lương tối thiểu vùng 2026 từ 01/01/2026
-  const effectiveDate = new Date(year, month - 1, 1);
-
-  // BHXH và BHYT: tối đa 20 lần lương cơ sở (date-aware)
-  const bhxhBhytBase = Math.min(grossIncome, getMaxSocialInsuranceSalary(effectiveDate));
-  const bhxh = bhxhBhytBase * INSURANCE_RATES.socialInsurance;
-  const bhyt = bhxhBhytBase * INSURANCE_RATES.healthInsurance;
-
-  // BHTN: tối đa 20 lần lương tối thiểu vùng (date-aware)
-  const maxBhtnByRegion = getMaxUnemploymentInsuranceSalary(effectiveDate);
-  const maxBhtn = maxBhtnByRegion[region];
-  const bhtnBase = Math.min(grossIncome, maxBhtn);
-  const bhtn = bhtnBase * INSURANCE_RATES.unemploymentInsurance;
-
-  return {
-    bhxh,
-    bhyt,
-    bhtn,
-    total: bhxh + bhyt + bhtn,
-  };
+/**
+ * Luật áp dụng cho thu nhập tiền lương theo kỳ tính thuế:
+ * - 2025: Luật cũ (7 bậc, 11tr/4,4tr)
+ * - 2026: Luật mới (5 bậc, 15,5tr/6,2tr) cho cả năm (Luật 109/2025 Điều 29; NĐ 253/2026 Điều 69)
+ */
+function getLawForYear(year: 2025 | 2026): 'old' | 'new' {
+  return year === 2025 ? 'old' : 'new';
 }
 
-function calculateTaxWithBrackets(
-  taxableIncome: number,
-  brackets: typeof OLD_TAX_BRACKETS
-): number {
-  if (taxableIncome <= 0) return 0;
-
-  let totalTax = 0;
-  let remainingIncome = taxableIncome;
-
-  for (const bracket of brackets) {
-    if (remainingIncome <= 0) break;
-    const bracketWidth = bracket.max - bracket.min;
-    const taxableInBracket = Math.min(remainingIncome, bracketWidth);
-    totalTax += taxableInBracket * bracket.rate;
-    remainingIncome -= taxableInBracket;
-  }
-
-  return totalTax;
-}
+const NO_INSURANCE = { bhxh: false, bhyt: false, bhtn: false };
 
 /**
- * Xác định luật áp dụng cho từng tháng
- * - 2025: Luật cũ (7 bậc)
- * - 2026: Luật mới (5 bậc) - áp dụng từ 01/01/2026 cho thu nhập từ tiền lương, tiền công
- *
- * Note: Theo điều khoản chuyển tiếp của Luật Thuế TNCN sửa đổi 2025,
- * quy định liên quan đến thu nhập từ tiền lương, tiền công áp dụng từ kỳ tính thuế năm 2026
+ * Bảo hiểm bắt buộc của 1 tháng lương (trần theo ngày của tháng đó).
+ * Dòng thưởng: không đóng BH (thưởng không thuộc tiền lương đóng BHXH).
  */
-function getLawForMonth(year: 2025 | 2026, month: number): 'old' | 'new' {
-  if (year === 2025) return 'old';
-  // 2026: Luật mới áp dụng từ tháng 1 (không phải tháng 7)
-  return 'new';
-}
-
-function getDeductionsForLaw(law: 'old' | 'new') {
-  return law === 'old' ? OLD_DEDUCTIONS : NEW_DEDUCTIONS;
-}
-
-function getBracketsForLaw(law: 'old' | 'new') {
-  return law === 'old' ? OLD_TAX_BRACKETS : NEW_TAX_BRACKETS;
-}
-
-/**
- * Tính thuế cho 1 tháng cụ thể
- */
-export function calculateMonthlyTax(
+function calculateMonthRow(
   entry: MonthlyEntry,
   year: 2025 | 2026,
-  dependents: number,
   hasInsurance: boolean,
   region: RegionType = 1,
   declaredSalary?: number
 ): MonthlyResult {
-  const { month, grossIncome, isBonus, label } = entry;
-  const law = getLawForMonth(year, month);
-  const deductions = getDeductionsForLaw(law);
-  const brackets = getBracketsForLaw(law);
-
-  // Tính bảo hiểm (dựa trên lương khai báo nếu có, date-aware cho BHTN cap)
-  const insuranceBase = declaredSalary ?? grossIncome;
-  // Với tháng thưởng (month > 12), sử dụng tháng 12 để xác định date
-  const effectiveMonth = Math.min(month, 12);
-  const insuranceDetail = calculateInsuranceDetailed(insuranceBase, hasInsurance, region, year, effectiveMonth);
-  const insurance = insuranceDetail.total;
-
-  // Các khoản giảm trừ
-  const personalDeduction = deductions.personal;
-  const dependentDeduction = dependents * deductions.dependent;
-
-  // Thu nhập tính thuế
-  const taxableIncome = Math.max(0, grossIncome - insurance - personalDeduction - dependentDeduction);
-
-  // Tính thuế
-  const tax = calculateTaxWithBrackets(taxableIncome, brackets);
-
-  // Thu nhập thực nhận
-  const netIncome = grossIncome - insurance - tax;
+  const { month, isBonus, label } = entry;
+  const grossIncome = Math.max(0, entry.grossIncome || 0);
+  const insuranceBase = isBonus ? 0 : Math.max(0, declaredSalary ?? grossIncome);
+  const insuranceDetail = getInsuranceDetailed(
+    insuranceBase,
+    region,
+    hasInsurance ? DEFAULT_INSURANCE_OPTIONS : NO_INSURANCE,
+    new Date(year, Math.min(Math.max(month, 1), 12) - 1, 1)
+  );
 
   return {
     month,
     grossIncome,
-    insurance,
+    insurance: insuranceDetail.total,
     insuranceDetail,
-    personalDeduction,
-    dependentDeduction,
-    taxableIncome,
-    tax,
-    netIncome,
-    usedLaw: law,
+    usedLaw: getLawForYear(year),
     isBonus,
     label,
   };
 }
 
 /**
- * Tính thuế cả năm cho 1 scenario
+ * Tính thuế cả năm cho 1 scenario theo quyết toán:
+ * TNTT năm = Σ thu nhập (lương + thưởng) − Σ BH (chỉ trên lương) − 12 × (giảm trừ bản thân + NPT)
  */
 export function calculateYearlyTax(scenario: YearScenario): YearlyResult {
-  const { id, name, year, months, bonusMonths, dependents, hasInsurance, region, declaredSalary } = scenario;
+  const { id, name, year, months, bonusMonths, hasInsurance, region, declaredSalary } = scenario;
+  const dependents = Math.max(0, Math.floor(scenario.dependents || 0));
+  const law = getLawForYear(year);
+  const deductions = law === 'old' ? OLD_DEDUCTIONS : NEW_DEDUCTIONS;
 
-  // Gộp tất cả các tháng (thường + thưởng)
-  const allMonths = [...months, ...bonusMonths];
-
-  // Tính thuế từng tháng
-  const monthlyBreakdown = allMonths.map(entry =>
-    calculateMonthlyTax(entry, year, dependents, hasInsurance, region, declaredSalary)
+  const monthlyBreakdown = [...months, ...bonusMonths].map(entry =>
+    calculateMonthRow(entry, year, hasInsurance, region, declaredSalary)
   );
 
-  // Tổng kết
   const totalGross = monthlyBreakdown.reduce((sum, m) => sum + m.grossIncome, 0);
   const totalInsurance = monthlyBreakdown.reduce((sum, m) => sum + m.insurance, 0);
-  const totalTax = monthlyBreakdown.reduce((sum, m) => sum + m.tax, 0);
-  const totalNet = monthlyBreakdown.reduce((sum, m) => sum + m.netIncome, 0);
+  const annualDeductions = 12 * (deductions.personal + dependents * deductions.dependent);
+  const taxableIncome = Math.max(0, totalGross - totalInsurance - annualDeductions);
+  const totalTax = calculateAnnualSalaryTax(taxableIncome, law === 'old' ? OLD_TAX_BRACKETS : NEW_TAX_BRACKETS);
+  const totalNet = totalGross - totalInsurance - totalTax;
 
   const effectiveRate = totalGross > 0 ? (totalTax / totalGross) * 100 : 0;
-
-  // Đếm số tháng theo luật
-  const oldLawMonths = monthlyBreakdown.filter(m => m.usedLaw === 'old').length;
-  const newLawMonths = monthlyBreakdown.filter(m => m.usedLaw === 'new').length;
+  const salaryMonths = months.length;
 
   return {
     scenarioId: id,
@@ -240,12 +152,13 @@ export function calculateYearlyTax(scenario: YearScenario): YearlyResult {
     year,
     totalGross,
     totalInsurance,
+    taxableIncome,
     totalTax,
     totalNet,
     effectiveRate,
     monthlyBreakdown,
-    oldLawMonths,
-    newLawMonths,
+    oldLawMonths: law === 'old' ? salaryMonths : 0,
+    newLawMonths: law === 'new' ? salaryMonths : 0,
   };
 }
 
@@ -275,7 +188,15 @@ export function calculateTwoYearStrategy(
 }
 
 /**
- * So sánh nhiều chiến lược và tìm chiến lược tốt nhất
+ * Hai chiến lược chỉ so sánh thuế được khi tổng thu nhập 2 năm bằng nhau
+ * (thu nhập nhiều hơn thì thuế cao hơn là đương nhiên, không phải "tốn thêm").
+ */
+export function isSameIncome(a: TwoYearResult, b: TwoYearResult): boolean {
+  return Math.abs(a.combinedGross - b.combinedGross) < 1;
+}
+
+/**
+ * So sánh nhiều chiến lược (cùng tổng thu nhập với chiến lược 1) và tìm chiến lược thuế thấp nhất
  */
 export function compareStrategies(strategies: TwoYearResult[]): StrategyComparison {
   if (strategies.length === 0) {
@@ -287,12 +208,12 @@ export function compareStrategies(strategies: TwoYearResult[]): StrategyComparis
     };
   }
 
-  // Tìm chiến lược có thuế thấp nhất
+  // Tìm chiến lược có thuế thấp nhất trong các chiến lược cùng tổng thu nhập
   let bestIndex = 0;
   let minTax = strategies[0].combinedTax;
 
   for (let i = 1; i < strategies.length; i++) {
-    if (strategies[i].combinedTax < minTax) {
+    if (isSameIncome(strategies[i], strategies[0]) && strategies[i].combinedTax < minTax) {
       minTax = strategies[i].combinedTax;
       bestIndex = i;
     }
@@ -357,14 +278,14 @@ export interface PresetConfig {
 }
 
 /**
- * Preset 1: Bình thường - Thưởng T13 vào T12/2025
- * - 2025: 12 tháng lương + thưởng T13 (trả vào T12)
- * - 2026: 12 tháng lương
+ * Preset 1: Bình thường - Thưởng T13 mỗi năm trả vào tháng 12 của năm đó
+ * - 2025: 12 tháng lương + thưởng T13/2025 (T12/2025)
+ * - 2026: 12 tháng lương + thưởng T13/2026 (T12/2026)
  */
 export const PRESET_NORMAL: PresetConfig = {
   id: 'normal',
   name: 'Bình thường',
-  description: 'Thưởng T13 năm 2025 trả vào T12/2025',
+  description: 'Thưởng T13 mỗi năm trả vào tháng 12 của năm đó (T12/2025 và T12/2026).',
   create: (monthlySalary, dependents, hasInsurance, region, bonusAmount) => {
     const bonus = bonusAmount ?? monthlySalary;
     return {
@@ -380,10 +301,10 @@ export const PRESET_NORMAL: PresetConfig = {
       },
       scenario2026: {
         id: 'normal-2026',
-        name: '2026 (12 tháng)',
+        name: '2026 (13 tháng)',
         year: 2026,
         months: createUniformMonths(monthlySalary),
-        bonusMonths: [],
+        bonusMonths: [createBonusMonth(13, bonus, 'Thưởng T13/2026 (T12/2026)')],
         dependents,
         hasInsurance,
         region,
@@ -393,14 +314,16 @@ export const PRESET_NORMAL: PresetConfig = {
 };
 
 /**
- * Preset 2: Dời thưởng - Thưởng T13/2025 sang T1/2026
+ * Preset 2 (hồi cứu): Thưởng T13/2025 nhận vào T1/2026 - cùng tổng thu nhập 2 năm với Preset 1
  * - 2025: 12 tháng lương (không thưởng)
- * - 2026: 12 tháng lương + 2 thưởng (T13 từ 2025 + T13 của 2026)
+ * - 2026: 12 tháng lương + 2 thưởng (T13/2025 nhận T1/2026 + T13/2026)
+ * Thời điểm xác định thu nhập là lúc nhận (Luật 109/2025 Điều 8.3) nên thưởng T13/2025
+ * nhận trong năm 2026 được quyết toán theo luật mới; tháng nhận trong năm không đổi thuế năm.
  */
 export const PRESET_DEFER_BONUS: PresetConfig = {
   id: 'defer-bonus',
   name: 'Dời thưởng sang 2026',
-  description: 'Thưởng T13 năm 2025 dời sang T1/2026',
+  description: 'Hồi cứu: thưởng T13/2025 nhận vào T1/2026 nên tính vào quyết toán năm 2026 theo luật mới.',
   create: (monthlySalary, dependents, hasInsurance, region, bonusAmount) => {
     const bonus = bonusAmount ?? monthlySalary;
     return {
@@ -431,88 +354,17 @@ export const PRESET_DEFER_BONUS: PresetConfig = {
   },
 };
 
-/**
- * Preset 3: Tối ưu - Dời thưởng sang 2026 (luật mới)
- * - 2025: 12 tháng lương (không thưởng)
- * - 2026: 12 tháng lương + thưởng T13/2025 vào T1/2026 (hưởng luật mới từ đầu năm)
- *
- * Note: Luật mới áp dụng từ 01/01/2026 cho toàn bộ năm, nên nhận thưởng T1 hay T7 đều như nhau
- */
-export const PRESET_OPTIMIZE: PresetConfig = {
-  id: 'optimize',
-  name: 'Tối ưu (T1/2026)',
-  description: 'Thưởng T13/2025 dời sang T1/2026 để hưởng luật mới',
-  create: (monthlySalary, dependents, hasInsurance, region, bonusAmount) => {
-    const bonus = bonusAmount ?? monthlySalary;
-    return {
-      scenario2025: {
-        id: 'optimize-2025',
-        name: '2025 (12 tháng)',
-        year: 2025,
-        months: createUniformMonths(monthlySalary),
-        bonusMonths: [],
-        dependents,
-        hasInsurance,
-        region,
-      },
-      scenario2026: {
-        id: 'optimize-2026',
-        name: '2026 (14 tháng, thưởng T1)',
-        year: 2026,
-        months: createUniformMonths(monthlySalary),
-        bonusMonths: [
-          // Thưởng T13/2025 trả vào T1/2026 (luật mới áp dụng từ 01/01/2026)
-          { month: 1, grossIncome: bonus, isBonus: true, label: 'Thưởng T13/2025 (T1/2026)' },
-          // Thưởng T13/2026 trả vào T12/2026
-          createBonusMonth(14, bonus, 'Thưởng T13/2026 (T12/2026)'),
-        ],
-        dependents,
-        hasInsurance,
-        region,
-      },
-    };
-  },
-};
-
 export const PRESETS: PresetConfig[] = [
   PRESET_NORMAL,
   PRESET_DEFER_BONUS,
-  PRESET_OPTIMIZE,
 ];
 
 /**
- * Tạo chiến lược từ preset
+ * Preset theo id đã lưu (snapshot/URL). 'optimize' (bản cũ: thưởng T13/2025 vào T1/2026)
+ * nay trùng 'defer-bonus' vì thuế tính theo năm; id lạ → preset mặc định.
  */
-export function createStrategyFromPreset(
-  preset: PresetConfig,
-  monthlySalary: number,
-  dependents: number,
-  hasInsurance: boolean,
-  region: RegionType,
-  bonusAmount?: number
-): TwoYearResult {
-  const { scenario2025, scenario2026 } = preset.create(
-    monthlySalary,
-    dependents,
-    hasInsurance,
-    region,
-    bonusAmount
-  );
-  return calculateTwoYearStrategy(scenario2025, scenario2026);
-}
-
-/**
- * So sánh tất cả preset với cùng tham số
- */
-export function compareAllPresets(
-  monthlySalary: number,
-  dependents: number,
-  hasInsurance: boolean,
-  region: RegionType,
-  bonusAmount?: number
-): StrategyComparison {
-  const strategies = PRESETS.map(preset =>
-    createStrategyFromPreset(preset, monthlySalary, dependents, hasInsurance, region, bonusAmount)
-  );
-  return compareStrategies(strategies);
+export function findPreset(id: string | null): PresetConfig | null {
+  if (id === null) return null;
+  const normalizedId = id === 'optimize' ? PRESET_DEFER_BONUS.id : id;
+  return PRESETS.find(p => p.id === normalizedId) ?? PRESET_NORMAL;
 }

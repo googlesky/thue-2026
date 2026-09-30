@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { TaxResult as TaxResultType, formatCurrency, OtherIncomeTaxResult } from '@/lib/taxCalculator';
+import { TaxResult as TaxResultType, OtherIncomeTaxResult, NEW_DEDUCTIONS } from '@/lib/taxCalculator';
 
 interface PDFExportButtonProps {
   result: TaxResultType;
@@ -25,6 +25,7 @@ export default function PDFExportButton({
     setIsGenerating(true);
     setError(null);
 
+    let container: HTMLDivElement | null = null;
     try {
       // Dynamic imports to reduce initial bundle size
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
@@ -32,12 +33,10 @@ export default function PDFExportButton({
         import('html2canvas'),
       ]);
 
-      // Calculate totals including other income
       const hasOtherIncome = otherIncomeTax && otherIncomeTax.totalIncome > 0;
-      const totalTax = result.taxAmount + (hasOtherIncome ? otherIncomeTax.totalTax : 0);
 
       // Create a temporary container for the PDF content
-      const container = document.createElement('div');
+      container = document.createElement('div');
       container.style.cssText = `
         position: absolute;
         left: -9999px;
@@ -104,7 +103,7 @@ export default function PDFExportButton({
             ` : ''}
             ${insuranceDetail.bhyt > 0 ? `
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; padding-left: 15px;">
-                <span>BHYT (1.5%):</span>
+                <span>BHYT (1,5%):</span>
                 <span>-${formatVND(insuranceDetail.bhyt)}</span>
               </div>
             ` : ''}
@@ -133,46 +132,27 @@ export default function PDFExportButton({
         `).join('');
       };
 
-      // Other income section
+      // Other income section: tính riêng theo số đã nhập, không cộng với lương tháng; tách thuế GTGT cho thuê
       let otherIncomeSection = '';
       if (hasOtherIncome) {
+        const otherVAT = otherIncomeTax.rental.taxVAT;
         otherIncomeSection = `
           <div style="margin-top: 30px; padding: 20px; background: #eff6ff; border-radius: 8px;">
-            <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 16px;">Thu nhập khác</h3>
+            <h3 style="margin: 0 0 5px 0; color: #1e40af; font-size: 16px;">Thu nhập khác</h3>
+            <p style="margin: 0 0 15px 0; font-size: 11px; color: #64748b;">Theo số tiền đã nhập cho từng khoản (cho thuê tài sản tính theo năm), tính riêng, không cộng với lương tháng.</p>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
               <div>
                 <div style="font-size: 12px; color: #64748b;">Tổng thu nhập</div>
                 <div style="font-size: 16px; font-weight: 600;">${formatVND(otherIncomeTax.totalIncome)}</div>
               </div>
               <div>
-                <div style="font-size: 12px; color: #64748b;">Thuế phải nộp</div>
-                <div style="font-size: 16px; font-weight: 600; color: #dc2626;">${formatVND(otherIncomeTax.totalTax)}</div>
+                <div style="font-size: 12px; color: #64748b;">Thuế TNCN</div>
+                <div style="font-size: 16px; font-weight: 600; color: #dc2626;">${formatVND(otherIncomeTax.totalTax - otherVAT)}</div>
+                ${otherVAT > 0 ? `<div style="font-size: 11px; color: #64748b;">+ thuế GTGT cho thuê ${formatVND(otherVAT)}</div>` : ''}
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Thực nhận</div>
                 <div style="font-size: 16px; font-weight: 600; color: #16a34a;">${formatVND(otherIncomeTax.totalNet)}</div>
-              </div>
-            </div>
-          </div>
-
-          <div style="margin-top: 20px; padding: 20px; background: #1f2937; border-radius: 8px; color: white;">
-            <h3 style="margin: 0 0 15px 0; font-size: 16px;">Tổng kết tất cả nguồn thu nhập</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
-              <div>
-                <div style="font-size: 12px; color: #9ca3af;">Lương GROSS</div>
-                <div style="font-size: 14px; font-weight: 600;">${formatVND(result.grossIncome)}</div>
-              </div>
-              <div>
-                <div style="font-size: 12px; color: #9ca3af;">Thu nhập khác</div>
-                <div style="font-size: 14px; font-weight: 600;">${formatVND(otherIncomeTax.totalIncome)}</div>
-              </div>
-              <div>
-                <div style="font-size: 12px; color: #9ca3af;">Tổng thuế</div>
-                <div style="font-size: 14px; font-weight: 600; color: #f87171;">${formatVND(totalTax)}</div>
-              </div>
-              <div>
-                <div style="font-size: 12px; color: #9ca3af;">Tổng thực nhận</div>
-                <div style="font-size: 14px; font-weight: 600; color: #4ade80;">${formatVND(result.netIncome + otherIncomeTax.totalNet)}</div>
               </div>
             </div>
           </div>
@@ -210,7 +190,7 @@ export default function PDFExportButton({
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Người phụ thuộc</div>
-                <div style="font-size: 16px; font-weight: 600;">${Math.round(result.dependentDeduction / 6200000)} người</div>
+                <div style="font-size: 16px; font-weight: 600;">${Math.round(result.dependentDeduction / NEW_DEDUCTIONS.dependent)} người</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: #64748b;">Giảm trừ bản thân</div>
@@ -238,7 +218,7 @@ export default function PDFExportButton({
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
                 <span style="color: #64748b;">Thuế suất thực tế:</span>
-                <span style="font-weight: 500;">${result.effectiveRate.toFixed(2)}%</span>
+                <span style="font-weight: 500;">${new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number.isFinite(result.effectiveRate) ? result.effectiveRate : 0)}%</span>
               </div>
             </div>
             <div style="background: #dbeafe; padding: 15px; border-radius: 8px; text-align: center;">
@@ -293,9 +273,6 @@ export default function PDFExportButton({
         backgroundColor: '#ffffff',
       });
 
-      // Remove the temporary container
-      document.body.removeChild(container);
-
       // Create PDF
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -322,8 +299,9 @@ export default function PDFExportButton({
         position -= pageHeight;
       }
 
-      // Generate filename with date
-      const dateForFile = now.toISOString().split('T')[0];
+      // Generate filename with local date (toISOString là giờ UTC, lệch ngày trước 7h sáng)
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const dateForFile = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
       const filename = `bao-cao-thue-tncn-${dateForFile}.pdf`;
 
       // Download the PDF
@@ -332,6 +310,8 @@ export default function PDFExportButton({
       console.error('Error generating PDF:', err);
       setError('Không thể tạo PDF. Vui lòng thử lại.');
     } finally {
+      // Luôn gỡ container tạm, kể cả khi html2canvas lỗi
+      container?.remove();
       setIsGenerating(false);
     }
   }, [result, otherIncomeTax, declaredSalary]);

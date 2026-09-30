@@ -72,7 +72,7 @@ export default function MonthlyInputGrid({
   };
 
   const addBonus = () => {
-    const nextMonth = 13 + bonusMonths.length;
+    const nextMonth = Math.max(12, ...bonusMonths.map(b => b.month)) + 1;
     const newBonus: MonthlyEntry = {
       month: nextMonth,
       grossIncome: months[0]?.grossIncome || 0,
@@ -141,7 +141,7 @@ export default function MonthlyInputGrid({
       {year === 2026 && (
         <div className="text-[10px] text-gray-500 flex items-center gap-1">
           <span className="text-green-600">*</span>
-          <span>Áp dụng luật mới từ 01/01/2026 (giảm trừ 15.5tr, 5 bậc thuế)</span>
+          <span>Áp dụng luật mới từ 01/01/2026 (giảm trừ 15,5tr, 5 bậc thuế)</span>
         </div>
       )}
 
