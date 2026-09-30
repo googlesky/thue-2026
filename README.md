@@ -39,12 +39,12 @@
 
 ## Giới thiệu
 
-**Thuế TNCN 2026** là ứng dụng web giúp người lao động Việt Nam tính toán, so sánh và tối ưu thuế thu nhập cá nhân. Hỗ trợ đầy đủ các quy định mới của Luật thuế TNCN sửa đổi (Luật số 109/2025/QH15), áp dụng từ **01/01/2026** cho thu nhập từ tiền lương, tiền công.
+**Thuế TNCN 2026** là ứng dụng web giúp người lao động Việt Nam tính toán, so sánh và tối ưu thuế thu nhập cá nhân. Hỗ trợ các quy định của Luật Thuế TNCN số 109/2025/QH15 (sửa đổi bởi Luật số 09/2026/QH16), NĐ 253/2026/NĐ-CP và TT 87/2026/TT-BTC; biểu 5 bậc và giảm trừ gia cảnh mới áp dụng từ **kỳ tính thuế 2026** (01/01/2026) cho thu nhập từ tiền lương, tiền công.
 
 ### Điểm nổi bật
 
-- So sánh **biểu thuế 7 bậc** (hiện hành) với **biểu thuế 5 bậc** (mới 2026)
-- Tính toán chính xác với **giảm trừ gia cảnh mới** (15.5 triệu/người)
+- Tính theo **biểu thuế 5 bậc** (hiện hành, từ kỳ tính thuế 2026), so sánh với **biểu 7 bậc** cũ (đến kỳ tính thuế 2025)
+- Tính toán chính xác với **giảm trừ gia cảnh mới** (15,5 triệu/tháng bản thân, 6,2 triệu/tháng mỗi người phụ thuộc)
 - **20+ công cụ** tính thuế chuyên biệt cho mọi loại thu nhập
 - Giao diện **responsive**, tối ưu cho cả desktop và mobile
 - Chia sẻ kết quả qua **URL** hoặc **QR code**
@@ -61,19 +61,19 @@
 | **GROSS ⇄ NET** | Quy đổi lương 2 chiều với thuật toán binary search |
 | **Lương tăng ca** | Tính OT theo ngày thường (150%), cuối tuần (200%), lễ (300%) |
 | **Quyết toán thuế** | Tổng hợp thu nhập cả năm, tính thuế phải nộp hoặc hoàn |
-| **Thưởng Tết** | So sánh các kịch bản trả thưởng tối ưu thuế |
-| **ESOP Calculator** | Tính thuế cổ phiếu thưởng với so sánh thời điểm exercise |
+| **Thưởng Tết** | Tạm khấu trừ tháng nhận thưởng và thuế sau quyết toán năm |
+| **ESOP Calculator** | Thuế khi bán cổ phiếu ESOP/thưởng theo NĐ 253/2026 (khấu trừ 10%, quyết toán, 0,1% chuyển nhượng) |
 | **Dự tính lương hưu** | Ước tính lương hưu dựa trên số năm đóng BHXH |
 
 ### Công cụ mới 2026
 
 | Công cụ | Mô tả | Hiệu lực |
 |---------|-------|----------|
-| **Thuế hộ kinh doanh** | Ngưỡng doanh thu mới 500 triệu/năm | 01/01/2026 |
-| **Thuế chuyển nhượng BĐS** | 2% TNCN + 0.5% lệ phí trước bạ | Hiện hành |
-| **Kiểm tra miễn thuế** | 21 khoản miễn thuế (16 gốc + 5 mới) | 01/07/2026 |
-| **Thuế cho thuê tài sản** | Thuế thu nhập thụ động từ BĐS | Hiện hành |
-| **Thuế chứng khoán** | 0.1% trên giá bán, cổ tức, trái phiếu | Hiện hành |
+| **Thuế hộ kinh doanh** | Doanh thu đến 1 tỷ/năm không phải nộp thuế TNCN (NĐ 141/2026/NĐ-CP) | Kỳ tính thuế 2026 |
+| **Thuế chuyển nhượng BĐS** | 2% TNCN + 0,5% lệ phí trước bạ | Hiện hành |
+| **Kiểm tra miễn thuế** | 21 khoản miễn thuế Luật 109/2025 Điều 4, miễn 05 năm (Điều 5) và các khoản không tính vào thu nhập chịu thuế (NĐ 253/2026) | 01/07/2026 (tiền lương: kỳ 2026) |
+| **Thuế cho thuê tài sản** | Doanh thu đến 1 tỷ/năm không nộp; vượt: 5% phần vượt 1 tỷ | Kỳ tính thuế 2026 |
+| **Thuế chứng khoán** | 0,1% trên giá bán, cổ tức, trái phiếu | Hiện hành |
 | **Thuế người nước ngoài** | Cư trú và không cư trú tại Việt Nam | Hiện hành |
 
 ### Công cụ so sánh
@@ -81,8 +81,8 @@
 | Công cụ | Mô tả |
 |---------|-------|
 | **So sánh offers** | So sánh 2-4 job offers với lương, thưởng, phụ cấp |
-| **So sánh năm** | Xu hướng thuế qua các năm 2024-2026 |
-| **Freelancer vs Fulltime** | So sánh thuế 10% khoán vs lũy tiến + BHXH |
+| **So sánh năm** | Thuế quyết toán năm 2025 (7 bậc) và 2026 (5 bậc) |
+| **Freelancer vs Fulltime** | So sánh khấu trừ 10% (từ 5 triệu/lần, quyết toán lũy tiến) với lương lũy tiến + BHXH |
 | **Chi phí NTD** | Tổng chi phí doanh nghiệp khi tuyển nhân viên |
 
 ### Công cụ tra cứu
@@ -108,9 +108,9 @@
 
 ## Biểu thuế TNCN
 
-### Biểu thuế mới 2026 (5 bậc)
+### Biểu thuế hiện hành (5 bậc)
 
-> Áp dụng từ **01/01/2026** cho thu nhập từ tiền lương, tiền công theo Luật số 109/2025/QH15
+> Áp dụng từ **kỳ tính thuế 2026** (01/01/2026) cho thu nhập từ tiền lương, tiền công của cá nhân cư trú (Luật số 109/2025/QH15, Điều 9; NĐ 253/2026/NĐ-CP, Điều 69). Tờ khai tháng/quý 01–06/2026 đã khai theo quy định cũ không phải khai lại, chênh lệch được điều chỉnh khi quyết toán năm 2026 (NĐ 253/2026/NĐ-CP, Điều 70).
 
 | Bậc | Thu nhập tính thuế/tháng | Thuế suất |
 |:---:|--------------------------|:---------:|
@@ -120,9 +120,9 @@
 | 4 | Trên 60 - 100 triệu | **30%** |
 | 5 | Trên 100 triệu | **35%** |
 
-### Biểu thuế hiện hành (7 bậc)
+### Biểu thuế cũ (7 bậc)
 
-> Áp dụng đến **31/12/2025**
+> Áp dụng đến **kỳ tính thuế 2025** (31/12/2025)
 
 | Bậc | Thu nhập tính thuế/tháng | Thuế suất |
 |:---:|--------------------------|:---------:|
@@ -134,30 +134,56 @@
 | 6 | Trên 52 - 80 triệu | **30%** |
 | 7 | Trên 80 triệu | **35%** |
 
-### Giảm trừ gia cảnh
+### Giảm trừ
 
-| Khoản giảm trừ | Đến 31/12/2025 | Từ 01/01/2026 |
+| Khoản giảm trừ | Đến kỳ tính thuế 2025 | Từ kỳ tính thuế 2026 |
 |----------------|:---------:|:-------------:|
-| Bản thân | 11 triệu/tháng | **15.5 triệu/tháng** |
-| Người phụ thuộc | 4.4 triệu/người | **6.2 triệu/người** |
+| Bản thân | 11 triệu/tháng | **15,5 triệu/tháng** |
+| Người phụ thuộc | 4,4 triệu/người/tháng | **6,2 triệu/người/tháng** |
+| Điều kiện thu nhập của người phụ thuộc | Bình quân ≤ 1 triệu/tháng | **Bình quân ≤ 3 triệu/tháng** (TT 87/2026/TT-BTC) |
+| Hưu trí bổ sung, hưu trí tự nguyện, bảo hiểm nhân thọ | Hưu trí tự nguyện ≤ 1 triệu/tháng | **Tổng ≤ 3 triệu/tháng**, gồm cả phần công ty đóng |
+| Chi khám chữa bệnh (danh mục BHYT chi trả) | – | **≤ 23 triệu/năm** (NNT + người phụ thuộc) |
+| Chi giáo dục, đào tạo | – | **≤ 24 triệu/năm** (NNT + người phụ thuộc) |
+
+> Giảm trừ gia cảnh 15,5/6,2 triệu: Luật 109/2025/QH15 Điều 10 (trước đó NQ 110/2025/UBTVQH15). Hưu trí, y tế, giáo dục: NĐ 253/2026/NĐ-CP Điều 46, 49; muốn trừ chi y tế, giáo dục phải có chứng từ và **tự quyết toán** (Điều 51). Từ thiện, nhân đạo: không giới hạn.
+
+### Các mốc từ 01/07/2026
+
+| Nội dung | Trước | Từ 01/07/2026 |
+|----------|:-----:|:-------------:|
+| Tiền ăn giữa ca trả bằng tiền được miễn | 730.000 đ/tháng (hướng dẫn cũ) | **≤ 1,2 triệu/người/tháng**, phần vượt chịu thuế (NĐ 253/2026 Điều 8) |
+| Khấu trừ 10% thu nhập vãng lai (không HĐLĐ, HĐLĐ < 3 tháng) | Từ 2 triệu/lần | **Từ 5 triệu/lần** (NĐ 253/2026 Điều 50) |
+| Ngưỡng chịu thuế từng lần: trúng thưởng, thừa kế, quà tặng, bản quyền, nhượng quyền | 10 triệu | **20 triệu** |
+| Trần lương đóng BHXH, BHYT (20 × lương cơ sở) | 46,8 triệu | **50,6 triệu** (lương cơ sở 2.530.000, NĐ 161/2026/NĐ-CP) |
+| Thuế 0,1% chuyển nhượng vàng miếng | – | **Chưa thu**, chờ Chính phủ quy định ngưỡng và thời điểm |
 
 ### Bảo hiểm bắt buộc
 
 | Loại | Người lao động | Doanh nghiệp | Mức trần |
 |------|:--------------:|:------------:|----------|
-| BHXH | 8% | 17.5% | 20× lương cơ sở (46.8 triệu) |
-| BHYT | 1.5% | 3% | 20× lương cơ sở (46.8 triệu) |
-| BHTN | 1% | 1% | 20× lương tối thiểu vùng |
+| BHXH | 8% | 17,5% | 20 × lương cơ sở: 46,8 triệu (đến 30/06/2026), 50,6 triệu (từ 01/07/2026) |
+| BHYT | 1,5% | 3% | 20 × lương cơ sở: 46,8 triệu (đến 30/06/2026), 50,6 triệu (từ 01/07/2026) |
+| BHTN | 1% | 1% | 20 × lương tối thiểu vùng |
 | Công đoàn | - | 2% | Không giới hạn |
 
-### Lương tối thiểu vùng (từ 01/01/2026 - NĐ 293/2025)
+### Lương tối thiểu vùng (từ 01/01/2026 - NĐ 293/2025/NĐ-CP)
+
+> Địa bàn chia theo xã, phường của 34 tỉnh, thành sau sắp xếp (Phụ lục NĐ 293/2025/NĐ-CP).
 
 | Vùng | Mức lương | Khu vực áp dụng |
 |:----:|----------:|-----------------|
-| I | 5,310,000₫ | Hà Nội, TP.HCM, Bình Dương, Đồng Nai... |
-| II | 4,730,000₫ | Đà Nẵng, Hải Phòng, Cần Thơ... |
-| III | 4,140,000₫ | Tỉnh lỵ, thành phố trực thuộc tỉnh |
-| IV | 3,700,000₫ | Các huyện còn lại |
+| I | 5.310.000 ₫ | Phần lớn Hà Nội, TP.HCM, Hải Phòng; một phần Quảng Ninh, Đồng Nai, Tây Ninh, Khánh Hòa |
+| II | 4.730.000 ₫ | Xã, phường Vùng II theo NĐ 293/2025 (VD: trung tâm Đà Nẵng) |
+| III | 4.140.000 ₫ | Xã, phường Vùng III theo NĐ 293/2025 |
+| IV | 3.700.000 ₫ | Các xã còn lại theo NĐ 293/2025 |
+
+### Văn bản áp dụng
+
+- Luật Thuế TNCN số 109/2025/QH15 (hiệu lực 01/07/2026; tiền lương, kinh doanh áp dụng từ kỳ tính thuế 2026), sửa đổi bởi Luật số 09/2026/QH16
+- Nghị quyết 110/2025/UBTVQH15 (điều chỉnh mức giảm trừ gia cảnh; mức 15,5/6,2 triệu nay quy định tại Luật 109/2025/QH15 Điều 10)
+- Nghị định 253/2026/NĐ-CP (thay NĐ 65/2013) và Thông tư 87/2026/TT-BTC (thay TT 111/2013)
+- Nghị định 141/2026/NĐ-CP (ngưỡng doanh thu 1 tỷ/năm của hộ, cá nhân kinh doanh)
+- Nghị định 161/2026/NĐ-CP (lương cơ sở 2.530.000 từ 01/07/2026), Nghị định 293/2025/NĐ-CP (lương tối thiểu vùng 2026)
 
 ---
 
@@ -271,9 +297,9 @@ src/
 
 ### Quy đổi GROSS ↔ NET
 
-- Thuật toán **binary search** cho NET → GROSS
-- Lưu trữ riêng gross/net để tránh sai số tích lũy
-- Độ chính xác: 1,000₫, tối đa 50 vòng lặp
+- Thuật toán **binary search** cho NET → GROSS, sai số < 1 ₫, tối đa 100 vòng lặp
+- Tab GROSS ⇄ NET tìm nhị phân trên chính engine tính thuế (cùng BH từng loại, phụ cấp, giảm trừ khác, hưu trí với tab Tính thuế), GROSS làm tròn đồng
+- GROSS lưu ở state chung; NET giữ riêng khi nhập theo NET để tránh trôi số khi đổi chế độ
 
 ### Chia sẻ qua URL
 
@@ -345,5 +371,5 @@ Phát hành theo giấy phép **MIT** - xem file [LICENSE](LICENSE) để biết
 ---
 
 <p align="center">
-  <sub>Được xây dựng với ❤️ cho cộng đồng người lao động Việt Nam</sub>
+  <sub>Được xây dựng cho cộng đồng người lao động Việt Nam</sub>
 </p>

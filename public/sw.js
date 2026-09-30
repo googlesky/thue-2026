@@ -3,21 +3,22 @@
  * Cache strategies:
  * - Cache-first for static assets (CSS, JS, images, fonts)
  * - Network-first for dynamic content (HTML pages)
- * - Stale-while-revalidate for API calls (if any)
  */
 
-const CACHE_NAME = 'thue-2026-v1';
-const STATIC_CACHE_NAME = 'thue-2026-static-v1';
-const DYNAMIC_CACHE_NAME = 'thue-2026-dynamic-v1';
+// Tăng VERSION khi đổi file này (chiến lược cache, danh sách tiền cache) → activate xóa mọi cache cũ.
+// ponytail: cache tĩnh giữ chunk của các lần deploy trước tới khi VERSION tăng; cần dọn theo build thì nhúng build id.
+const VERSION = 'v2';
+const STATIC_CACHE_NAME = `thue-2026-static-${VERSION}`;
+const DYNAMIC_CACHE_NAME = `thue-2026-dynamic-${VERSION}`;
 
-// Static assets to pre-cache
+// Static assets to pre-cache (đường dẫn thật trong public/ và out/; trailingSlash: true → '/tinh-thue/')
 const STATIC_ASSETS = [
   '/',
-  '/tinh-thue',
+  '/tinh-thue/',
   '/manifest.json',
   '/favicon.ico',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // File extensions that should use cache-first strategy
@@ -39,29 +40,19 @@ const CACHE_FIRST_EXTENSIONS = [
 ];
 
 // Install event - pre-cache static assets
+// Không skipWaiting(): bản mới chờ tới khi người dùng bấm "Cập nhật ngay" (PWAUpdatePrompt gửi SKIP_WAITING)
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
-
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Pre-caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('[SW] Installation complete');
-        return self.skipWaiting();
-      })
+      .then((cache) => cache.addAll(STATIC_ASSETS))
       .catch((error) => {
-        console.error('[SW] Installation failed:', error);
+        console.error('[SW] Pre-cache failed:', error);
       })
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches (mọi cache 'thue-2026-*' không thuộc VERSION hiện tại)
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
-
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
@@ -78,10 +69,7 @@ self.addEventListener('activate', (event) => {
             })
         );
       })
-      .then(() => {
-        console.log('[SW] Activation complete');
-        return self.clients.claim();
-      })
+      .then(() => self.clients.claim())
   );
 });
 
@@ -164,12 +152,16 @@ async function networkFirst(request) {
 
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Network failed, trying cache:', request.url);
-
     const cachedResponse = await caches.match(request);
 
     if (cachedResponse) {
       return cachedResponse;
+    }
+
+    // Chỉ điều hướng trang mới nhận HTML dự phòng; request dữ liệu (RSC .txt, JSON...) trả lỗi mạng
+    // để Next.js tự xử lý thay vì nhận nhầm HTML
+    if (request.mode !== 'navigate') {
+      return Response.error();
     }
 
     // Return offline page if available, otherwise return error
@@ -217,13 +209,9 @@ function getOfflineHTML() {
       justify-content: center;
       min-height: 100vh;
       padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: #FBFBF9;
+      color: #223349;
       text-align: center;
-    }
-    .icon {
-      font-size: 64px;
-      margin-bottom: 24px;
     }
     h1 {
       font-size: 24px;
@@ -231,7 +219,7 @@ function getOfflineHTML() {
     }
     p {
       font-size: 16px;
-      opacity: 0.9;
+      color: #3A4C68;
       max-width: 400px;
       line-height: 1.6;
     }
@@ -240,24 +228,18 @@ function getOfflineHTML() {
       padding: 12px 24px;
       font-size: 16px;
       font-weight: 600;
-      color: #667eea;
-      background: white;
+      color: white;
+      background: #223349;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
     }
     button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    button:active {
-      transform: translateY(0);
+      background: #182230;
     }
   </style>
 </head>
 <body>
-  <div class="icon">📡</div>
   <h1>Không có kết nối mạng</h1>
   <p>Ứng dụng cần kết nối internet để hoạt động. Vui lòng kiểm tra kết nối mạng và thử lại.</p>
   <button onclick="window.location.reload()">Thử lại</button>
@@ -271,18 +253,4 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-
-  if (event.data && event.data.type === 'GET_VERSION') {
-    event.ports[0].postMessage({ version: CACHE_NAME });
-  }
-});
-
-// Background sync for future use
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
-});
-
-// Push notification handling for future use
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push received:', event);
 });

@@ -118,6 +118,45 @@ export const GOLD_CATEGORIES: GoldCategory[] = [
 ];
 
 const API_BASE = 'https://www.vang.today/api';
+const TIMEOUT_MS = 10000;
+
+/** AbortSignal.timeout chưa có trên trình duyệt cũ (Safari < 16) → tự hẹn giờ abort */
+function timeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
+/** Gọi API và đổi mọi lỗi mạng/HTTP/dữ liệu thành thông báo tiếng Việt thân thiện */
+async function fetchJSON(url: string): Promise<Record<string, unknown>> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: timeoutSignal(TIMEOUT_MS),
+    });
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    throw new Error(
+      name === 'TimeoutError' || name === 'AbortError'
+        ? 'Máy chủ giá vàng phản hồi quá lâu. Vui lòng thử lại sau.'
+        : 'Không kết nối được máy chủ giá vàng. Hãy kiểm tra mạng rồi thử lại.'
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(`Máy chủ giá vàng đang gặp lỗi (mã ${response.status}). Vui lòng thử lại sau.`);
+  }
+
+  try {
+    const raw = await response.json();
+    if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+  } catch {
+    // rơi xuống lỗi dữ liệu bên dưới
+  }
+  throw new Error('Dữ liệu giá vàng không hợp lệ. Vui lòng thử lại sau.');
+}
 
 /**
  * Fetch current gold prices from vang.today API
@@ -136,29 +175,18 @@ const API_BASE = 'https://www.vang.today/api';
  * }
  */
 export async function fetchGoldPrices(): Promise<GoldPriceResponse> {
-  const url = `${API_BASE}/prices`;
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Không thể lấy giá vàng: ${response.status}`);
-  }
-
-  const raw = await response.json();
+  const raw = await fetchJSON(`${API_BASE}/prices`);
 
   if (!raw.success) {
-    throw new Error('API trả về lỗi');
+    throw new Error('Máy chủ giá vàng tạm thời không trả dữ liệu. Vui lòng thử lại sau.');
   }
 
   // API returns prices as an object keyed by type code
-  const pricesObj = raw.prices || {};
+  const pricesObj = (raw.prices || {}) as Record<string, unknown>;
   const timestamp = Number(raw.timestamp) || Math.floor(Date.now() / 1000);
 
   const data: GoldPrice[] = Object.entries(pricesObj).map(([code, item]) => {
-    const p = item as Record<string, unknown>;
+    const p = (item || {}) as Record<string, unknown>;
     return {
       typeCode: code as GoldTypeCode,
       typeName: GOLD_TYPE_NAMES[code as GoldTypeCode] || String(p.name || code),
@@ -196,20 +224,9 @@ export async function fetchGoldPriceHistory(
   typeCode: GoldTypeCode,
   days: number = 7
 ): Promise<GoldPriceHistory> {
-  const url = `${API_BASE}/prices?type=${typeCode}&days=${Math.min(days, 30)}`;
+  const raw = await fetchJSON(`${API_BASE}/prices?type=${typeCode}&days=${Math.min(days, 30)}`);
 
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Không thể lấy lịch sử giá vàng: ${response.status}`);
-  }
-
-  const raw = await response.json();
-
-  const history = (raw.history || []).map((day: Record<string, unknown>) => {
+  const history = ((Array.isArray(raw.history) ? raw.history : []) as Record<string, unknown>[]).map((day) => {
     const pricesObj = (day.prices || {}) as Record<string, Record<string, unknown>>;
     const priceData = pricesObj[typeCode] || {};
     return {

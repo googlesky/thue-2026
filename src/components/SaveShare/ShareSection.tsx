@@ -50,32 +50,34 @@ export default function ShareSection({ snapshot }: ShareSectionProps) {
     <div className="p-4 space-y-4">
       {/* URL Input with Copy Button */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="share-url" className="block text-sm font-medium text-gray-700 mb-2">
           Link chia sẻ
         </label>
         <div className="flex gap-2">
           <input
+            id="share-url"
             type="text"
             value={shareURL}
             readOnly
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
           <button
+            type="button"
             onClick={handleCopy}
             disabled={!shareURL}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
-            title="Copy link"
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+            title="Sao chép link"
           >
             {copied ? (
-              <span className="flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex items-center gap-1" role="status">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Đã copy!
+                Đã sao chép
               </span>
             ) : (
-              'Copy'
+              'Sao chép'
             )}
           </button>
         </div>
@@ -83,19 +85,20 @@ export default function ShareSection({ snapshot }: ShareSectionProps) {
 
       {/* QR Code Preview */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <p className="block text-sm font-medium text-gray-700 mb-2">
           Mã QR
-        </label>
+        </p>
         <div className="flex items-center gap-4">
           <div className="p-2 bg-white border border-gray-200 rounded-lg">
-            <QRCodeSVG value={shareURL} size={120} level="M" />
+            <QRCodeSVG value={shareURL} size={120} level="M" title="Mã QR của link chia sẻ" />
           </div>
           <div className="flex-1 space-y-2">
             <button
+              type="button"
               onClick={() => setShowQRModal(true)}
               className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -107,10 +110,11 @@ export default function ShareSection({ snapshot }: ShareSectionProps) {
             </button>
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button
+                type="button"
                 onClick={handleNativeShare}
-                className="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

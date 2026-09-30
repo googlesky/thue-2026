@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import {
   calculateMortgage,
   MORTGAGE_DEFAULTS,
@@ -14,7 +14,7 @@ import {
 } from '@/lib/mortgageCalculator';
 import { formatNumber } from '@/lib/taxCalculator';
 import { parseCurrencyInput } from '@/utils/inputSanitizers';
-import { MortgageTabState, DEFAULT_MORTGAGE_STATE } from '@/lib/snapshotTypes';
+import { MortgageTabState } from '@/lib/snapshotTypes';
 
 const LazyChart = lazy(() =>
   import('./MortgageChart').then((m) => ({ default: m.MortgageAmortizationChart }))
@@ -30,29 +30,19 @@ function displayCurrency(value: number): string {
   return formatNumber(value);
 }
 
+/** Số thập phân kiểu Việt Nam: 2,1 · 69,4 · 10,5 */
+function formatDecimal(value: number, maxFractionDigits = 1): string {
+  return value.toLocaleString('vi-VN', { maximumFractionDigits: maxFractionDigits });
+}
+
 function formatCurrency(value: number): string {
-  if (value >= 1_000_000_000) {
-    const billions = value / 1_000_000_000;
-    return billions % 1 === 0
-      ? `${billions} tỷ`
-      : `${billions.toFixed(1)} tỷ`;
-  }
-  if (value >= 1_000_000) {
-    const millions = value / 1_000_000;
-    return millions % 1 === 0
-      ? `${millions} tr`
-      : `${millions.toFixed(1)} tr`;
-  }
+  if (value >= 1_000_000_000) return `${formatDecimal(value / 1_000_000_000)} tỷ`;
+  if (value >= 1_000_000) return `${formatDecimal(value / 1_000_000)} tr`;
   return formatNumber(value);
 }
 
 function formatCurrencyFull(value: number): string {
-  if (value >= 1_000_000_000) {
-    const billions = value / 1_000_000_000;
-    return billions % 1 === 0
-      ? `${billions} tỷ`
-      : `${billions.toFixed(2)} tỷ`;
-  }
+  if (value >= 1_000_000_000) return `${formatDecimal(value / 1_000_000_000, 2)} tỷ`;
   return formatNumber(value) + ' VNĐ';
 }
 
@@ -62,7 +52,8 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
     tabState?.propertyPrice?.toString() ?? MORTGAGE_DEFAULTS.propertyPrice.toString()
   );
   const [downPaymentPercent, setDownPaymentPercent] = useState(
-    tabState?.downPaymentPercent ?? MORTGAGE_DEFAULTS.downPaymentPercent
+    // Number(): link/bản lưu sửa tay có thể chứa chuỗi
+    Number(tabState?.downPaymentPercent ?? MORTGAGE_DEFAULTS.downPaymentPercent) || 0
   );
   const [downPaymentMode, setDownPaymentMode] = useState<'percent' | 'amount'>('percent');
   const [downPaymentAmountInput, setDownPaymentAmountInput] = useState('');
@@ -105,18 +96,19 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
   const propertyPrice = parseCurrencyInput(propertyPriceInput).value;
   const monthlyIncome = parseCurrencyInput(monthlyIncomeInput).value;
   const otherDebt = parseCurrencyInput(otherDebtInput).value;
-  const prefRate = parseFloat(preferentialRate) || 0;
-  const floatRate = parseFloat(floatingRate) || 0;
+  const prefRate = Math.max(0, parseFloat(preferentialRate) || 0);
+  const floatRate = Math.max(0, parseFloat(floatingRate) || 0);
 
-  // Down payment amount sync
+  // Trả trước theo VNĐ không vượt giá nhà
+  const downPaymentAmount = Math.min(parseCurrencyInput(downPaymentAmountInput).value, propertyPrice);
   const downPayment = downPaymentMode === 'percent'
     ? propertyPrice * (downPaymentPercent / 100)
-    : parseCurrencyInput(downPaymentAmountInput).value;
+    : downPaymentAmount;
 
   const effectiveDownPaymentPercent = downPaymentMode === 'percent'
     ? downPaymentPercent
     : propertyPrice > 0
-      ? (parseCurrencyInput(downPaymentAmountInput).value / propertyPrice) * 100
+      ? (downPaymentAmount / propertyPrice) * 100
       : 0;
 
   // Build input
@@ -142,27 +134,16 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
   // Calculate
   const result = useMemo(() => calculateMortgage(mortgageInput), [mortgageInput]);
 
-  // Sync tab state
-  const syncTabState = useCallback(() => {
-    onTabStateChange?.({
-      propertyPrice,
-      downPaymentPercent: effectiveDownPaymentPercent,
-      loanTermYears,
-      preferentialRate: prefRate,
-      preferentialMonths,
-      floatingRate: floatRate,
-      monthlyIncome,
-      otherDebtPayments: otherDebt,
-      gracePeriodMonths,
-      propertyType,
-      repaymentMethod,
-    });
-  }, [
-    onTabStateChange, propertyPrice, effectiveDownPaymentPercent,
-    loanTermYears, prefRate, preferentialMonths, floatRate,
-    monthlyIncome, otherDebt, gracePeriodMonths,
-    propertyType, repaymentMethod,
-  ]);
+  // Đồng bộ tabState (lưu/chia sẻ) mỗi khi giá trị đổi — kể cả đổi bằng bàn phím.
+  // Chỉ gọi khi khác tabState hiện tại để không lặp vô hạn (tabState cũng là đầu vào của effect).
+  useEffect(() => {
+    if (!onTabStateChange) return;
+    const unchanged = tabState !== undefined &&
+      (Object.keys(mortgageInput) as (keyof MortgageTabState)[]).every(
+        (key) => tabState[key] === mortgageInput[key]
+      );
+    if (!unchanged) onTabStateChange({ ...mortgageInput });
+  }, [mortgageInput, tabState, onTabStateChange]);
 
   // Currency input handler
   const handleCurrencyInput = (
@@ -175,11 +156,11 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
   const handleCurrencyBlur = (
     value: string,
-    setter: (v: string) => void
+    setter: (v: string) => void,
+    max = Number.MAX_SAFE_INTEGER
   ) => {
-    const parsed = parseCurrencyInput(value);
-    setter(parsed.value === 0 ? '0' : parsed.value.toString());
-    syncTabState();
+    const parsed = Math.min(parseCurrencyInput(value).value, max);
+    setter(parsed.toString());
   };
 
   // DTI helpers
@@ -211,13 +192,10 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
     <div className="space-y-6">
       {/* ===== HEADER ===== */}
       <div className="card">
-        <div className="flex items-center gap-3 mb-1">
-          <span className="text-2xl">🏠</span>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-            Vay mua nhà
-          </h2>
-        </div>
-        <p className="text-sm text-gray-500 ml-10">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
+          Vay mua nhà
+        </h2>
+        <p className="text-sm text-gray-500">
           Tính trả góp, phí mua nhà, đánh giá khả năng tài chính
         </p>
       </div>
@@ -231,11 +209,12 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Giá nhà */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-price" className="block text-sm font-medium text-gray-700 mb-1">
               Giá nhà
             </label>
             <div className="relative">
               <input
+                id="mortgage-price"
                 type="text"
                 inputMode="numeric"
                 value={propertyPrice === 0 ? '' : displayCurrency(propertyPrice)}
@@ -257,13 +236,20 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
           {/* Tiền trả trước */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-down-payment" className="block text-sm font-medium text-gray-700 mb-1">
               Tiền trả trước
             </label>
             <div className="flex gap-2">
-              <div className="flex rounded-lg border border-gray-300 overflow-hidden flex-shrink-0">
+              <div role="group" aria-label="Đơn vị tiền trả trước" className="flex rounded-lg border border-gray-300 overflow-hidden flex-shrink-0">
                 <button
-                  onClick={() => setDownPaymentMode('percent')}
+                  type="button"
+                  aria-pressed={downPaymentMode === 'percent'}
+                  aria-label="Nhập theo phần trăm giá nhà"
+                  onClick={() => {
+                    // Giữ đúng số tiền đã nhập khi chuyển về %
+                    setDownPaymentPercent(effectiveDownPaymentPercent);
+                    setDownPaymentMode('percent');
+                  }}
                   className={`px-3 py-2 text-sm font-medium transition-colors ${
                     downPaymentMode === 'percent'
                       ? 'bg-primary-500 text-white'
@@ -273,6 +259,9 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
                   %
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={downPaymentMode === 'amount'}
+                  aria-label="Nhập theo số tiền (VNĐ)"
                   onClick={() => {
                     setDownPaymentMode('amount');
                     setDownPaymentAmountInput(Math.round(downPayment).toString());
@@ -289,16 +278,16 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
               {downPaymentMode === 'percent' ? (
                 <div className="relative flex-1">
                   <input
+                    id="mortgage-down-payment"
                     type="number"
                     min={0}
                     max={100}
                     step={5}
-                    value={downPaymentPercent}
+                    value={+downPaymentPercent.toFixed(2)}
                     onChange={(e) => {
-                      const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                      const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
                       setDownPaymentPercent(v);
                     }}
-                    onBlur={syncTabState}
                     className="input-field w-full pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
@@ -306,11 +295,12 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
               ) : (
                 <div className="relative flex-1">
                   <input
+                    id="mortgage-down-payment"
                     type="text"
                     inputMode="numeric"
                     value={parseCurrencyInput(downPaymentAmountInput).value === 0 ? '' : displayCurrency(parseCurrencyInput(downPaymentAmountInput).value)}
                     onChange={(e) => handleCurrencyInput(e.target.value, setDownPaymentAmountInput)}
-                    onBlur={() => handleCurrencyBlur(downPaymentAmountInput, setDownPaymentAmountInput)}
+                    onBlur={() => handleCurrencyBlur(downPaymentAmountInput, setDownPaymentAmountInput, propertyPrice)}
                     className="input-field w-full"
                     placeholder="900.000.000"
                   />
@@ -320,25 +310,25 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             <p className="text-xs text-gray-400 mt-1">
               {downPaymentMode === 'percent'
                 ? `= ${formatCurrency(Math.round(downPayment))}`
-                : `= ${effectiveDownPaymentPercent.toFixed(1)}%`
+                : `= ${formatDecimal(effectiveDownPaymentPercent)}%`
               }
             </p>
           </div>
 
           {/* Thời hạn vay */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-term" className="block text-sm font-medium text-gray-700 mb-1">
               Thời hạn vay: <span className="font-bold text-primary-600">{loanTermYears} năm</span>
             </label>
             <input
+              id="mortgage-term"
               type="range"
               min={1}
               max={30}
               step={1}
               value={loanTermYears}
               onChange={(e) => setLoanTermYears(Number(e.target.value))}
-              onMouseUp={syncTabState}
-              onTouchEnd={syncTabState}
+              aria-valuetext={`${loanTermYears} năm`}
               className="w-full accent-primary-500"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -350,18 +340,18 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
           {/* Lãi suất ưu đãi */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-pref-rate" className="block text-sm font-medium text-gray-700 mb-1">
               Lãi suất ưu đãi
             </label>
             <div className="relative">
               <input
+                id="mortgage-pref-rate"
                 type="number"
                 min={0}
                 max={30}
                 step={0.1}
                 value={preferentialRate}
                 onChange={(e) => setPreferentialRate(e.target.value)}
-                onBlur={syncTabState}
                 className="input-field w-full pr-14"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%/năm</span>
@@ -370,15 +360,13 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
           {/* Thời gian ưu đãi */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-pref-months" className="block text-sm font-medium text-gray-700 mb-1">
               Thời gian ưu đãi
             </label>
             <select
+              id="mortgage-pref-months"
               value={preferentialMonths}
-              onChange={(e) => {
-                setPreferentialMonths(Number(e.target.value));
-                syncTabState();
-              }}
+              onChange={(e) => setPreferentialMonths(Number(e.target.value))}
               className="input-field w-full"
             >
               {PREFERENTIAL_PERIOD_OPTIONS.map((m) => (
@@ -391,18 +379,18 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
           {/* Lãi suất thả nổi */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="mortgage-float-rate" className="block text-sm font-medium text-gray-700 mb-1">
               Lãi suất thả nổi (sau ưu đãi)
             </label>
             <div className="relative">
               <input
+                id="mortgage-float-rate"
                 type="number"
                 min={0}
                 max={30}
                 step={0.1}
                 value={floatingRate}
                 onChange={(e) => setFloatingRate(e.target.value)}
-                onBlur={syncTabState}
                 className="input-field w-full pr-14"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%/năm</span>
@@ -413,6 +401,9 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
         {/* Advanced options */}
         <div className="mt-4 border-t border-gray-100 pt-4">
           <button
+            type="button"
+            aria-expanded={showAdvanced}
+            aria-controls="mortgage-advanced"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
@@ -421,6 +412,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -428,14 +420,15 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
           </button>
 
           {showAdvanced && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div id="mortgage-advanced" className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               {/* Thu nhập hàng tháng */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="mortgage-income" className="block text-sm font-medium text-gray-700 mb-1">
                   Thu nhập hàng tháng
                 </label>
                 <div className="relative">
                   <input
+                    id="mortgage-income"
                     type="text"
                     inputMode="numeric"
                     value={monthlyIncome === 0 ? '' : displayCurrency(monthlyIncome)}
@@ -450,11 +443,12 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
               {/* Chi trả nợ khác */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="mortgage-other-debt" className="block text-sm font-medium text-gray-700 mb-1">
                   Chi trả nợ khác/tháng
                 </label>
                 <div className="relative">
                   <input
+                    id="mortgage-other-debt"
                     type="text"
                     inputMode="numeric"
                     value={otherDebt === 0 ? '' : displayCurrency(otherDebt)}
@@ -469,38 +463,39 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
               {/* Ân hạn vốn gốc */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="mortgage-grace" className="block text-sm font-medium text-gray-700 mb-1">
                   Ân hạn vốn gốc
                 </label>
                 <div className="relative">
                   <input
+                    id="mortgage-grace"
                     type="number"
                     min={0}
                     max={60}
                     step={1}
                     value={gracePeriodMonths}
-                    onChange={(e) => setGracePeriodMonths(Number(e.target.value))}
-                    onBlur={syncTabState}
+                    onChange={(e) =>
+                      setGracePeriodMonths(Math.min(60, Math.max(0, Math.floor(Number(e.target.value) || 0))))
+                    }
+                    aria-describedby="mortgage-grace-hint"
                     className="input-field w-full pr-14"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">tháng</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  Chỉ trả lãi, không trả gốc
+                <p id="mortgage-grace-hint" className="text-xs text-gray-400 mt-1">
+                  Chỉ trả lãi, không trả gốc (tối đa 60 tháng, trước giai đoạn ưu đãi)
                 </p>
               </div>
 
               {/* Loại nhà */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="mortgage-property-type" className="block text-sm font-medium text-gray-700 mb-1">
                   Loại nhà
                 </label>
                 <select
+                  id="mortgage-property-type"
                   value={propertyType}
-                  onChange={(e) => {
-                    setPropertyType(e.target.value as PropertyType);
-                    syncTabState();
-                  }}
+                  onChange={(e) => setPropertyType(e.target.value as PropertyType)}
                   className="input-field w-full"
                 >
                   <option value="secondary">Nhà cũ (mua lại)</option>
@@ -510,15 +505,14 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
 
               {/* Phương thức trả nợ */}
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <p id="mortgage-method-label" className="block text-sm font-medium text-gray-700 mb-1">
                   Phương thức trả nợ
-                </label>
-                <div className="flex gap-2">
+                </p>
+                <div role="group" aria-labelledby="mortgage-method-label" className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setRepaymentMethod('annuity');
-                      syncTabState();
-                    }}
+                    type="button"
+                    aria-pressed={repaymentMethod === 'annuity'}
+                    onClick={() => setRepaymentMethod('annuity')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
                       repaymentMethod === 'annuity'
                         ? 'bg-primary-500 text-white border-primary-500'
@@ -528,10 +522,9 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
                     Trả đều (annuity)
                   </button>
                   <button
-                    onClick={() => {
-                      setRepaymentMethod('straight_line');
-                      syncTabState();
-                    }}
+                    type="button"
+                    aria-pressed={repaymentMethod === 'straight_line'}
+                    onClick={() => setRepaymentMethod('straight_line')}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
                       repaymentMethod === 'straight_line'
                         ? 'bg-primary-500 text-white border-primary-500'
@@ -564,7 +557,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             {formatCurrency(result.preferentialPayment)}
           </p>
           <p className="text-xs text-green-500 mt-1">
-            /tháng ({preferentialMonths} tháng)
+            /tháng ({result.amortizationSchedule.filter((r) => r.phase === 'preferential').length || preferentialMonths} tháng)
           </p>
         </div>
 
@@ -574,10 +567,12 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             Trả góp sau ưu đãi
           </p>
           <p className="text-lg sm:text-2xl font-bold text-orange-700 font-mono tabular-nums">
-            {formatCurrency(result.floatingPayment)}
+            {result.floatingPayment > 0 ? formatCurrency(result.floatingPayment) : '—'}
           </p>
           <p className="text-xs text-orange-500 mt-1">
-            /tháng (còn lại)
+            {result.floatingPayment === 0 && result.amortizationSchedule.length > 0
+              ? 'Ưu đãi phủ hết thời hạn'
+              : '/tháng (còn lại)'}
           </p>
         </div>
 
@@ -590,7 +585,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             {formatCurrency(result.totalInterest)}
           </p>
           <p className="text-xs text-red-500 mt-1">
-            = {propertyPrice > 0 ? ((result.totalInterest / propertyPrice) * 100).toFixed(0) : 0}% giá nhà
+            = {propertyPrice > 0 ? formatDecimal((result.totalInterest / propertyPrice) * 100, 0) : 0}% giá nhà
           </p>
         </div>
 
@@ -631,9 +626,9 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
               />
               <div
                 className="absolute -top-6 -translate-x-1/2 text-xs font-bold text-gray-800 bg-white px-1.5 py-0.5 rounded border border-gray-200 shadow-sm whitespace-nowrap"
-                style={{ left: `${Math.min(result.dtiRatio, 100)}%` }}
+                style={{ left: `${Math.min(Math.max(result.dtiRatio, 8), 92)}%` }}
               >
-                {result.dtiRatio}%
+                {formatDecimal(result.dtiRatio)}%
               </div>
             </div>
 
@@ -650,7 +645,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
                 {getDTILabel(result.dtiRatio)}
               </span>
               <span className="text-sm text-gray-500">
-                Nợ vay / thu nhập = {result.dtiRatio}%
+                Nợ vay / thu nhập = {formatDecimal(result.dtiRatio)}%
               </span>
             </div>
 
@@ -698,7 +693,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             </div>
             {result.fees.maintenanceFee > 0 && (
               <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                <span className="text-sm text-gray-600">Phí bảo trì (2%)</span>
+                <span className="text-sm text-gray-600">Phí bảo trì chung cư (2%)</span>
                 <span className="text-sm font-medium font-mono tabular-nums">
                   {formatNumber(Math.round(result.fees.maintenanceFee))}
                 </span>
@@ -719,6 +714,12 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
               </span>
             </div>
           </div>
+
+          {propertyType === 'primary_developer' && (
+            <p className="text-xs text-gray-500 mt-2">
+              Mua từ chủ đầu tư là tổ chức: hợp đồng có thể không bắt buộc công chứng (Luật Nhà ở 2023), khi đó không phát sinh phí công chứng. Phí bảo trì 2% chỉ áp dụng với căn hộ chung cư.
+            </p>
+          )}
 
           <div className="mt-3 bg-blue-50 rounded-lg p-3">
             <p className="text-sm text-blue-800 font-medium">
@@ -747,7 +748,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
           }>
             <LazyChart
               data={result.yearlyAmortization}
-              preferentialMonths={preferentialMonths + gracePeriodMonths}
+              preferentialEndMonth={(result.amortizationSchedule.find((r) => r.phase === 'floating')?.month ?? 1) - 1}
             />
           </Suspense>
         </div>
@@ -762,6 +763,8 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
             </h3>
             <div className="flex rounded-lg border border-gray-300 overflow-hidden">
               <button
+                type="button"
+                aria-pressed={tableView === 'yearly'}
                 onClick={() => setTableView('yearly')}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                   tableView === 'yearly'
@@ -772,6 +775,8 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
                 Theo năm
               </button>
               <button
+                type="button"
+                aria-pressed={tableView === 'monthly'}
                 onClick={() => { setTableView('monthly'); setShowAllMonths(false); }}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-300 ${
                   tableView === 'monthly'
@@ -820,7 +825,7 @@ export function MortgageCalculator({ tabState, onTabStateChange }: MortgageCalcu
                       {scenario.label}
                     </span>
                     <span className="text-sm text-gray-500">
-                      {scenario.rate}%/năm
+                      {formatDecimal(scenario.rate, 2)}%/năm
                     </span>
                   </div>
 
@@ -960,6 +965,7 @@ function MonthlyTable({
       {!showAll && remaining > 0 && (
         <div className="text-center mt-3">
           <button
+            type="button"
             onClick={onShowAll}
             className="px-4 py-2 text-sm text-primary-600 hover:text-primary-700 font-medium hover:bg-primary-50 rounded-lg transition-colors"
           >

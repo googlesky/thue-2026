@@ -76,7 +76,8 @@ body {
   min-height: 100vh;
 }
 
-@layer utilities {
+/* Thành phần: đặt ở layer components để tiện ích đi kèm (p-0, bg-*, border-*) ghi đè được */
+@layer components {
   .input-field {
     @apply w-full max-w-full px-4 py-3 bg-white border border-line rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors box-border;
   }
@@ -88,7 +89,9 @@ body {
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors;
   }
+}
 
+@layer utilities {
   /* Chữ số liệu: mono + tabular cho mọi số tiền */
   .font-data {
     font-family: var(--font-mono), ui-monospace, monospace;

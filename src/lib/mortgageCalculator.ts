@@ -110,13 +110,13 @@ export function calculatePMT(
 /**
  * Biểu phí công chứng hợp đồng mua bán BĐS
  * Theo Thông tư 257/2016/TT-BTC (có hiệu lực từ 01/01/2017)
- * Biểu phí lũy tiến, tối đa 70 triệu đồng
+ * Biểu phí lũy tiến 8 bậc, tối đa 70 triệu đồng
  */
 export function calculateNotaryFee(propertyPrice: number): number {
   if (propertyPrice <= 0) return 0;
 
-  // Biểu phí lũy tiến theo TT 257/2016
-  if (propertyPrice <= 50_000_000) {
+  // Biểu phí lũy tiến theo TT 257/2016: "Dưới 50 triệu" 50 nghìn; "Từ 50 triệu đến 100 triệu" 100 nghìn
+  if (propertyPrice < 50_000_000) {
     return 50_000;
   }
   if (propertyPrice <= 100_000_000) {
@@ -163,12 +163,13 @@ export function calculateFees(
   // Lệ phí trước bạ: 0.5% giá trị nhà
   const registrationFee = propertyPrice * 0.005;
 
-  // Phí công chứng theo biểu 7 bậc
+  // Phí công chứng theo biểu 8 bậc
   const notaryFee = calculateNotaryFee(propertyPrice);
 
-  // Phí thẩm định: 0.15% số tiền vay, min 100k, max 5 triệu
-  const rawAppraisalFee = loanAmount * 0.0015;
-  const appraisalFee = Math.max(100_000, Math.min(rawAppraisalFee, 5_000_000));
+  // Phí thẩm định: 0.15% số tiền vay, min 100k, max 5 triệu (không vay thì không thẩm định)
+  const appraisalFee = loanAmount > 0
+    ? Math.max(100_000, Math.min(loanAmount * 0.0015, 5_000_000))
+    : 0;
 
   // Phí bảo trì: 2% giá trị nhà (chỉ khi mua từ CĐT)
   const maintenanceFee = propertyType === 'primary_developer'
@@ -195,104 +196,69 @@ export function calculateFees(
 }
 
 /**
+ * Chuẩn hóa kỳ hạn dùng chung cho lịch trả nợ, độ nhạy và khả năng vay tối đa:
+ * số kỳ = floor(năm × 12); ân hạn nguyên trong [0, số kỳ − 1]; ưu đãi (tháng) ≥ 0, bắt đầu sau ân hạn.
+ */
+function getTerms(input: MortgageInput) {
+  const totalMonths = Math.max(0, Math.floor(input.loanTermYears * 12) || 0);
+  const grace = Math.max(0, Math.min(Math.floor(input.gracePeriodMonths) || 0, totalMonths - 1));
+  const preferentialEnd = Math.min(
+    grace + Math.max(0, Math.floor(input.preferentialMonths) || 0),
+    totalMonths
+  );
+  return { totalMonths, grace, preferentialEnd };
+}
+
+/**
  * Xây dựng bảng khấu hao chi tiết
  * Hỗ trợ: ân hạn gốc, 2 giai đoạn lãi suất, annuity + straight-line
+ * Tính bằng đồng nguyên: tổng gốc = số vay, dư nợ cuối = 0 (kỳ cuối trả hết dư nợ còn lại).
  */
 export function buildAmortizationSchedule(
   loanAmount: number,
   input: MortgageInput
 ): AmortizationRow[] {
-  if (loanAmount <= 0) return [];
+  const { totalMonths, grace, preferentialEnd } = getTerms(input);
+  const loan = Math.round(loanAmount);
+  if (!(loan > 0) || totalMonths <= 0) return [];
 
-  const totalMonths = input.loanTermYears * 12;
+  const repaymentMonths = totalMonths - grace; // ≥ 1
   const schedule: AmortizationRow[] = [];
-  let balance = loanAmount;
-
-  const gracePeriod = Math.min(input.gracePeriodMonths, totalMonths);
-  const preferentialEnd = Math.min(
-    gracePeriod + input.preferentialMonths,
-    totalMonths
-  );
-
-  // Tổng số tháng thực sự trả gốc (trừ ân hạn)
-  const repaymentMonths = totalMonths - gracePeriod;
+  let balance = loan;
+  let payment = 0; // Trả góp annuity của giai đoạn lãi suất hiện tại
 
   for (let month = 1; month <= totalMonths; month++) {
-    let phase: AmortizationRow['phase'];
-    let annualRate: number;
+    const phase: AmortizationRow['phase'] =
+      month <= grace ? 'grace' : month <= preferentialEnd ? 'preferential' : 'floating';
+    // Ân hạn và giai đoạn ưu đãi dùng lãi suất ưu đãi
+    const annualRate = phase === 'floating' ? input.floatingRate : input.preferentialRate;
+    const interest = Math.round((balance * annualRate) / 1200);
+
     let principal: number;
-    let interest: number;
-
-    if (month <= gracePeriod) {
-      // Giai đoạn ân hạn: chỉ trả lãi, không trả gốc
-      phase = 'grace';
-      annualRate = input.preferentialRate;
-      const monthlyRate = annualRate / 100 / 12;
-      interest = balance * monthlyRate;
-      principal = 0;
-    } else if (month <= preferentialEnd) {
-      // Giai đoạn ưu đãi
-      phase = 'preferential';
-      annualRate = input.preferentialRate;
-      const monthlyRate = annualRate / 100 / 12;
-
-      if (input.repaymentMethod === 'annuity') {
-        // Annuity: tính PMT cho toàn bộ giai đoạn trả gốc còn lại
-        const remainingRepaymentMonths = totalMonths - gracePeriod;
-        // Nếu mới bắt đầu trả gốc (tháng đầu sau ân hạn), tính PMT
-        if (month === gracePeriod + 1) {
-          // PMT cho giai đoạn ưu đãi dựa trên toàn bộ thời gian trả gốc
-          // Nhưng chúng ta cần tính riêng cho từng giai đoạn
-        }
-        // PMT cho giai đoạn ưu đãi
-        const monthsInPreferential = preferentialEnd - gracePeriod;
-        const monthsAfter = totalMonths - preferentialEnd;
-
-        // Tính PMT cho giai đoạn ưu đãi
-        const pmt = calculatePMT(balance, annualRate, repaymentMonths);
-        interest = balance * monthlyRate;
-        principal = pmt - interest;
-      } else {
-        // Straight-line: gốc đều
-        const monthlyPrincipal = loanAmount / repaymentMonths;
-        principal = monthlyPrincipal;
-        interest = balance * monthlyRate;
+    if (phase === 'grace') {
+      principal = 0; // Chỉ trả lãi, không trả gốc
+    } else if (month === totalMonths) {
+      principal = balance; // Kỳ cuối: trả hết dư nợ (gồm sai số làm tròn)
+    } else if (input.repaymentMethod === 'annuity') {
+      // Đầu mỗi giai đoạn lãi suất: PMT trên dư nợ hiện tại và số kỳ CÒN LẠI
+      // → tổng trả không đổi trong giai đoạn, trả hết gốc đúng hạn
+      if (month === grace + 1 || month === preferentialEnd + 1) {
+        payment = Math.round(calculatePMT(balance, annualRate, totalMonths - month + 1));
       }
+      principal = payment - interest;
     } else {
-      // Giai đoạn thả nổi
-      phase = 'floating';
-      annualRate = input.floatingRate;
-      const monthlyRate = annualRate / 100 / 12;
-
-      if (input.repaymentMethod === 'annuity') {
-        const remainingMonths = totalMonths - month + 1;
-        // Tính lại PMT với dư nợ hiện tại và lãi suất mới
-        const pmt = calculatePMT(balance, annualRate, remainingMonths);
-        interest = balance * monthlyRate;
-        principal = pmt - interest;
-      } else {
-        const monthlyPrincipal = loanAmount / repaymentMonths;
-        principal = monthlyPrincipal;
-        interest = balance * monthlyRate;
-      }
+      // Gốc đều: gốc lũy kế làm tròn theo số kỳ đã trả → không trôi sai số
+      principal = Math.round((loan * (month - grace)) / repaymentMonths) - (loan - balance);
     }
-
-    // Đảm bảo principal không vượt quá balance
-    principal = Math.min(principal, balance);
-    if (principal < 0) principal = 0;
-
-    const totalPayment = principal + interest;
-    balance = balance - principal;
-
-    // Fix floating point: nếu balance rất nhỏ, set về 0
-    if (Math.abs(balance) < 1) balance = 0;
+    principal = Math.max(0, Math.min(principal, balance));
+    balance -= principal;
 
     schedule.push({
       month,
-      principal: Math.round(principal),
-      interest: Math.round(interest),
-      totalPayment: Math.round(totalPayment),
-      remainingBalance: Math.round(balance),
+      principal,
+      interest,
+      totalPayment: principal + interest,
+      remainingBalance: balance,
       phase,
     });
   }
@@ -323,57 +289,54 @@ export function groupByYear(schedule: AmortizationRow[]): YearlyAmortization[] {
 }
 
 /**
- * Phân tích độ nhạy lãi suất
+ * Phân tích độ nhạy lãi suất thả nổi: mỗi kịch bản là một lịch trả nợ đầy đủ
+ * (giữ ân hạn, giai đoạn ưu đãi, phương thức trả) với lãi thả nổi + 0/1/2%.
+ * Trả về [] khi không vay hoặc ưu đãi phủ hết thời hạn (lãi thả nổi không áp dụng).
  */
 function buildSensitivity(
   loanAmount: number,
   input: MortgageInput
 ): SensitivityScenario[] {
-  const baseRate = input.floatingRate;
-  const scenarios = [0, 1, 2];
-  const repaymentMonths = input.loanTermYears * 12 - input.gracePeriodMonths;
+  const { totalMonths, preferentialEnd } = getTerms(input);
+  if (loanAmount <= 0 || preferentialEnd >= totalMonths) return [];
 
-  // Tính base monthly payment (giai đoạn thả nổi)
-  const basePmt = calculatePMT(loanAmount, baseRate, repaymentMonths);
-
-  return scenarios.map((delta) => {
-    const rate = baseRate + delta;
-    const pmt = calculatePMT(loanAmount, rate, repaymentMonths);
-
-    // Ước tính tổng lãi (simplified)
-    const totalPayment = pmt * repaymentMonths;
-    const totalInterest = totalPayment - loanAmount;
-
+  const scenarios = [0, 1, 2].map((delta) => {
+    const rate = input.floatingRate + delta;
+    const schedule = buildAmortizationSchedule(loanAmount, { ...input, floatingRate: rate });
     return {
-      label: delta === 0
-        ? 'Hiện tại'
-        : `+${delta}%`,
+      label: delta === 0 ? 'Hiện tại' : `+${delta}%`,
       rate,
-      monthlyPayment: Math.round(pmt),
-      differenceFromBase: Math.round(pmt - basePmt),
-      totalInterest: Math.round(totalInterest),
+      // Kỳ đầu giai đoạn thả nổi (tháng preferentialEnd + 1) — cao nhất của giai đoạn nếu gốc đều
+      monthlyPayment: schedule[preferentialEnd]?.totalPayment ?? 0,
+      totalInterest: schedule.reduce((sum, r) => sum + r.interest, 0),
     };
   });
+
+  return scenarios.map((s) => ({
+    ...s,
+    differenceFromBase: s.monthlyPayment - scenarios[0].monthlyPayment,
+  }));
 }
 
 /**
  * Hàm chính: Tính toán toàn bộ mortgage
  */
 export function calculateMortgage(input: MortgageInput): MortgageResult {
-  // Tính số tiền vay
-  const downPayment = input.propertyPrice * (input.downPaymentPercent / 100);
-  const loanAmount = input.propertyPrice - downPayment;
+  // Tính số tiền vay (đồng nguyên; % trả trước kẹp [0, 100], khoản vay ≥ 0)
+  const propertyPrice = Math.max(0, Math.round(input.propertyPrice) || 0);
+  const downPaymentPercent = Math.min(100, Math.max(0, input.downPaymentPercent || 0));
+  const downPayment = Math.round((propertyPrice * downPaymentPercent) / 100);
+  const loanAmount = Math.max(0, propertyPrice - downPayment);
 
   // Xây dựng bảng khấu hao
   const amortizationSchedule = buildAmortizationSchedule(loanAmount, input);
   const yearlyAmortization = groupByYear(amortizationSchedule);
 
-  // Tính tổng lãi, tổng trả
+  // Tính tổng lãi, tổng trả (gốc được trả đủ nên tổng trả = số vay + tổng lãi)
   const totalInterest = amortizationSchedule.reduce((sum, r) => sum + r.interest, 0);
-  const totalPayment = amortizationSchedule.reduce((sum, r) => sum + r.totalPayment, 0);
+  const totalPayment = loanAmount + totalInterest;
 
   // Trả góp giai đoạn ưu đãi (tháng đầu tiên sau ân hạn)
-  const gracePeriod = Math.min(input.gracePeriodMonths, input.loanTermYears * 12);
   const firstPreferentialRow = amortizationSchedule.find(r => r.phase === 'preferential');
   const preferentialPayment = firstPreferentialRow?.totalPayment ?? 0;
 
@@ -393,20 +356,25 @@ export function calculateMortgage(input: MortgageInput): MortgageResult {
     ? ((maxMonthlyPayment + input.otherDebtPayments) / input.monthlyIncome) * 100
     : 0;
 
-  // Khả năng vay tối đa (DTI 50%, thả nổi)
+  // Khả năng vay tối đa (DTI 50%): kỳ trả cao nhất tính theo lãi thả nổi trên số kỳ trả gốc (sau ân hạn)
   const maxMonthlyForLoan = input.monthlyIncome * 0.5 - input.otherDebtPayments;
-  const repaymentMonths = input.loanTermYears * 12 - input.gracePeriodMonths;
+  const { totalMonths, grace } = getTerms(input);
+  const repaymentMonths = totalMonths - grace;
+  const monthlyRate = input.floatingRate / 1200;
   let maxLoanByIncome = 0;
-  if (maxMonthlyForLoan > 0 && input.floatingRate > 0) {
-    const monthlyRate = input.floatingRate / 100 / 12;
-    const factor = Math.pow(1 + monthlyRate, repaymentMonths);
-    maxLoanByIncome = maxMonthlyForLoan * (factor - 1) / (monthlyRate * factor);
-  } else if (maxMonthlyForLoan > 0) {
-    maxLoanByIncome = maxMonthlyForLoan * repaymentMonths;
+  if (maxMonthlyForLoan > 0 && repaymentMonths > 0) {
+    if (input.repaymentMethod === 'straight_line') {
+      // Gốc đều: kỳ đầu cao nhất = L/n + L·r → L = M / (1/n + r)
+      maxLoanByIncome = maxMonthlyForLoan / (1 / repaymentMonths + Math.max(0, monthlyRate));
+    } else if (monthlyRate > 0) {
+      maxLoanByIncome = (maxMonthlyForLoan * (1 - Math.pow(1 + monthlyRate, -repaymentMonths))) / monthlyRate;
+    } else {
+      maxLoanByIncome = maxMonthlyForLoan * repaymentMonths;
+    }
   }
 
   // Phí mua nhà
-  const fees = calculateFees(input.propertyPrice, loanAmount, input.propertyType);
+  const fees = calculateFees(propertyPrice, loanAmount, input.propertyType);
 
   // Tổng chi phí ban đầu
   const totalUpfrontCost = downPayment + fees.total;
@@ -415,12 +383,12 @@ export function calculateMortgage(input: MortgageInput): MortgageResult {
   const sensitivity = buildSensitivity(loanAmount, input);
 
   return {
-    loanAmount: Math.round(loanAmount),
-    downPayment: Math.round(downPayment),
-    preferentialPayment: Math.round(preferentialPayment || gracePayment),
-    floatingPayment: Math.round(floatingPayment),
-    totalInterest: Math.round(totalInterest),
-    totalPayment: Math.round(totalPayment),
+    loanAmount,
+    downPayment,
+    preferentialPayment: preferentialPayment || gracePayment,
+    floatingPayment,
+    totalInterest,
+    totalPayment,
     dtiRatio: Math.round(dtiRatio * 10) / 10,
     maxLoanByIncome: Math.round(maxLoanByIncome),
     fees,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CalculatorSnapshot, NamedSave } from '@/lib/snapshotTypes';
-import { getNamedSaves, deleteNamedSave, formatTimestamp } from '@/lib/snapshotStorage';
+import { getNamedSaves, deleteNamedSave, formatTimestamp, MAX_SAVES } from '@/lib/snapshotStorage';
 import { formatCurrency } from '@/lib/taxCalculator';
 import SaveDialog from './SaveDialog';
 
@@ -46,14 +46,19 @@ export default function NamedSavesSection({
     onClose();
   };
 
+  const isFull = saves.length >= MAX_SAVES;
+
   return (
     <div className="p-4 space-y-4">
       {/* Save current button */}
       <button
+        type="button"
         onClick={() => setShowSaveDialog(true)}
-        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        disabled={isFull}
+        aria-describedby={isFull ? 'saves-full-warning' : undefined}
+        className="w-full px-4 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -64,10 +69,17 @@ export default function NamedSavesSection({
         Lưu tính toán hiện tại
       </button>
 
+      {/* Đủ giới hạn: báo rõ thay vì âm thầm xóa bản cũ nhất */}
+      {isFull && (
+        <p id="saves-full-warning" role="status" className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+          Đã đủ {MAX_SAVES} bản lưu. Hãy xóa bớt bản cũ (hoặc xuất file ở mục Xuất/Nhập để sao lưu) trước khi lưu thêm.
+        </p>
+      )}
+
       {/* Saves list */}
       {saves.length === 0 ? (
         <div className="py-12 text-center text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -95,7 +107,7 @@ export default function NamedSavesSection({
                       {save.description}
                     </div>
                   )}
-                  <div className="text-sm text-blue-600 font-medium">
+                  <div className="text-sm text-primary-600 font-medium font-data">
                     {formatCurrency(save.snapshot.sharedState?.grossIncome ?? save.snapshot.state?.grossIncome ?? 0)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
@@ -105,8 +117,9 @@ export default function NamedSavesSection({
 
                 <div className="flex items-center gap-1 ml-2">
                   <button
+                    type="button"
                     onClick={() => handleLoad(save)}
-                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-primary-600 hover:bg-primary-50 rounded transition-colors"
                     aria-label={`Tải "${save.label}"`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -121,12 +134,14 @@ export default function NamedSavesSection({
                   {deleteConfirmId === save.id ? (
                     <div className="flex items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => handleDelete(save.id)}
                         className="px-3 py-2 min-h-[44px] text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                       >
                         Xác nhận
                       </button>
                       <button
+                        type="button"
                         onClick={() => setDeleteConfirmId(null)}
                         className="px-3 py-2 min-h-[44px] text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
                       >
@@ -135,6 +150,7 @@ export default function NamedSavesSection({
                     </div>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => setDeleteConfirmId(save.id)}
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                       aria-label={`Xóa "${save.label}"`}

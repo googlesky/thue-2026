@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import pkg from '../../package.json';
 
 // Constants
 const FOOTER_LINKS = {
@@ -62,26 +64,6 @@ function ArrowUpIcon({ className }: { className?: string }) {
   );
 }
 
-// Calculator Icon SVG Component (for logo)
-function CalculatorIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-      />
-    </svg>
-  );
-}
-
 // Vietnam Flag Component
 function VietnamFlag({ className }: { className?: string }) {
   return (
@@ -126,8 +108,22 @@ interface FooterLinkProps {
   external?: boolean;
 }
 
+const stripTrailingSlash = (path: string) => path.replace(/\/+$/, '') || '/';
+
 function FooterLink({ href, label, external }: FooterLinkProps) {
+  const pathname = usePathname();
   const baseClasses = "group flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors duration-200 py-1";
+
+  // Link tới tab khác trên cùng trang (/tinh-thue#tab): Next đổi URL bằng pushState, không phát
+  // 'hashchange' nên trang không đổi tab → tự đặt location.hash để trình duyệt phát sự kiện.
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const [path, hash] = href.split('#');
+    if (!hash || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (stripTrailingSlash(path) !== stripTrailingSlash(pathname)) return;
+    e.preventDefault();
+    window.location.hash = hash;
+    window.scrollTo({ top: 0 });
+  };
 
   if (external) {
     return (
@@ -144,7 +140,7 @@ function FooterLink({ href, label, external }: FooterLinkProps) {
   }
 
   return (
-    <Link href={href} className={baseClasses}>
+    <Link href={href} onClick={handleClick} className={baseClasses}>
       <span className="group-hover:underline underline-offset-2">{label}</span>
     </Link>
   );
@@ -196,7 +192,11 @@ export default function Footer() {
     }
   }, [scrollToTop]);
 
-  const currentYear = new Date().getFullYear();
+  // Năm tính sau khi hydrate: trang static export build năm N, xem năm N+1 sẽ lệch HTML
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   return (
     <footer
@@ -302,7 +302,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <div className="flex items-center gap-2 text-sm text-slate-400">
-              <span>&copy; 2024-{currentYear} Thuế2026</span>
+              <span>&copy; 2024{currentYear ? `-${currentYear}` : ''} Thuế2026</span>
               <span className="hidden sm:inline">|</span>
               <span className="hidden sm:inline">Tất cả quyền được bảo lưu</span>
             </div>
@@ -316,7 +316,7 @@ export default function Footer() {
             {/* Version */}
             <div className="text-sm text-slate-400">
               <span className="px-2 py-1 bg-slate-800/50 rounded text-xs font-mono">
-                v1.1.0
+                v{pkg.version}
               </span>
             </div>
           </div>

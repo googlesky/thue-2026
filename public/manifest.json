@@ -46,7 +46,7 @@
       "name": "Tính thuế TNCN",
       "short_name": "Tính thuế",
       "description": "Mở công cụ tính thuế TNCN",
-      "url": "/tinh-thue",
+      "url": "/tinh-thue/",
       "icons": [
         {
           "src": "/icon-192.png",

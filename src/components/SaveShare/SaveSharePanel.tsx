@@ -51,30 +51,36 @@ export default function SaveSharePanel({ snapshot, onLoadSnapshot, onClose }: Sa
           {/* Tabs */}
           <div className="flex border-b">
             <button
+              type="button"
+              aria-pressed={activeTab === 'share'}
               onClick={() => setActiveTab('share')}
               className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'share'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  ? 'text-primary-700 border-b-2 border-primary-600'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
               Chia sẻ
             </button>
             <button
+              type="button"
+              aria-pressed={activeTab === 'saves'}
               onClick={() => setActiveTab('saves')}
               className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'saves'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  ? 'text-primary-700 border-b-2 border-primary-600'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
               Đã lưu
             </button>
             <button
+              type="button"
+              aria-pressed={activeTab === 'importexport'}
               onClick={() => setActiveTab('importexport')}
               className={`flex-1 px-4 py-3 font-medium text-sm transition-colors ${
                 activeTab === 'importexport'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  ? 'text-primary-700 border-b-2 border-primary-600'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >

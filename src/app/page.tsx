@@ -21,7 +21,7 @@ const LAW_CHANGES: {
   {
     effective: '01/01/2026',
     stampLabel: 'Từ 01/01/2026',
-    status: 'Đang áp dụng từ đầu năm',
+    status: 'Áp dụng cho cả năm tính thuế 2026',
     items: [
       {
         label: 'Biểu thuế lũy tiến',
@@ -43,6 +43,39 @@ const LAW_CHANGES: {
         affects: 'Người nuôi con, cha mẹ già',
       },
       {
+        label: 'Thu nhập tối đa của người phụ thuộc',
+        before: '1tr/tháng',
+        after: '3tr/tháng',
+        affects: 'Cha mẹ có lương hưu thấp, con đi làm thêm',
+      },
+      {
+        label: 'Hưu trí tự nguyện, BH nhân thọ',
+        before: 'Trừ tối đa 1tr/tháng',
+        after: 'Trừ tối đa 3tr/tháng',
+        affects: 'Người tham gia bảo hiểm hưu trí, nhân thọ',
+      },
+      {
+        label: 'Chi khám chữa bệnh, học phí',
+        before: 'Không được trừ',
+        after: 'Trừ đến 23tr + 24tr/năm',
+        affects: 'Người tự quyết toán, có hóa đơn cho bản thân, người phụ thuộc',
+        href: '/tinh-thue#annual-settlement',
+      },
+      {
+        label: 'Lương làm thêm giờ, làm đêm',
+        before: 'Miễn phần trả cao hơn giờ thường',
+        after: 'Miễn toàn bộ',
+        affects: 'Người làm tăng ca, ca đêm (trong giới hạn giờ và mức trả của luật lao động)',
+        href: '/tinh-thue#overtime',
+      },
+      {
+        label: 'Trợ cấp thôi việc, mất việc',
+        before: 'Miễn trong mức luật định',
+        after: 'Miễn toàn bộ',
+        affects: 'Người nghỉ việc, kể cả khoản công ty trả cao hơn mức luật định',
+        href: '/tinh-thue#severance',
+      },
+      {
         label: 'Lương tối thiểu vùng I',
         before: '4.960.000 đ',
         after: '5.310.000 đ',
@@ -51,7 +84,7 @@ const LAW_CHANGES: {
       },
       {
         label: 'Hộ, cá nhân kinh doanh',
-        before: 'Miễn thuế đến 500tr/năm',
+        before: 'Miễn thuế đến 100tr/năm',
         after: 'Miễn thuế đến 1 tỷ/năm',
         affects: 'Hộ kinh doanh, bán hàng online, cho thuê nhà',
         href: '/tinh-thue#household-business',
@@ -61,7 +94,7 @@ const LAW_CHANGES: {
   {
     effective: '01/07/2026',
     stampLabel: 'Từ 01/07/2026',
-    status: 'Vừa có hiệu lực',
+    status: 'Đang áp dụng',
     items: [
       {
         label: 'Trần đóng BHXH, BHYT',
@@ -71,6 +104,20 @@ const LAW_CHANGES: {
         href: '/tinh-thue#insurance',
       },
       {
+        label: 'Tiền ăn giữa ca trả bằng tiền',
+        before: 'Theo quy chế công ty',
+        after: 'Miễn tối đa 1,2tr/tháng',
+        affects: 'Người nhận tiền ăn trưa kèm lương',
+        href: '/tinh-thue',
+      },
+      {
+        label: 'Khấu trừ 10% thu nhập vãng lai',
+        before: 'Từ 2tr/lần',
+        after: 'Từ 5tr/lần',
+        affects: 'Cộng tác viên, người làm hợp đồng dưới 3 tháng',
+        href: '/tinh-thue#withholding-tax',
+      },
+      {
         label: 'Ngưỡng thuế theo từng lần nhận',
         before: 'Miễn phần dưới 10tr',
         after: 'Miễn phần dưới 20tr',
@@ -78,10 +125,17 @@ const LAW_CHANGES: {
         href: '/tinh-thue#other-income',
       },
       {
-        label: 'Vàng miếng, tài sản số',
-        before: 'Chưa thu thuế chuyển nhượng',
+        label: 'Tài sản số (tiền mã hóa)',
+        before: 'Chưa quy định',
         after: '0,1% giá trị mỗi lần bán',
-        affects: 'Người bán vàng miếng, crypto',
+        affects: 'Người bán tài sản số',
+        href: '/tinh-thue#crypto-tax',
+      },
+      {
+        label: 'Vàng miếng',
+        before: 'Không chịu thuế',
+        after: 'Chưa thu, chờ Chính phủ quy định',
+        affects: 'Người mua bán vàng miếng (luật quy định 0,1%, chờ nghị định về ngưỡng và thời điểm thu)',
         href: '/tinh-thue#gold-tax',
       },
       {
@@ -105,8 +159,12 @@ const FAQ: { q: string; a: string }[] = [
     a: 'Lương cơ sở tăng lên 2,53 triệu kéo trần đóng BHXH, BHYT từ 46,8 lên 50,6 triệu. Nếu lương bạn trên 46,8 triệu/tháng, phần đóng bảo hiểm tăng nên thực nhận giảm một chút; đổi lại mức hưởng BHXH sau này tính trên nền cao hơn.',
   },
   {
+    q: 'Tiền học phí, viện phí có được trừ khi tính thuế không?',
+    a: 'Có, từ kỳ tính thuế 2026. Chi khám chữa bệnh trong danh mục BHYT được trừ tối đa 23 triệu/năm, học phí tối đa 24 triệu/năm, cho bản thân và người phụ thuộc, cần hóa đơn chứng từ và không được chi trả từ nguồn khác. Muốn được trừ, bạn phải tự quyết toán thuế (không ủy quyền cho công ty).',
+  },
+  {
     q: 'Số liệu ở đây lấy từ đâu?',
-    a: 'Toàn bộ công thức bám theo văn bản gốc: Luật 109/2025/QH15, Nghị quyết 110/2025/UBTVQH15, Nghị định 293/2025/NĐ-CP, Nghị định 141/2026/NĐ-CP. Mỗi mốc hiệu lực được tính đúng theo ngày.',
+    a: 'Toàn bộ công thức bám theo văn bản gốc: Luật 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16), Nghị định 253/2026/NĐ-CP, Thông tư 87/2026/TT-BTC, Nghị quyết 110/2025/UBTVQH15, Nghị định 141/2026/NĐ-CP, Nghị định 161/2026/NĐ-CP, Nghị định 293/2025/NĐ-CP. Mỗi mốc hiệu lực được tính đúng theo ngày.',
   },
   {
     q: 'Tôi cần khai gì để dùng công cụ?',
@@ -125,7 +183,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             <div className="max-w-xl">
               <p className="font-data text-xs font-semibold tracking-[0.08em] text-seal uppercase mb-5">
-                Luật 109/2025/QH15 · NĐ 141/2026/NĐ-CP
+                Luật 109/2025/QH15 · NĐ 253/2026/NĐ-CP
               </p>
               <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight text-primary-700 leading-[1.08] mb-6">
                 Luật đổi.
@@ -301,9 +359,13 @@ export default function HomePage() {
               <p className="mt-8 text-xs text-primary-400 leading-relaxed">
                 Căn cứ:{' '}
                 <span className="font-data">Luật 109/2025/QH15</span> ·{' '}
+                <span className="font-data">Luật 09/2026/QH16</span> ·{' '}
+                <span className="font-data">NĐ 253/2026/NĐ-CP</span> ·{' '}
+                <span className="font-data">TT 87/2026/TT-BTC</span> ·{' '}
                 <span className="font-data">NQ 110/2025/UBTVQH15</span> ·{' '}
-                <span className="font-data">NĐ 293/2025/NĐ-CP</span> ·{' '}
-                <span className="font-data">NĐ 141/2026/NĐ-CP</span>. Công cụ
+                <span className="font-data">NĐ 141/2026/NĐ-CP</span> ·{' '}
+                <span className="font-data">NĐ 161/2026/NĐ-CP</span> ·{' '}
+                <span className="font-data">NĐ 293/2025/NĐ-CP</span>. Công cụ
                 mang tính tham khảo, không thay thế tư vấn thuế chính thức.
               </p>
             </div>

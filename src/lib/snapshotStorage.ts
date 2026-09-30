@@ -2,14 +2,21 @@
  * localStorage management for named calculator saves
  * Provides CRUD operations and import/export functionality
  */
-import { NamedSave, CalculatorSnapshot, SaveExportData, DEFAULT_TAB_STATES } from './snapshotTypes';
+import {
+  NamedSave,
+  CalculatorSnapshot,
+  SaveExportData,
+  DEFAULT_TAB_STATES,
+  isValidSnapshot,
+  mergeSnapshotWithDefaults,
+} from './snapshotTypes';
 import { SharedTaxState, DEFAULT_INSURANCE_OPTIONS, DEFAULT_OTHER_INCOME } from './taxCalculator';
 
 const STORAGE_KEY = 'tax-calculator-saves';
 const OLD_HISTORY_KEY = 'tax-calculator-history';
 const MIGRATION_FLAG_KEY = 'tax-calculator-migrated-v2';
 const STORAGE_VERSION = 1;
-const MAX_SAVES = 50;
+export const MAX_SAVES = 50;
 
 /**
  * Old history item format (for migration)
@@ -22,6 +29,66 @@ interface OldHistoryItem {
   oldTax: number;
   newTax: number;
   netIncome: number;
+}
+
+// ===== Truy cập localStorage an toàn =====
+// Trình duyệt chặn lưu trữ (chế độ riêng tư, tắt cookie) có thể ném SecurityError ngay khi
+// truy cập `localStorage`, không chỉ khi gọi getItem/setItem.
+
+function storageGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Ghi; lỗi được đổi thành thông báo tiếng Việt để hiển thị cho người dùng */
+function storageSet(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    throw new Error(
+      name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED'
+        ? 'Bộ nhớ trình duyệt đầy. Hãy xóa bớt bản lưu cũ hoặc xuất file để sao lưu.'
+        : 'Trình duyệt đang chặn lưu dữ liệu (chế độ riêng tư hoặc đã tắt lưu trữ).'
+    );
+  }
+}
+
+function storageRemove(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Bộ nhớ bị chặn: không có gì để xóa
+  }
+}
+
+/** Bản lưu dùng được: id/nhãn là chuỗi, snapshot đủ cấu trúc (tránh làm hỏng danh sách/tìm kiếm) */
+function isValidSave(value: unknown): value is NamedSave {
+  const save = value as Partial<NamedSave> | null;
+  return (
+    !!save &&
+    typeof save === 'object' &&
+    typeof save.id === 'string' &&
+    typeof save.label === 'string' &&
+    isValidSnapshot(save.snapshot)
+  );
+}
+
+/** Đọc danh sách bản lưu, bỏ qua mục hỏng */
+function readSaves(): NamedSave[] {
+  try {
+    const data: unknown = JSON.parse(storageGet(STORAGE_KEY) || '[]');
+    return Array.isArray(data) ? data.filter(isValidSave) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSaves(saves: NamedSave[]): void {
+  storageSet(STORAGE_KEY, JSON.stringify(saves));
 }
 
 /**
@@ -37,76 +104,53 @@ function generateId(): string {
  * This runs once and sets a flag to prevent re-migration
  */
 function migrateOldHistory(): void {
-  if (typeof window === 'undefined') return;
-
-  // Check if already migrated
-  if (localStorage.getItem(MIGRATION_FLAG_KEY)) return;
+  if (storageGet(MIGRATION_FLAG_KEY)) return;
 
   try {
-    const oldData = localStorage.getItem(OLD_HISTORY_KEY);
-    if (!oldData) {
-      localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
-      return;
-    }
+    const oldHistory: unknown = JSON.parse(storageGet(OLD_HISTORY_KEY) || '[]');
 
-    const oldHistory = JSON.parse(oldData) as OldHistoryItem[];
-    if (!oldHistory || oldHistory.length === 0) {
-      localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
-      return;
-    }
+    if (Array.isArray(oldHistory) && oldHistory.length > 0) {
+      const existingSaves = readSaves();
+      const existingIds = new Set(existingSaves.map((s) => s.id));
 
-    // Convert old items to new format
-    const migratedSaves: NamedSave[] = oldHistory.map((item) => {
-      const snapshot: CalculatorSnapshot = {
-        version: 1,
-        sharedState: {
-          ...item.state,
-          insuranceOptions: item.state.insuranceOptions || { ...DEFAULT_INSURANCE_OPTIONS },
-          otherIncome: item.state.otherIncome || { ...DEFAULT_OTHER_INCOME },
-        },
-        activeTab: 'calculator',
-        tabs: { ...DEFAULT_TAB_STATES },
-        meta: {
+      // Convert old items to new format
+      const migratedSaves: NamedSave[] = (oldHistory as OldHistoryItem[])
+        .filter((item) => item && typeof item.id === 'string' && item.state && !existingIds.has(item.id))
+        .map((item) => ({
+          id: item.id,
+          label: item.label || `Lưu ${new Date(item.timestamp).toLocaleDateString('vi-VN')}`,
+          description: undefined,
+          snapshot: {
+            version: 1,
+            sharedState: {
+              ...item.state,
+              insuranceOptions: item.state.insuranceOptions || { ...DEFAULT_INSURANCE_OPTIONS },
+              otherIncome: item.state.otherIncome || { ...DEFAULT_OTHER_INCOME },
+            },
+            activeTab: 'calculator',
+            tabs: { ...DEFAULT_TAB_STATES },
+            meta: {
+              createdAt: item.timestamp,
+            },
+          },
           createdAt: item.timestamp,
-        },
-      };
+          updatedAt: item.timestamp,
+        }));
 
-      return {
-        id: item.id,
-        label: item.label || `Luu ${new Date(item.timestamp).toLocaleDateString('vi-VN')}`,
-        description: undefined,
-        snapshot,
-        createdAt: item.timestamp,
-        updatedAt: item.timestamp,
-      };
-    });
-
-    // Merge with existing saves (if any)
-    const existingSaves = (() => {
-      try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) as NamedSave[] : [];
-      } catch {
-        return [];
-      }
-    })();
-
-    const existingIds = new Set(existingSaves.map(s => s.id));
-    const newSaves = migratedSaves.filter(s => !existingIds.has(s.id));
-    const mergedSaves = [...existingSaves, ...newSaves].slice(0, MAX_SAVES);
-
-    // Save merged data
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSaves));
-
-    // Clear old history and set migration flag
-    localStorage.removeItem(OLD_HISTORY_KEY);
-    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
-
-    console.log(`Migrated ${newSaves.length} items from old history format`);
+      // Gộp với bản lưu hiện có, không cắt bớt (không âm thầm mất dữ liệu)
+      writeSaves([...existingSaves, ...migratedSaves]);
+      storageRemove(OLD_HISTORY_KEY);
+      console.log(`Migrated ${migratedSaves.length} items from old history format`);
+    }
   } catch (error) {
+    // Lỗi ghi (bộ nhớ đầy/bị chặn): giữ nguyên lịch sử cũ, không thử lại vô hạn
     console.error('Failed to migrate old history:', error);
-    // Set flag anyway to prevent retry loops
-    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+  }
+
+  try {
+    storageSet(MIGRATION_FLAG_KEY, 'true');
+  } catch {
+    // Bộ nhớ bị chặn
   }
 }
 
@@ -120,18 +164,8 @@ export function getNamedSaves(): NamedSave[] {
   // Run migration on first access
   migrateOldHistory();
 
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-
-    const saves = JSON.parse(data) as NamedSave[];
-
-    // Sort by updatedAt descending (most recent first)
-    return saves.sort((a, b) => b.updatedAt - a.updatedAt);
-  } catch (error) {
-    console.error('Failed to load saves:', error);
-    return [];
-  }
+  // Sort by updatedAt descending (most recent first)
+  return readSaves().sort((a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0));
 }
 
 /**
@@ -144,7 +178,7 @@ export function getNamedSave(id: string): NamedSave | null {
 
 /**
  * Save a new named snapshot
- * Automatically limits to MAX_SAVES
+ * Ném lỗi (tiếng Việt) khi đã đủ MAX_SAVES hoặc bộ nhớ đầy — không tự xóa bản lưu cũ
  */
 export function saveNamedSave(
   snapshot: CalculatorSnapshot,
@@ -152,107 +186,30 @@ export function saveNamedSave(
   description?: string
 ): NamedSave {
   const saves = getNamedSaves();
-  const now = Date.now();
+  if (saves.length >= MAX_SAVES) {
+    throw new Error(`Đã đủ ${MAX_SAVES} bản lưu. Hãy xóa bớt bản cũ (hoặc xuất file để sao lưu) rồi lưu lại.`);
+  }
 
-  // Deep clone snapshot to avoid mutations
+  const now = Date.now();
+  // Bản sao sâu (dữ liệu thuần JSON) để không dính tham chiếu với state đang dùng
+  const copy = JSON.parse(JSON.stringify(snapshot)) as CalculatorSnapshot;
   const newSave: NamedSave = {
     id: generateId(),
     label,
     description,
     snapshot: {
-      ...snapshot,
-      sharedState: {
-        ...snapshot.sharedState,
-        insuranceOptions: { ...snapshot.sharedState.insuranceOptions },
-        otherIncome: snapshot.sharedState.otherIncome
-          ? { ...snapshot.sharedState.otherIncome }
-          : undefined,
-      },
-      tabs: {
-        employerCost: { ...snapshot.tabs.employerCost },
-        freelancer: {
-          ...snapshot.tabs.freelancer,
-          creatorIncomeSources: snapshot.tabs.freelancer.creatorIncomeSources?.map(s => ({ ...s })) || [],
-        },
-        salaryComparison: {
-          ...snapshot.tabs.salaryComparison,
-          companies: snapshot.tabs.salaryComparison.companies.map(c => ({ ...c })),
-        },
-        yearlyComparison: { ...snapshot.tabs.yearlyComparison },
-        overtime: {
-          ...snapshot.tabs.overtime,
-          entries: snapshot.tabs.overtime.entries.map(e => ({ ...e })),
-        },
-        annualSettlement: {
-          ...snapshot.tabs.annualSettlement,
-          insuranceOptions: { ...snapshot.tabs.annualSettlement.insuranceOptions },
-          monthlyIncome: snapshot.tabs.annualSettlement.monthlyIncome.map(m => ({ ...m })),
-          dependents: snapshot.tabs.annualSettlement.dependents.map(d => ({ ...d })),
-        },
-        bonus: { ...snapshot.tabs.bonus },
-        esop: { ...snapshot.tabs.esop },
-        pension: { ...snapshot.tabs.pension },
-        foreignerTax: {
-          ...snapshot.tabs.foreignerTax,
-          allowances: { ...snapshot.tabs.foreignerTax.allowances },
-        },
-        latePayment: { ...snapshot.tabs.latePayment },
-        businessFormComparison: { ...snapshot.tabs.businessFormComparison },
-        severance: { ...snapshot.tabs.severance },
-        vat: { ...snapshot.tabs.vat },
-        withholdingTax: { ...snapshot.tabs.withholdingTax },
-        multiSourceIncome: {
-          ...snapshot.tabs.multiSourceIncome,
-          incomeSources: snapshot.tabs.multiSourceIncome.incomeSources.map(s => ({ ...s })),
-        },
-        taxTreaty: { ...snapshot.tabs.taxTreaty },
-        coupleOptimizer: { ...snapshot.tabs.coupleOptimizer },
-        contentCreator: {
-          ...snapshot.tabs.contentCreator,
-          incomeSources: snapshot.tabs.contentCreator?.incomeSources?.map(s => ({ ...s })) || [],
-        },
-        cryptoTax: {
-          ...snapshot.tabs.cryptoTax,
-          transactions: snapshot.tabs.cryptoTax?.transactions?.map(t => ({ ...t })) || [],
-        },
-        goldTax: {
-          ...snapshot.tabs.goldTax,
-          transactions: snapshot.tabs.goldTax?.transactions?.map(t => ({ ...t })) || [],
-        },
-        monthlyPlanner: {
-          ...snapshot.tabs.monthlyPlanner,
-          months: snapshot.tabs.monthlyPlanner?.months?.map(m => ({ ...m })) || [],
-        },
-        mortgage: { ...snapshot.tabs.mortgage },
-      },
+      ...copy,
       meta: {
-        ...snapshot.meta,
-        createdAt: snapshot.meta.createdAt || now,
+        ...copy.meta,
+        createdAt: copy.meta?.createdAt || now,
       },
     },
     createdAt: now,
     updatedAt: now,
   };
 
-  // Add to beginning, limit to MAX_SAVES
-  const updatedSaves = [newSave, ...saves].slice(0, MAX_SAVES);
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaves));
-    return newSave;
-  } catch (error) {
-    console.error('Failed to save:', error);
-
-    // Storage full - try to save with fewer items
-    try {
-      const trimmedSaves = updatedSaves.slice(0, 20);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmedSaves));
-      return newSave;
-    } catch (innerError) {
-      console.error('Failed to save even after trimming:', innerError);
-      throw new Error('Bộ nhớ đầy, không thể lưu');
-    }
-  }
+  writeSaves([newSave, ...saves]);
+  return newSave;
 }
 
 /**
@@ -264,29 +221,21 @@ export function updateNamedSave(
   updates: Partial<Pick<NamedSave, 'label' | 'description' | 'snapshot'>>
 ): void {
   const saves = getNamedSaves();
-  const updatedSaves = saves.map(save =>
-    save.id === id
-      ? { ...save, ...updates, updatedAt: Date.now() }
-      : save
+  writeSaves(
+    saves.map(save =>
+      save.id === id
+        ? { ...save, ...updates, updatedAt: Date.now() }
+        : save
+    )
   );
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaves));
-  } catch (error) {
-    console.error('Failed to update save:', error);
-    throw new Error('Không thể cập nhật');
-  }
 }
 
 /**
  * Delete a named save by ID
  */
 export function deleteNamedSave(id: string): void {
-  const saves = getNamedSaves();
-  const updatedSaves = saves.filter(save => save.id !== id);
-
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaves));
+    writeSaves(getNamedSaves().filter(save => save.id !== id));
   } catch (error) {
     console.error('Failed to delete save:', error);
   }
@@ -296,12 +245,9 @@ export function deleteNamedSave(id: string): void {
  * Delete multiple saves by IDs
  */
 export function deleteMultipleSaves(ids: string[]): void {
-  const saves = getNamedSaves();
   const idsSet = new Set(ids);
-  const updatedSaves = saves.filter(save => !idsSet.has(save.id));
-
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaves));
+    writeSaves(getNamedSaves().filter(save => !idsSet.has(save.id)));
   } catch (error) {
     console.error('Failed to delete saves:', error);
   }
@@ -311,11 +257,7 @@ export function deleteMultipleSaves(ids: string[]): void {
  * Clear all named saves
  */
 export function clearAllSaves(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear saves:', error);
-  }
+  storageRemove(STORAGE_KEY);
 }
 
 /**
@@ -340,78 +282,71 @@ export function exportToJSON(saveIds?: string[]): string {
 
 /**
  * Import saves from JSON string
- * Merges with existing saves, avoiding duplicates
+ * Lọc từng bản lưu hợp lệ; trùng id thì giữ bản cục bộ; chỉ thêm trong giới hạn MAX_SAVES.
+ * count = số bản thực sự được thêm; skipped = số bản bỏ qua (hỏng, trùng hoặc vượt giới hạn).
  */
 export function importFromJSON(jsonString: string): {
   success: boolean;
   count: number;
+  skipped?: number;
   error?: string;
 } {
+  let data: unknown;
   try {
-    const data = JSON.parse(jsonString) as SaveExportData;
+    data = JSON.parse(jsonString);
+  } catch {
+    return { success: false, count: 0, error: 'File không phải JSON hợp lệ.' };
+  }
 
-    // Validate structure
-    if (!data.saves || !Array.isArray(data.saves)) {
-      return {
-        success: false,
-        count: 0,
-        error: 'Định dạng file không hợp lệ'
-      };
+  const imported = (data as Partial<SaveExportData> | null)?.saves;
+  if (!Array.isArray(imported)) {
+    return { success: false, count: 0, error: 'File không đúng định dạng bản lưu (thiếu danh sách "saves").' };
+  }
+
+  const now = Date.now();
+  const validSaves: NamedSave[] = imported.filter(isValidSave).map((save) => ({
+    id: save.id,
+    label: save.label,
+    description: typeof save.description === 'string' ? save.description : undefined,
+    snapshot: mergeSnapshotWithDefaults(save.snapshot),
+    createdAt: Number(save.createdAt) || now,
+    updatedAt: Number(save.updatedAt) || now,
+  }));
+  if (validSaves.length === 0) {
+    return { success: false, count: 0, error: 'Không có bản lưu hợp lệ nào trong file.' };
+  }
+
+  const currentSaves = getNamedSaves();
+  const knownIds = new Set(currentSaves.map((s) => s.id));
+  const added: NamedSave[] = [];
+  let full = false;
+  for (const save of validSaves) {
+    if (knownIds.has(save.id)) continue; // Trùng: giữ bản cục bộ
+    if (currentSaves.length + added.length >= MAX_SAVES) {
+      full = true;
+      break;
     }
+    knownIds.add(save.id);
+    added.push(save);
+  }
 
-    // Validate version
-    if (data.version !== STORAGE_VERSION) {
-      console.warn(`Import version mismatch: ${data.version} vs ${STORAGE_VERSION}`);
-      // Continue anyway - we'll try to import
-    }
-
-    const currentSaves = getNamedSaves();
-    const importedSaves = data.saves;
-
-    // Create a map of current saves by ID
-    const currentSavesMap = new Map(currentSaves.map(s => [s.id, s]));
-
-    // Merge: imported saves take precedence over existing ones with same ID
-    const mergedSaves: NamedSave[] = [];
-    const importedIds = new Set<string>();
-
-    // Add all imported saves
-    for (const save of importedSaves) {
-      mergedSaves.push(save);
-      importedIds.add(save.id);
-    }
-
-    // Add current saves that weren't imported
-    for (const save of currentSaves) {
-      if (!importedIds.has(save.id)) {
-        mergedSaves.push(save);
-      }
-    }
-
-    // Limit to MAX_SAVES
-    const finalSaves = mergedSaves.slice(0, MAX_SAVES);
-
-    // Save to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSaves));
-      return {
-        success: true,
-        count: importedSaves.length
-      };
-    } catch (error) {
-      return {
-        success: false,
-        count: 0,
-        error: 'Bộ nhớ đầy, không thể import',
-      };
-    }
-  } catch (error) {
+  if (added.length === 0 && full) {
     return {
       success: false,
       count: 0,
-      error: error instanceof Error ? error.message : 'Lỗi không xác định',
+      error: `Đã đủ ${MAX_SAVES} bản lưu trên thiết bị. Hãy xóa bớt bản cũ rồi nhập lại.`,
     };
   }
+
+  if (added.length > 0) {
+    try {
+      writeSaves([...currentSaves, ...added]);
+    } catch (error) {
+      return { success: false, count: 0, error: error instanceof Error ? error.message : 'Không thể nhập file.' };
+    }
+  }
+
+  return { success: true, count: added.length, skipped: imported.length - added.length };
 }
 
 /**
@@ -422,13 +357,10 @@ export function getStorageStats(): {
   maxSaves: number;
   estimatedSize: number;
 } {
-  const saves = getNamedSaves();
-  const data = localStorage.getItem(STORAGE_KEY) || '';
-
   return {
-    count: saves.length,
+    count: getNamedSaves().length,
     maxSaves: MAX_SAVES,
-    estimatedSize: data.length, // Size in characters
+    estimatedSize: (storageGet(STORAGE_KEY) || '').length, // Size in characters
   };
 }
 
@@ -440,8 +372,8 @@ export function isStorageAvailable(): boolean {
 
   try {
     const test = '__storage_test__';
-    localStorage.setItem(test, test);
-    localStorage.removeItem(test);
+    window.localStorage.setItem(test, test);
+    window.localStorage.removeItem(test);
     return true;
   } catch {
     return false;
@@ -455,7 +387,7 @@ export function duplicateNamedSave(id: string, newLabel?: string): NamedSave | n
   const original = getNamedSave(id);
   if (!original) return null;
 
-  const label = newLabel || `${original.label} (copy)`;
+  const label = newLabel || `${original.label} (bản sao)`;
   return saveNamedSave(original.snapshot, label, original.description);
 }
 

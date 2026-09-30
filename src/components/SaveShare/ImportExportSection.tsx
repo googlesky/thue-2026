@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { exportToJSON, importFromJSON } from '@/lib/snapshotStorage';
+import { exportToJSON, importFromJSON, MAX_SAVES } from '@/lib/snapshotStorage';
 
 interface ImportExportSectionProps {
   onImportSuccess?: () => void;
@@ -17,13 +17,17 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
     const data = exportToJSON();
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
+    // Ngày theo giờ địa phương (toISOString là UTC → lệch ngày trước 7h sáng ở UTC+7)
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tax-calculator-saves-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `tax-calculator-saves-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Thu hồi sau khi trình duyệt đã bắt đầu tải (Safari cần URL còn sống lúc click xử lý)
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // Handle file selection
@@ -48,7 +52,9 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
       if (result.success) {
         setImportResult({
           success: true,
-          message: `Đã nhập thành công ${result.count} bản lưu`,
+          message: result.skipped
+            ? `Đã nhập ${result.count} bản lưu, bỏ qua ${result.skipped} bản (trùng bản đã có, lỗi hoặc vượt giới hạn ${MAX_SAVES})`
+            : `Đã nhập thành công ${result.count} bản lưu`,
         });
         onImportSuccess?.();
       } else {
@@ -84,7 +90,8 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/json') {
+    // Một số hệ điều hành để MIME rỗng cho .json → kiểm tra cả đuôi file
+    if (file && (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json'))) {
       await processFile(file);
     } else {
       setImportResult({
@@ -105,9 +112,9 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
         </p>
         <button
           onClick={handleExport}
-          className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -136,6 +143,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
           accept=".json,application/json"
           onChange={handleFileChange}
           className="hidden"
+          aria-label="Chọn file JSON bản lưu"
         />
 
         {/* Drag and drop area */}
@@ -145,7 +153,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
             isDragging
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-primary-500 bg-primary-50'
               : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
           }`}
         >
@@ -154,6 +162,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -177,6 +186,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
         {/* Import result message */}
         {importResult && (
           <div
+            role={importResult.success ? 'status' : 'alert'}
             className={`mt-3 p-3 rounded-lg text-sm ${
               importResult.success
                 ? 'bg-green-50 text-green-800 border border-green-200'
@@ -185,11 +195,11 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
           >
             <div className="flex items-center gap-2">
               {importResult.success ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -205,9 +215,9 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
       </div>
 
       {/* Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+      <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
         <div className="flex items-start gap-2">
-          <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -215,7 +225,7 @@ export default function ImportExportSection({ onImportSuccess }: ImportExportSec
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <p className="text-xs text-blue-800">
+          <p className="text-xs text-primary-700">
             Dữ liệu được lưu trữ trên thiết bị này. Xuất file để sao lưu hoặc chuyển sang thiết bị khác.
           </p>
         </div>

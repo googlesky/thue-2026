@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { onServiceWorkerUpdate, skipWaiting } from '@/lib/pwaUtils';
 
 /**
@@ -11,9 +11,12 @@ export function PWAUpdatePrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  // Bản đã bấm "Để sau": không nhắc lại cho đúng bản đó, chỉ nhắc khi có bản mới hơn
+  const dismissedWorkerRef = useRef<ServiceWorker | null>(null);
 
   useEffect(() => {
     const unsubscribe = onServiceWorkerUpdate((reg) => {
+      if (reg.waiting && reg.waiting === dismissedWorkerRef.current) return;
       setRegistration(reg);
       setShowPrompt(true);
     });
@@ -27,14 +30,14 @@ export function PWAUpdatePrompt() {
     setIsUpdating(true);
     skipWaiting(registration);
 
-    // Page will reload automatically via controllerchange event
-    // But add fallback reload after 3 seconds
+    // Trang tự tải lại khi SW mới nắm quyền (controllerchange); dự phòng tải lại sau 3 giây
     setTimeout(() => {
       window.location.reload();
     }, 3000);
   };
 
   const handleDismiss = () => {
+    dismissedWorkerRef.current = registration?.waiting ?? null;
     setShowPrompt(false);
   };
 
@@ -51,12 +54,13 @@ export function PWAUpdatePrompt() {
     >
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center">
           <svg
-            className="w-6 h-6 text-blue-600"
+            className="w-6 h-6 text-primary-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -85,9 +89,10 @@ export function PWAUpdatePrompt() {
           {/* Actions */}
           <div className="mt-3 flex gap-2">
             <button
+              type="button"
               onClick={handleUpdate}
               disabled={isUpdating}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isUpdating ? (
                 <span className="flex items-center gap-2">
@@ -95,6 +100,7 @@ export function PWAUpdatePrompt() {
                     className="w-4 h-4 animate-spin"
                     fill="none"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <circle
                       className="opacity-25"
@@ -117,6 +123,7 @@ export function PWAUpdatePrompt() {
               )}
             </button>
             <button
+              type="button"
               onClick={handleDismiss}
               disabled={isUpdating}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
@@ -128,6 +135,7 @@ export function PWAUpdatePrompt() {
 
         {/* Close button */}
         <button
+          type="button"
           onClick={handleDismiss}
           disabled={isUpdating}
           className="flex-shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
@@ -138,6 +146,7 @@ export function PWAUpdatePrompt() {
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"

@@ -41,7 +41,7 @@ function LoadingSpinner({
     <div
       className={`flex flex-col items-center justify-center ${fullHeight ? 'min-h-[300px]' : 'py-8'} ${className}`}
       role="status"
-      aria-label={text || 'Loading...'}
+      aria-label={text || 'Đang tải...'}
     >
       <div
         className={`${sizeMap[size]} ${borderSizeMap[size]} border-gray-200 border-t-primary-600 rounded-full animate-spin`}
@@ -61,7 +61,7 @@ const shimmerClass = 'bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg
 // TabLoadingSkeleton - A more detailed skeleton for tab content loading
 export const TabLoadingSkeleton = memo(function TabLoadingSkeleton() {
   return (
-    <div className="card" role="status" aria-label="Loading tab content...">
+    <div className="card" role="status" aria-label="Đang tải nội dung...">
       {/* Header skeleton */}
       <div className="flex items-center gap-3 mb-6">
         <div className={`w-12 h-12 rounded-xl ${shimmerClass}`} />
@@ -73,7 +73,7 @@ export const TabLoadingSkeleton = memo(function TabLoadingSkeleton() {
 
       {/* Content skeleton */}
       <div className="space-y-4">
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-3">
             <div className={`h-4 rounded w-1/4 ${shimmerClass}`} />
             <div className={`h-10 rounded ${shimmerClass}`} />
@@ -83,7 +83,7 @@ export const TabLoadingSkeleton = memo(function TabLoadingSkeleton() {
             <div className={`h-10 rounded ${shimmerClass}`} />
           </div>
         </div>
-        <div className="grid md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div className={`h-24 rounded-lg ${shimmerClass}`} />
           <div className={`h-24 rounded-lg ${shimmerClass}`} />
           <div className={`h-24 rounded-lg ${shimmerClass}`} />
@@ -96,7 +96,7 @@ export const TabLoadingSkeleton = memo(function TabLoadingSkeleton() {
 // ChartLoadingSkeleton - Skeleton specifically for chart loading
 export const ChartLoadingSkeleton = memo(function ChartLoadingSkeleton() {
   return (
-    <div className="card" role="status" aria-label="Loading chart...">
+    <div className="card" role="status" aria-label="Đang tải biểu đồ...">
       <div className="flex items-center gap-2 mb-6">
         <div className={`w-6 h-6 rounded ${shimmerClass}`} />
         <div className={`h-5 rounded w-1/4 ${shimmerClass}`} />
@@ -111,7 +111,7 @@ export const ChartLoadingSkeleton = memo(function ChartLoadingSkeleton() {
 // ResultLoadingSkeleton - Skeleton for result displays
 export const ResultLoadingSkeleton = memo(function ResultLoadingSkeleton() {
   return (
-    <div className="card" role="status" aria-label="Loading results...">
+    <div className="card" role="status" aria-label="Đang tải kết quả...">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div className={`h-4 rounded w-1/4 ${shimmerClass}`} />

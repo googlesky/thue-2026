@@ -16,11 +16,12 @@ import { formatNumber } from '@/lib/taxCalculator';
 
 interface MortgageChartProps {
   data: YearlyAmortization[];
-  preferentialMonths: number;
+  /** Tháng cuối của giai đoạn ưu đãi (gồm ân hạn); 0 nếu không có giai đoạn thả nổi */
+  preferentialEndMonth: number;
 }
 
 function formatMillions(value: number): string {
-  return `${(value / 1_000_000).toFixed(0)}tr`;
+  return `${formatNumber(value / 1_000_000)}tr`;
 }
 
 function ChartTooltip({
@@ -63,8 +64,10 @@ function ChartTooltip({
   );
 }
 
-export function MortgageAmortizationChart({ data, preferentialMonths }: MortgageChartProps) {
-  const preferentialYears = Math.ceil(preferentialMonths / 12);
+export function MortgageAmortizationChart({ data, preferentialEndMonth }: MortgageChartProps) {
+  // Hết ưu đãi đúng cuối năm → vạch ở ranh giới năm; giữa năm → vạch giữa cột năm đó
+  const preferentialYear = Math.ceil(preferentialEndMonth / 12);
+  const linePosition = preferentialEndMonth % 12 === 0 ? 'end' : 'middle';
 
   return (
     <div className="w-full overflow-x-auto">
@@ -93,9 +96,10 @@ export function MortgageAmortizationChart({ data, preferentialMonths }: Mortgage
                 <span className="text-xs text-gray-600">{value}</span>
               )}
             />
-            {preferentialYears > 0 && preferentialYears < data.length && (
+            {preferentialEndMonth > 0 && preferentialYear <= data.length && (
               <ReferenceLine
-                x={preferentialYears}
+                x={preferentialYear}
+                position={linePosition}
                 stroke="#f97316"
                 strokeDasharray="5 5"
                 label={{

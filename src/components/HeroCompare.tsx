@@ -55,9 +55,9 @@ export default function HeroCompare() {
       {/* Đầu phiếu */}
       <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5">
         <p className="eyebrow pt-1">Phiếu so sánh thu nhập</p>
-        <span className="stamp" aria-label="Mốc hiệu lực gần nhất: 01/07/2026">
+        <time className="stamp" dateTime="2026-07-01">
           Hiệu lực 01/07/2026
-        </span>
+        </time>
       </div>
 
       {/* Nhập liệu */}
@@ -74,7 +74,6 @@ export default function HeroCompare() {
           onChange={(e) => handleGrossChange(e.target.value)}
           onBlur={() => gross === 0 && setGross(30_000_000)}
           className="w-full font-data text-2xl font-semibold text-primary-700 bg-white border border-line rounded-lg px-4 py-3"
-          aria-describedby="hero-gross-hint"
         />
         <div className="flex flex-wrap items-center gap-2 mt-3">
           {QUICK_AMOUNTS.map((amount) => (

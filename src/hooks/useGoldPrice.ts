@@ -24,15 +24,19 @@ export function useGoldPrice(autoRefresh = true): UseGoldPriceReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
+  const requestIdRef = useRef(0); // Chỉ nhận kết quả của lần gọi mới nhất (chặn race khi làm mới chồng nhau)
+  const lastFetchRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => isMountedRef.current && requestId === requestIdRef.current;
+    lastFetchRef.current = Date.now();
     try {
       setIsLoading(true);
       setError(null);
       const response = await fetchGoldPrices();
-      if (!isMountedRef.current) return;
+      if (!isCurrent()) return;
 
       // Filter to popular types and sort
       const filtered = response.data.filter(p =>
@@ -49,16 +53,18 @@ export function useGoldPrice(autoRefresh = true): UseGoldPriceReturn {
       );
 
       setPrices([...sorted, ...remaining]);
-      setLastUpdated(new Date());
+      // Thời điểm cập nhật giá theo API (giây Unix), không phải lúc tải trang
+      setLastUpdated(new Date(response.currentTime * 1000));
     } catch (err) {
-      if (!isMountedRef.current) return;
+      if (!isCurrent()) return;
+      // Service đã đổi lỗi mạng/HTTP thành thông báo tiếng Việt
       setError(
         err instanceof Error
           ? err.message
           : 'Không thể lấy giá vàng. Vui lòng thử lại.'
       );
     } finally {
-      if (isMountedRef.current) {
+      if (isCurrent()) {
         setIsLoading(false);
       }
     }
@@ -81,16 +87,30 @@ export function useGoldPrice(autoRefresh = true): UseGoldPriceReturn {
     };
   }, [refresh]);
 
-  // Auto refresh
+  // Auto refresh — tạm dừng khi tab ẩn, quay lại thì làm mới nếu dữ liệu đã cũ
   useEffect(() => {
     if (!autoRefresh) return;
 
-    intervalRef.current = setInterval(refresh, REFRESH_INTERVAL);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const start = () => {
+      clearInterval(timer);
+      timer = setInterval(refresh, REFRESH_INTERVAL);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        clearInterval(timer);
+        return;
+      }
+      if (Date.now() - lastFetchRef.current >= REFRESH_INTERVAL) refresh();
+      start();
+    };
+
+    if (document.visibilityState !== 'hidden') start();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [autoRefresh, refresh]);
 

@@ -29,7 +29,7 @@ const baseUrl = 'https://thue.1devops.io';
 const siteName = 'Tính Thuế TNCN 2026';
 const title = 'Tính Thuế TNCN 2026 | So sánh Luật Thuế Cũ và Mới Việt Nam';
 const description =
-  'Công cụ tính thuế thu nhập cá nhân Việt Nam miễn phí. So sánh thuế TNCN giữa luật hiện hành (7 bậc) và luật mới 2026 (5 bậc). Tính GROSS-NET, quyết toán thuế, thưởng Tết, ESOP.';
+  'Công cụ tính thuế thu nhập cá nhân Việt Nam miễn phí, cập nhật Luật 109/2025/QH15 và Nghị định 253/2026. So sánh luật cũ (7 bậc) với biểu thuế 5 bậc áp dụng từ 2026. Tính GROSS-NET, quyết toán thuế, thưởng Tết, ESOP.';
 
 export const metadata: Metadata = {
   // Basic metadata
@@ -265,7 +265,7 @@ export default function RootLayout({
                   name: 'Luật thuế TNCN mới 2026 có gì khác so với luật cũ?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Luật thuế mới giảm từ 7 bậc xuống 5 bậc, tăng giảm trừ gia cảnh lên 11 triệu/tháng cho bản thân và 4.4 triệu/tháng cho người phụ thuộc. Mức thuế suất cao nhất giảm từ 35% xuống 30%.',
+                    text: 'Biểu thuế lũy tiến rút từ 7 bậc xuống 5 bậc (5%, 10%, 20%, 30%, 35%), bậc 35% áp dụng cho phần thu nhập tính thuế trên 100 triệu/tháng thay vì 80 triệu. Giảm trừ gia cảnh tăng từ 11 lên 15,5 triệu/tháng cho bản thân và từ 4,4 lên 6,2 triệu/tháng cho mỗi người phụ thuộc. Từ kỳ tính thuế 2026 còn được trừ hưu trí tự nguyện, bảo hiểm nhân thọ tối đa 3 triệu/tháng, chi khám chữa bệnh tối đa 23 triệu/năm và học phí tối đa 24 triệu/năm.',
                   },
                 },
                 {
@@ -273,7 +273,7 @@ export default function RootLayout({
                   name: 'Khi nào luật thuế TNCN mới có hiệu lực?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Luật Thuế TNCN sửa đổi được Quốc hội thông qua ngày 10/12/2025, có hiệu lực từ 1/7/2026. Tuy nhiên, đối với thu nhập từ tiền lương, tiền công, biểu thuế mới (5 bậc, giảm trừ 15.5 triệu) áp dụng từ kỳ tính thuế năm 2026 (tức từ 1/1/2026) theo điều khoản chuyển tiếp.',
+                    text: 'Luật Thuế TNCN số 109/2025/QH15 được Quốc hội thông qua ngày 10/12/2025, có hiệu lực từ 01/7/2026; Nghị định 253/2026/NĐ-CP và Thông tư 87/2026/TT-BTC hướng dẫn cũng có hiệu lực từ 01/7/2026. Riêng thu nhập từ tiền lương, tiền công và kinh doanh của cá nhân cư trú, biểu thuế 5 bậc và giảm trừ 15,5 triệu áp dụng cho cả kỳ tính thuế năm 2026 (từ 01/01/2026); phần đã khấu trừ theo mức cũ trong 6 tháng đầu năm được điều chỉnh khi quyết toán.',
                   },
                 },
                 {
@@ -289,7 +289,7 @@ export default function RootLayout({
                   name: 'Thuế ESOP và cổ phiếu được tính như thế nào?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Thuế ESOP được tính trên chênh lệch giữa giá thị trường và giá mua ưu đãi. Công cụ ESOP Calculator giúp tính thuế chính xác cho các trường hợp nhận cổ phiếu từ công ty.',
+                    text: 'Theo Nghị định 253/2026/NĐ-CP, cổ phiếu ESOP chưa bị tính thuế khi nhận. Khi bán, phần thu nhập từ tiền lương (số tiền ghi sổ kế toán, hoặc số lượng × mệnh giá trừ số tiền đã bỏ ra mua) bị khấu trừ 10% và cộng vào quyết toán năm; ngoài ra nộp 0,1% trên giá bán chứng khoán.',
                   },
                 },
                 {
@@ -305,7 +305,7 @@ export default function RootLayout({
                   name: 'Người nước ngoài làm việc tại Việt Nam đóng thuế như thế nào?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Người nước ngoài có thể là cư trú hoặc không cư trú thuế tại Việt Nam. Nếu ở từ 183 ngày trở lên trong năm, áp dụng thuế suất lũy tiến từ 5-35%. Nếu dưới 183 ngày, áp dụng thuế suất cố định 20%. Việt Nam có hiệp định tránh đánh thuế hai lần với hơn 70 quốc gia.',
+                    text: 'Người nước ngoài là cá nhân cư trú nếu có mặt tại Việt Nam từ 183 ngày trở lên trong năm dương lịch (hoặc 12 tháng liên tục) hoặc có nơi ở thường xuyên (thường trú, thuê nhà từ 183 ngày); khi đó áp dụng biểu lũy tiến 5–35% và được giảm trừ gia cảnh. Cá nhân không cư trú chịu thuế 20% trên thu nhập từ tiền lương phát sinh tại Việt Nam. Việt Nam có hiệp định tránh đánh thuế hai lần với khoảng 80 quốc gia, vùng lãnh thổ.',
                   },
                 },
               ],
