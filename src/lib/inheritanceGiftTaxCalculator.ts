@@ -1,95 +1,77 @@
 /**
- * Inheritance & Gift Tax Calculator
- * Thuế thu nhập từ thừa kế, quà tặng
+ * Thuế TNCN đối với thu nhập từ nhận thừa kế, quà tặng
  *
- * Căn cứ pháp lý:
- * - Luật Thuế TNCN 2007 (sửa đổi 2012, 2014)
- * - Điều 3, Khoản 10: Thu nhập từ thừa kế, quà tặng
- * - Điều 4, Khoản 4: Thu nhập được miễn thuế (thừa kế/quà tặng từ gia đình)
- * - Điều 23: Thuế suất 10%
- * - Nghị định 65/2013/NĐ-CP hướng dẫn chi tiết
+ * Căn cứ pháp lý (hiệu lực 01/7/2026):
+ * - Luật Thuế TNCN 109/2025/QH15: Điều 3.9 (chỉ chứng khoán, phần vốn, bất động sản và tài sản
+ *   phải đăng ký sở hữu/sử dụng mới chịu thuế), Điều 4.1 (miễn với BẤT ĐỘNG SẢN giữa người thân),
+ *   Điều 18 (10% × phần vượt 20 triệu theo từng lần nhận), Điều 26 (không cư trú: như trên)
+ * - NĐ 253/2026/NĐ-CP: Điều 15 (loại tài sản), Điều 18 (miễn), Điều 61 (định giá, thời điểm tính)
+ * - NĐ 252/2026/NĐ-CP Điều 10 (hạn nộp hồ sơ khai thuế)
+ * Trước 01/7/2026: ngưỡng 10 triệu/lần (getPerTransactionThreshold).
  */
 
 import { formatNumber, getPerTransactionThreshold } from '@/lib/taxCalculator';
 
 // ===== CONSTANTS =====
 
-/**
- * Ngưỡng miễn thuế cho thừa kế/quà tặng từ người không có quan hệ gia đình
- * Theo Điều 23, Luật Thuế TNCN: 10 triệu đồng
- */
-export const INHERITANCE_GIFT_TAX_THRESHOLD = 10_000_000;
-
-/**
- * Thuế suất 10% cho phần vượt ngưỡng
- * Theo Điều 23, Luật Thuế TNCN
- */
+/** Thuế suất 10% trên phần vượt ngưỡng (Luật 109/2025/QH15 Điều 18) */
 export const INHERITANCE_GIFT_TAX_RATE = 0.10;
 
 /**
- * Thời hạn khai thuế: 10 ngày kể từ ngày phát sinh
- * Theo Điều 32, Luật Quản lý thuế
+ * Hạn nộp hồ sơ khai thuế theo từng lần phát sinh: chậm nhất ngày thứ 10 kể từ ngày tiếp theo
+ * ngày phát sinh (NĐ 252/2026/NĐ-CP Điều 10.1). BĐS có hạn riêng (Điều 10.8).
  */
 export const TAX_DECLARATION_DEADLINE_DAYS = 10;
 
 // ===== TYPES =====
 
-/**
- * Loại giao dịch
- */
 export type TransactionType = 'inheritance' | 'gift';
 
 /**
- * Quan hệ với người cho/người để lại tài sản
- * Miễn thuế hoàn toàn nếu là quan hệ gia đình (Điều 4, Khoản 4)
+ * Quan hệ với người để lại/người tặng.
+ * Nhóm miễn (Luật 109 Điều 4.1) CHỈ áp dụng cho bất động sản.
  */
 export type Relationship =
-  | 'spouse' // Vợ/chồng
-  | 'parent_child' // Cha mẹ con cái (ruột, nuôi)
-  | 'grandparent_grandchild' // Ông bà - cháu (ruột, nuôi)
-  | 'siblings' // Anh chị em ruột
-  | 'other_relative' // Họ hàng khác (cô, chú, cậu, dì, cháu...)
+  | 'spouse' // Vợ – chồng
+  | 'parent_child' // Cha mẹ đẻ – con đẻ; cha mẹ nuôi – con nuôi
+  | 'parent_in_law' // Cha mẹ chồng – con dâu; cha mẹ vợ – con rể
+  | 'grandparent_grandchild' // Ông bà nội/ngoại – cháu nội/ngoại
+  | 'siblings' // Anh, chị, em ruột
+  | 'other_relative' // Họ hàng khác
   | 'non_relative'; // Không có quan hệ họ hàng
 
-/**
- * Loại tài sản
- */
 export type AssetType =
   | 'real_estate' // Bất động sản
   | 'securities' // Chứng khoán
-  | 'cash' // Tiền mặt, tiền gửi
-  | 'vehicles' // Phương tiện giao thông
-  | 'jewelry' // Vàng bạc, đá quý
-  | 'other'; // Tài sản khác
+  | 'capital' // Phần vốn góp
+  | 'vehicles' // Ô tô, xe máy (phải đăng ký)
+  | 'other' // Tài sản khác phải đăng ký (tàu thuyền, tàu bay...)
+  | 'cash' // Tiền mặt, tiền gửi — không chịu thuế
+  | 'jewelry'; // Vàng, trang sức, tài sản không phải đăng ký — không chịu thuế
 
-/**
- * Thông tin tài sản
- */
 export interface AssetInfo {
   type: AssetType;
   value: number;
   description?: string;
 }
 
-/**
- * Input cho calculator
- */
 export interface InheritanceGiftTaxInput {
   transactionType: TransactionType;
   relationship: Relationship;
   assets: AssetInfo[];
+  /** Ngày nhận; với tài sản phải đăng ký là ngày đăng ký quyền sở hữu (NĐ 253 Điều 61.3.b) */
   transactionDate?: Date;
 }
 
-/**
- * Kết quả tính thuế
- */
 export interface InheritanceGiftTaxResult {
   totalValue: number;
-  isExempt: boolean;
+  nonTaxableValue: number; // Tiền, vàng, trang sức... không thuộc diện chịu thuế
+  exemptValue: number; // BĐS giữa người thân được miễn
+  taxableValue: number; // Giá trị còn lại thuộc diện chịu thuế (trước ngưỡng)
+  isExempt: boolean; // true khi không phải nộp thuế
   exemptReason?: string;
-  threshold: number; // Ngưỡng miễn thuế áp dụng (date-aware: 10M, 20M từ 01/7/2026)
-  taxableAmount: number;
+  threshold: number; // Ngưỡng mỗi lần nhận (10tr trước 01/7/2026, 20tr từ 01/7/2026)
+  taxableAmount: number; // Thu nhập tính thuế = phần vượt ngưỡng
   taxAmount: number;
   effectiveRate: number;
   declarationDeadline?: Date;
@@ -99,281 +81,248 @@ export interface InheritanceGiftTaxResult {
 
 // ===== HELPER FUNCTIONS =====
 
+/** Parse giá trị input type="date" (YYYY-MM-DD) thành Date giờ địa phương (tránh lệch UTC) */
+export function parseDateInput(value: string): Date | undefined {
+  const [y, m, d] = value.split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : undefined;
+}
+
+const EXEMPT_RELATIONSHIPS: Relationship[] = [
+  'spouse',
+  'parent_child',
+  'parent_in_law',
+  'grandparent_grandchild',
+  'siblings',
+];
+
 /**
- * Kiểm tra quan hệ có được miễn thuế không
- * Theo Điều 4, Khoản 4, Luật Thuế TNCN
+ * Quan hệ thuộc danh sách miễn thuế của Luật 109/2025/QH15 Điều 4.1 (NĐ 253 Điều 18.1).
+ * Chỉ miễn cho BẤT ĐỘNG SẢN (chuyển nhượng, thừa kế, tặng cho).
  */
 export function isExemptRelationship(relationship: Relationship): boolean {
-  const exemptRelationships: Relationship[] = [
-    'spouse',
-    'parent_child',
-    'grandparent_grandchild',
-    'siblings',
-  ];
-  return exemptRelationships.includes(relationship);
+  return EXEMPT_RELATIONSHIPS.includes(relationship);
 }
 
-/**
- * Lấy tên quan hệ bằng tiếng Việt
- */
+/** Tiền, tiền gửi, vàng, trang sức... không phải tài sản phải đăng ký → không chịu thuế (Điều 3.9) */
+export function isTaxableAssetType(type: AssetType): boolean {
+  return type !== 'cash' && type !== 'jewelry';
+}
+
+const RELATIONSHIP_LABELS: Record<Relationship, string> = {
+  spouse: 'Vợ – chồng',
+  parent_child: 'Cha mẹ đẻ – con đẻ; cha mẹ nuôi – con nuôi',
+  parent_in_law: 'Cha mẹ chồng – con dâu; cha mẹ vợ – con rể',
+  grandparent_grandchild: 'Ông bà nội – cháu nội; ông bà ngoại – cháu ngoại',
+  siblings: 'Anh, chị, em ruột',
+  other_relative: 'Họ hàng khác (cô, chú, bác, cậu, dì...)',
+  non_relative: 'Không có quan hệ họ hàng',
+};
+
 export function getRelationshipLabel(relationship: Relationship): string {
-  const labels: Record<Relationship, string> = {
-    spouse: 'Vợ/chồng',
-    parent_child: 'Cha mẹ - con cái (ruột hoặc nuôi)',
-    grandparent_grandchild: 'Ông bà - cháu (ruột hoặc nuôi)',
-    siblings: 'Anh chị em ruột',
-    other_relative: 'Họ hàng khác',
-    non_relative: 'Không có quan hệ họ hàng',
-  };
-  return labels[relationship];
+  return RELATIONSHIP_LABELS[relationship];
 }
 
-/**
- * Lấy tên loại tài sản bằng tiếng Việt
- */
+const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  real_estate: 'Bất động sản (nhà, đất)',
+  securities: 'Chứng khoán (cổ phiếu, trái phiếu, chứng chỉ quỹ)',
+  capital: 'Phần vốn góp (công ty, hợp tác xã...)',
+  vehicles: 'Ô tô, xe máy (tài sản phải đăng ký)',
+  other: 'Tài sản khác phải đăng ký (tàu thuyền, tàu bay...)',
+  cash: 'Tiền mặt, tiền gửi',
+  jewelry: 'Vàng, trang sức, tài sản không phải đăng ký',
+};
+
 export function getAssetTypeLabel(assetType: AssetType): string {
-  const labels: Record<AssetType, string> = {
-    real_estate: 'Bất động sản',
-    securities: 'Chứng khoán',
-    cash: 'Tiền mặt/Tiền gửi',
-    vehicles: 'Xe cộ, phương tiện',
-    jewelry: 'Vàng bạc, đá quý',
-    other: 'Tài sản khác',
-  };
-  return labels[assetType];
+  return ASSET_TYPE_LABELS[assetType];
 }
 
-/**
- * Lấy tên loại giao dịch bằng tiếng Việt
- */
 export function getTransactionTypeLabel(type: TransactionType): string {
   return type === 'inheritance' ? 'Thừa kế' : 'Quà tặng';
 }
 
-/**
- * Tính deadline khai thuế
- * 10 ngày kể từ ngày phát sinh
- */
+/** Hạn nộp hồ sơ khai thuế (tài sản không phải BĐS): ngày phát sinh + 10 ngày */
 export function calculateDeclarationDeadline(transactionDate: Date): Date {
   const deadline = new Date(transactionDate);
   deadline.setDate(deadline.getDate() + TAX_DECLARATION_DEADLINE_DAYS);
   return deadline;
 }
 
-/**
- * Lấy danh sách hồ sơ cần thiết
- */
+// Giấy tờ chứng minh quan hệ khi miễn thuế BĐS (TT 89/2026/TT-BTC)
+const RELATIONSHIP_PROOF: Partial<Record<Relationship, string>> = {
+  spouse: 'Xác nhận thông tin về cư trú hoặc bản sao Giấy chứng nhận kết hôn',
+  parent_child:
+    'Xác nhận thông tin về cư trú hoặc bản sao Giấy khai sinh / Quyết định công nhận việc nuôi con nuôi',
+  parent_in_law:
+    'Xác nhận thông tin về cư trú ghi rõ quan hệ, hoặc bản sao Giấy chứng nhận kết hôn và Giấy khai sinh của chồng/vợ',
+  grandparent_grandchild:
+    'Bản sao Giấy khai sinh của cháu và của cha/mẹ cháu, hoặc Xác nhận thông tin về cư trú thể hiện quan hệ',
+  siblings: 'Xác nhận thông tin về cư trú thể hiện chung cha mẹ, hoặc giấy tờ chứng minh quan hệ huyết thống',
+};
+
+/** Hồ sơ cần chuẩn bị. Chỉ có tiền, vàng, trang sức (không chịu thuế) → không phải khai. */
 export function getRequiredDocuments(
   transactionType: TransactionType,
   relationship: Relationship,
   assetTypes: AssetType[]
 ): string[] {
+  const hasRealEstate = assetTypes.includes('real_estate');
+  const hasOtherTaxable = assetTypes.some((t) => t !== 'real_estate' && isTaxableAssetType(t));
+  if (!hasRealEstate && !hasOtherTaxable) return [];
+
   const documents: string[] = [];
-
-  // Hồ sơ chung
-  documents.push('Tờ khai thuế TNCN (Mẫu 04/TNCN)');
-  documents.push('CMND/CCCD/Hộ chiếu của người nhận');
-
-  // Chứng minh quan hệ (nếu cần miễn thuế)
-  if (isExemptRelationship(relationship)) {
-    if (relationship === 'spouse') {
-      documents.push('Giấy chứng nhận kết hôn');
-    } else if (relationship === 'parent_child') {
-      documents.push('Giấy khai sinh hoặc Quyết định công nhận nuôi con nuôi');
-    } else if (relationship === 'grandparent_grandchild') {
-      documents.push('Giấy khai sinh các thế hệ để chứng minh quan hệ');
-    } else if (relationship === 'siblings') {
-      documents.push('Giấy khai sinh của các bên');
-    }
+  if (hasRealEstate) {
+    documents.push('Tờ khai thuế TNCN mẫu 03/BĐS-TNCN (TT 89/2026/TT-BTC), nộp cùng hồ sơ đăng ký biến động');
   }
+  if (hasOtherTaxable) {
+    documents.push('Tờ khai thuế TNCN đối với thu nhập từ thừa kế, quà tặng (mẫu theo TT 89/2026/TT-BTC)');
+  }
+  documents.push('Căn cước/CCCD hoặc hộ chiếu của người nhận');
 
-  // Hồ sơ theo loại giao dịch
+  const proof = RELATIONSHIP_PROOF[relationship];
+  if (hasRealEstate && proof) documents.push(`${proof} (để miễn thuế BĐS)`);
+
   if (transactionType === 'inheritance') {
-    documents.push('Giấy chứng tử của người để lại tài sản');
-    documents.push('Di chúc (nếu có) hoặc Biên bản họp gia đình chia thừa kế');
-    documents.push('Văn bản khai nhận/phân chia di sản thừa kế có công chứng');
+    documents.push('Giấy chứng tử của người để lại di sản');
+    documents.push('Di chúc hoặc văn bản khai nhận/thỏa thuận phân chia di sản thừa kế');
   } else {
-    documents.push('Hợp đồng tặng cho có công chứng');
-    documents.push('CMND/CCCD của người tặng');
+    documents.push('Hợp đồng tặng cho (công chứng/chứng thực theo quy định)');
   }
 
-  // Hồ sơ theo loại tài sản
-  if (assetTypes.includes('real_estate')) {
-    documents.push('Giấy chứng nhận quyền sử dụng đất/quyền sở hữu nhà');
-    documents.push('Giấy tờ chứng minh giá trị tài sản (Hợp đồng mua bán, Chứng thư thẩm định giá...)');
+  if (hasRealEstate) {
+    documents.push('Giấy chứng nhận quyền sử dụng đất, quyền sở hữu nhà ở và tài sản gắn liền với đất');
   }
-
   if (assetTypes.includes('securities')) {
-    documents.push('Sao kê tài khoản chứng khoán');
-    documents.push('Xác nhận từ công ty chứng khoán về giá trị');
+    documents.push('Xác nhận số lượng chứng khoán nhận thừa kế, quà tặng (công ty chứng khoán/tổ chức phát hành)');
   }
-
-  if (assetTypes.includes('vehicles')) {
-    documents.push('Giấy đăng ký xe');
-    documents.push('Giấy tờ chứng minh giá trị (Hóa đơn mua, Giấy thẩm định giá...)');
+  if (assetTypes.includes('capital')) {
+    documents.push('Văn bản xác nhận phần vốn góp và báo cáo tài chính gần nhất của doanh nghiệp');
   }
-
-  if (assetTypes.includes('cash')) {
-    documents.push('Sao kê tài khoản ngân hàng');
-    documents.push('Giấy xác nhận số dư (nếu tiền gửi)');
+  if (assetTypes.includes('vehicles') || assetTypes.includes('other')) {
+    documents.push('Giấy đăng ký tài sản (xe, tàu thuyền...) và tờ khai lệ phí trước bạ');
   }
-
-  if (assetTypes.includes('jewelry')) {
-    documents.push('Giấy kiểm định/chứng nhận chất lượng');
-    documents.push('Hóa đơn mua hoặc Giấy thẩm định giá');
-  }
-
   return documents;
 }
 
 // ===== MAIN CALCULATOR =====
 
-/**
- * Tính thuế thừa kế/quà tặng
- */
-export function calculateInheritanceGiftTax(
-  input: InheritanceGiftTaxInput
-): InheritanceGiftTaxResult {
+export function calculateInheritanceGiftTax(input: InheritanceGiftTaxInput): InheritanceGiftTaxResult {
   const { transactionType, relationship, assets, transactionDate } = input;
+  const relativeExempt = isExemptRelationship(relationship);
+  const sum = (pick: (a: AssetInfo) => boolean) =>
+    assets.filter(pick).reduce((s, a) => s + a.value, 0);
 
-  // Tổng giá trị tài sản
-  const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+  const totalValue = sum(() => true);
+  const nonTaxableValue = sum((a) => !isTaxableAssetType(a.type));
+  const exemptValue = relativeExempt ? sum((a) => a.type === 'real_estate') : 0;
+  const taxableValue = totalValue - nonTaxableValue - exemptValue;
 
-  // Ngưỡng chịu thuế theo từng lần phát sinh (date-aware: 10M, 20M từ 01/7/2026)
+  // Ngưỡng trừ MỘT LẦN trên tổng tài sản chịu thuế của lần nhận này (Điều 18.2)
   const threshold = getPerTransactionThreshold(transactionDate);
-
-  // Kiểm tra miễn thuế do quan hệ gia đình
-  if (isExemptRelationship(relationship)) {
-    return {
-      totalValue,
-      isExempt: true,
-      exemptReason: `Miễn thuế theo Điều 4, Khoản 4 Luật Thuế TNCN: Thu nhập từ ${getTransactionTypeLabel(transactionType).toLowerCase()} giữa ${getRelationshipLabel(relationship).toLowerCase()} được miễn thuế hoàn toàn.`,
-      threshold,
-      taxableAmount: 0,
-      taxAmount: 0,
-      effectiveRate: 0,
-      declarationDeadline: transactionDate
-        ? calculateDeclarationDeadline(transactionDate)
-        : undefined,
-      requiredDocuments: getRequiredDocuments(
-        transactionType,
-        relationship,
-        assets.map((a) => a.type)
-      ),
-      notes: [
-        'Vẫn cần khai thuế dù được miễn (Mẫu 04/TNCN)',
-        'Phải có giấy tờ chứng minh quan hệ huyết thống/hôn nhân',
-        'Thời hạn khai thuế: 10 ngày kể từ ngày phát sinh',
-      ],
-    };
-  }
-
-  // Kiểm tra miễn thuế do dưới ngưỡng
-  if (totalValue <= threshold) {
-    return {
-      totalValue,
-      isExempt: true,
-      exemptReason: `Miễn thuế theo Điều 23 Luật Thuế TNCN: Giá trị ${formatNumber(totalValue)} VNĐ không vượt quá ngưỡng ${formatNumber(threshold)} VNĐ.`,
-      threshold,
-      taxableAmount: 0,
-      taxAmount: 0,
-      effectiveRate: 0,
-      declarationDeadline: transactionDate
-        ? calculateDeclarationDeadline(transactionDate)
-        : undefined,
-      requiredDocuments: getRequiredDocuments(
-        transactionType,
-        relationship,
-        assets.map((a) => a.type)
-      ),
-      notes: [
-        'Vẫn nên lưu giữ giấy tờ để chứng minh nếu cần',
-        'Nếu nhận nhiều lần trong năm và tổng vượt ngưỡng, vẫn phải nộp thuế',
-      ],
-    };
-  }
-
-  // Tính thuế: 10% trên phần vượt ngưỡng
-  const taxableAmount = totalValue - threshold;
+  const taxableAmount = Math.max(0, taxableValue - threshold);
   const taxAmount = Math.round(taxableAmount * INHERITANCE_GIFT_TAX_RATE);
-  const effectiveRate = (taxAmount / totalValue) * 100;
+  const effectiveRate = totalValue > 0 ? (taxAmount / totalValue) * 100 : 0;
+
+  const reasons: string[] = [];
+  if (nonTaxableValue > 0) {
+    reasons.push(
+      `Tiền mặt, tiền gửi, vàng, trang sức (${formatNumber(nonTaxableValue)} đồng) không phải tài sản phải đăng ký nên không chịu thuế TNCN (Luật 109/2025/QH15 Điều 3.9).`
+    );
+  }
+  if (exemptValue > 0) {
+    reasons.push(
+      `Bất động sản nhận từ quan hệ ${getRelationshipLabel(relationship).toLowerCase()} (${formatNumber(exemptValue)} đồng) được miễn thuế (Luật 109/2025/QH15 Điều 4.1).`
+    );
+  }
+  if (taxableValue > 0 && taxAmount === 0) {
+    reasons.push(
+      `Giá trị chịu thuế ${formatNumber(taxableValue)} đồng không vượt ngưỡng ${formatNumber(threshold)} đồng/lần (Luật 109/2025/QH15 Điều 18).`
+    );
+  }
+
+  const assetTypes = assets.map((a) => a.type);
+  const hasRealEstate = assetTypes.includes('real_estate');
+  const hasOtherTaxable = assetTypes.some((t) => t !== 'real_estate' && isTaxableAssetType(t));
+
+  const notes: string[] = [];
+  if (taxAmount > 0) {
+    notes.push(
+      `Thuế = (${formatNumber(taxableValue)} − ${formatNumber(threshold)}) × 10% = ${formatNumber(taxAmount)} đồng.`
+    );
+  }
+  if (relativeExempt && hasOtherTaxable) {
+    notes.push('Quan hệ gia đình chỉ được miễn với bất động sản; chứng khoán, phần vốn góp, ô tô, xe máy... vẫn chịu thuế.');
+  }
+  if (taxableValue > 0) {
+    notes.push('Ngưỡng tính theo từng lần nhận (từng lần đăng ký quyền sở hữu), không cộng dồn các lần trong năm.');
+  }
+  if (hasOtherTaxable) {
+    notes.push(
+      'Chứng khoán, phần vốn góp, ô tô, xe máy...: khai và nộp thuế chậm nhất ngày thứ 10 kể từ ngày tiếp theo ngày phát sinh (NĐ 252/2026/NĐ-CP Điều 10.1; Luật Quản lý thuế 108/2025/QH15 Điều 14).'
+    );
+  }
+  if (hasRealEstate) {
+    notes.push(
+      'Bất động sản (kể cả được miễn): khai trên mẫu 03/BĐS-TNCN cùng hồ sơ đăng ký biến động, chậm nhất ngày cuối cùng của thời hạn đăng ký biến động đất đai (NĐ 252/2026/NĐ-CP Điều 10.8); nộp thuế theo thông báo của cơ quan thuế.'
+    );
+  }
+  if (hasRealEstate || hasOtherTaxable) {
+    notes.push(
+      'Nộp hồ sơ tại cơ quan thuế quản lý: nơi có bất động sản; nơi quản lý tổ chức phát hành chứng khoán hoặc doanh nghiệp có vốn góp; nơi khai lệ phí trước bạ (ô tô, xe máy...).'
+    );
+  }
 
   return {
     totalValue,
-    isExempt: false,
+    nonTaxableValue,
+    exemptValue,
+    taxableValue,
+    isExempt: taxAmount === 0,
+    exemptReason: reasons.length > 0 ? reasons.join(' ') : undefined,
     threshold,
     taxableAmount,
     taxAmount,
     effectiveRate,
-    declarationDeadline: transactionDate
-      ? calculateDeclarationDeadline(transactionDate)
-      : undefined,
-    requiredDocuments: getRequiredDocuments(
-      transactionType,
-      relationship,
-      assets.map((a) => a.type)
-    ),
-    notes: [
-      `Thuế = (${formatNumber(totalValue)} - ${formatNumber(threshold)}) × 10% = ${formatNumber(taxAmount)} VNĐ`,
-      'Thời hạn khai thuế: 10 ngày kể từ ngày phát sinh',
-      'Thời hạn nộp thuế: 10 ngày kể từ ngày có thông báo thuế',
-      'Nộp tại Chi cục Thuế quận/huyện nơi có tài sản hoặc nơi cư trú',
-    ],
+    declarationDeadline:
+      transactionDate && hasOtherTaxable ? calculateDeclarationDeadline(transactionDate) : undefined,
+    requiredDocuments: getRequiredDocuments(transactionType, relationship, assetTypes),
+    notes,
   };
 }
 
 // ===== UTILITY FUNCTIONS =====
 
-/**
- * Tạo tóm tắt kết quả
- */
-export function generateResultSummary(result: InheritanceGiftTaxResult): string {
-  if (result.isExempt) {
-    return `Miễn thuế. ${result.exemptReason}`;
-  }
+const ALL_RELATIONSHIPS: Relationship[] = [
+  'spouse',
+  'parent_child',
+  'parent_in_law',
+  'grandparent_grandchild',
+  'siblings',
+  'other_relative',
+  'non_relative',
+];
 
-  return `Tổng giá trị: ${formatNumber(result.totalValue)} VNĐ. Thu nhập chịu thuế: ${formatNumber(result.taxableAmount)} VNĐ. Thuế phải nộp: ${formatNumber(result.taxAmount)} VNĐ (${result.effectiveRate.toFixed(1)}%).`;
-}
-
-/**
- * Lấy danh sách các quan hệ
- */
-export function getAllRelationships(): {
-  value: Relationship;
-  label: string;
-  isExempt: boolean;
-}[] {
-  const relationships: Relationship[] = [
-    'spouse',
-    'parent_child',
-    'grandparent_grandchild',
-    'siblings',
-    'other_relative',
-    'non_relative',
-  ];
-
-  return relationships.map((r) => ({
+export function getAllRelationships(): { value: Relationship; label: string; isExempt: boolean }[] {
+  return ALL_RELATIONSHIPS.map((r) => ({
     value: r,
     label: getRelationshipLabel(r),
     isExempt: isExemptRelationship(r),
   }));
 }
 
-/**
- * Lấy danh sách loại tài sản
- */
-export function getAllAssetTypes(): { value: AssetType; label: string }[] {
-  const assetTypes: AssetType[] = [
-    'real_estate',
-    'securities',
-    'cash',
-    'vehicles',
-    'jewelry',
-    'other',
-  ];
+const ALL_ASSET_TYPES: AssetType[] = [
+  'real_estate',
+  'securities',
+  'capital',
+  'vehicles',
+  'other',
+  'cash',
+  'jewelry',
+];
 
-  return assetTypes.map((a) => ({
+export function getAllAssetTypes(): { value: AssetType; label: string; taxable: boolean }[] {
+  return ALL_ASSET_TYPES.map((a) => ({
     value: a,
     label: getAssetTypeLabel(a),
+    taxable: isTaxableAssetType(a),
   }));
 }

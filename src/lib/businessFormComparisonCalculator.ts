@@ -1,35 +1,41 @@
 /**
  * Business Form Comparison Calculator
- * So sánh 3 hình thức kinh doanh: Lương vs Freelancer vs Hộ kinh doanh
+ * So sánh 3 hình thức: Lương vs Freelancer vs Hộ kinh doanh
  *
  * Căn cứ pháp lý:
- * - Luật Thuế TNCN 04/2007/QH12 (sửa đổi 2012, 2014)
- * - Nghị quyết 954/2020/UBTVQH14 - Biểu thuế TNCN mới từ 1/7/2026
- * - Thông tư 40/2021/TT-BTC - Thuế khoán hộ kinh doanh
- * - Thông tư 100/2021/TT-BTC - Thuế với cá nhân kinh doanh
+ * - Luật Thuế TNCN 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16): biểu lũy tiến 5 bậc (Điều 9),
+ *   thu nhập từ kinh doanh (Điều 7)
+ * - NQ 110/2025/UBTVQH15: giảm trừ gia cảnh 15,5 triệu/6,2 triệu đồng/tháng
+ * - NĐ 253/2026/NĐ-CP: thù lao dịch vụ của cá nhân không đăng ký kinh doanh là tiền công
+ *   (Điều 8.2.c), khấu trừ 10% khoản chi từ 5 triệu đồng/lần (Điều 50.2)
+ * - NĐ 68/2026/NĐ-CP (sửa đổi bởi NĐ 141/2026/NĐ-CP), TT 18/2026/TT-BTC: hộ, cá nhân kinh doanh
  */
 
-import { calculateNewTax, InsuranceOptions, DEFAULT_INSURANCE_OPTIONS, RegionType, getMaxSocialInsuranceSalary } from './taxCalculator';
-import { calculateHouseholdBusinessTax, BusinessCategory, BUSINESS_CATEGORY_LABELS } from './householdBusinessTaxCalculator';
+import {
+  calculateNewTax,
+  calculateEmployerInsurance,
+  DEFAULT_INSURANCE_OPTIONS,
+  RegionType,
+} from './taxCalculator';
+import {
+  calculateBusinessLinesTax,
+  BusinessCategory,
+  BUSINESS_CATEGORY_LABELS,
+  TaxMethod,
+} from './householdBusinessTaxCalculator';
+import { calculateFreelancerTax, getSelfHealthInsuranceAnnual } from './freelancerCalculator';
 
 /**
  * Business categories for dropdown
  */
-export const BUSINESS_CATEGORIES: Array<{ id: BusinessCategory; name: string }> = [
-  { id: 'distribution', name: BUSINESS_CATEGORY_LABELS.distribution },
-  { id: 'services', name: BUSINESS_CATEGORY_LABELS.services },
-  { id: 'production', name: BUSINESS_CATEGORY_LABELS.production },
-  { id: 'other', name: BUSINESS_CATEGORY_LABELS.other },
-];
+export const BUSINESS_CATEGORIES = (Object.entries(BUSINESS_CATEGORY_LABELS) as [BusinessCategory, string][])
+  .map(([id, name]) => ({ id, name }));
 
 /**
  * Hình thức kinh doanh
  */
 export type BusinessForm = 'employee' | 'freelancer' | 'household';
 
-/**
- * Thông tin ưu/nhược điểm
- */
 export interface ProsCons {
   pros: string[];
   cons: string[];
@@ -42,7 +48,7 @@ export interface EmployeeResult {
   grossIncome: number;        // Thu nhập gộp
   insuranceEmployee: number;  // Bảo hiểm phần người lao động
   insuranceEmployer: number;  // Bảo hiểm phần công ty
-  taxableIncome: number;      // Thu nhập chịu thuế
+  taxableIncome: number;      // Thu nhập tính thuế
   taxAmount: number;          // Thuế TNCN
   netIncome: number;          // Thu nhập thực nhận
   totalCost: number;          // Tổng chi phí (góc nhìn DN)
@@ -51,13 +57,16 @@ export interface EmployeeResult {
 }
 
 /**
- * Kết quả tính thuế cho Freelancer
+ * Kết quả tính thuế cho Freelancer (tiền công, không đăng ký kinh doanh)
  */
 export interface FreelancerResult {
   grossIncome: number;        // Thu nhập gộp
-  withholdingTax: number;     // Thuế khấu trừ tại nguồn (10%)
+  expenses: number;           // Chi phí tự chịu (không được trừ khi tính thuế)
+  withholdingTax: number;     // Đã tạm khấu trừ 10% trong năm
+  finalTax: number;           // Thuế cả năm theo biểu lũy tiến (quyết toán)
+  settlement: number;         // > 0: nộp thêm; < 0: được hoàn khi quyết toán
+  selfInsurance: number;      // Tự mua BHYT
   netIncome: number;          // Thu nhập thực nhận
-  selfInsurance: number;      // Tự mua BHYT (ước tính)
   effectiveTaxRate: number;   // Thuế suất thực tế
   prosCons: ProsCons;
 }
@@ -67,12 +76,15 @@ export interface FreelancerResult {
  */
 export interface HouseholdBusinessResult {
   grossIncome: number;        // Doanh thu
-  pitTax: number;             // Thuế TNCN (0.5-2%)
-  vatTax: number;             // Thuế VAT (1-5%)
+  expenses: number;           // Chi phí
+  pitTax: number;             // Thuế TNCN
+  vatTax: number;             // Thuế GTGT
   totalTax: number;           // Tổng thuế
+  selfInsurance: number;      // Tự mua BHYT
   netIncome: number;          // Thu nhập sau thuế
   effectiveTaxRate: number;   // Thuế suất thực tế
-  isExempt: boolean;          // Có được miễn thuế không
+  isExempt: boolean;          // Doanh thu không vượt ngưỡng
+  method: TaxMethod;          // Phương pháp TNCN có lợi hơn / bắt buộc
   prosCons: ProsCons;
 }
 
@@ -81,16 +93,13 @@ export interface HouseholdBusinessResult {
  */
 export interface BusinessFormComparisonInput {
   annualRevenue: number;              // Doanh thu/thu nhập năm
-  expenseRatio: number;               // Tỷ lệ chi phí (0-1)
+  expenseRatio: number;               // Tỷ lệ chi phí tự chịu của freelancer, hộ KD (0-1)
   businessCategory: BusinessCategory; // Ngành nghề
   region: RegionType;                 // Vùng (cho bảo hiểm)
   dependents: number;                 // Số người phụ thuộc
   hasSelfInsurance: boolean;          // Tự mua BHYT?
 }
 
-/**
- * Kết quả so sánh tổng hợp
- */
 export interface BusinessFormComparisonResult {
   employee: EmployeeResult;
   freelancer: FreelancerResult;
@@ -103,15 +112,7 @@ export interface BusinessFormComparisonResult {
   summary: string;
 }
 
-/**
- * Thuế suất khấu trừ freelancer
- */
-const FREELANCER_WITHHOLDING_RATE = 0.10; // 10%
-
-/**
- * Chi phí tự mua BHYT (năm)
- */
-const SELF_INSURANCE_ANNUAL = 1_500_000; // ~1.5 triệu/năm
+const safeRate = (tax: number, base: number) => (base > 0 ? tax / base : 0);
 
 /**
  * Tính thuế cho nhân viên (lương)
@@ -121,10 +122,8 @@ function calculateEmployeeTax(
   region: RegionType,
   dependents: number
 ): EmployeeResult {
-  // Tính lương tháng
   const monthlyGross = annualRevenue / 12;
 
-  // Tính thuế với biểu lũy tiến
   const taxResult = calculateNewTax({
     grossIncome: monthlyGross,
     dependents,
@@ -134,26 +133,10 @@ function calculateEmployeeTax(
     region,
   });
 
-  const monthlyTax = taxResult.taxAmount;
-  const annualTax = monthlyTax * 12;
-
-  // Bảo hiểm nhân viên đóng (tháng)
-  const monthlyInsuranceEmployee = taxResult.insuranceDetail?.total || 0;
-  const annualInsuranceEmployee = monthlyInsuranceEmployee * 12;
-
-  // Bảo hiểm công ty đóng (ước tính 21.5% lương đóng BH)
-  const insurableSalary = Math.min(monthlyGross, getMaxSocialInsuranceSalary()); // Trần BHXH (date-aware: 46.8M, 50.6M từ 01/7/2026)
-  const employerInsuranceRate = 0.215; // 17.5% BHXH + 3% BHYT + 1% BHTN
-  const annualInsuranceEmployer = insurableSalary * employerInsuranceRate * 12;
-
-  // Thu nhập thực nhận
-  const annualNetIncome = annualRevenue - annualInsuranceEmployee - annualTax;
-
-  // Tổng chi phí công ty
-  const totalCost = annualRevenue + annualInsuranceEmployer;
-
-  // Thuế suất thực tế
-  const effectiveTaxRate = annualTax / annualRevenue;
+  const annualTax = taxResult.taxAmount * 12;
+  const annualInsuranceEmployee = (taxResult.insuranceDetail?.total || 0) * 12;
+  // Công ty đóng BHXH 17,5% + BHYT 3% (trần 20 lần lương cơ sở), BHTN 1% (trần 20 lần lương tối thiểu vùng)
+  const annualInsuranceEmployer = calculateEmployerInsurance(monthlyGross, region).total * 12;
 
   return {
     grossIncome: annualRevenue,
@@ -161,9 +144,9 @@ function calculateEmployeeTax(
     insuranceEmployer: annualInsuranceEmployer,
     taxableIncome: taxResult.taxableIncome * 12,
     taxAmount: annualTax,
-    netIncome: annualNetIncome,
-    totalCost,
-    effectiveTaxRate,
+    netIncome: annualRevenue - annualInsuranceEmployee - annualTax,
+    totalCost: annualRevenue + annualInsuranceEmployer,
+    effectiveTaxRate: safeRate(annualTax, annualRevenue),
     prosCons: {
       pros: [
         'Có BHXH, BHYT, BHTN đầy đủ',
@@ -183,42 +166,40 @@ function calculateEmployeeTax(
 }
 
 /**
- * Tính thuế cho Freelancer
+ * Freelancer: tạm khấu trừ 10%, quyết toán theo biểu lũy tiến, không trừ chi phí
  */
-function calculateFreelancerTax(
+function calculateFreelancerOption(
   annualRevenue: number,
+  expenseRatio: number,
+  dependents: number,
   hasSelfInsurance: boolean
 ): FreelancerResult {
-  // Thuế khấu trừ 10% tại nguồn
-  const withholdingTax = annualRevenue * FREELANCER_WITHHOLDING_RATE;
-
-  // Tự mua BHYT
-  const selfInsurance = hasSelfInsurance ? SELF_INSURANCE_ANNUAL : 0;
-
-  // Thu nhập thực nhận
-  const netIncome = annualRevenue - withholdingTax - selfInsurance;
-
-  // Thuế suất thực tế
-  const effectiveTaxRate = withholdingTax / annualRevenue;
+  const expenses = annualRevenue * expenseRatio;
+  const selfInsurance = hasSelfInsurance ? getSelfHealthInsuranceAnnual() : 0;
+  // BHYT tự đóng được trừ khi quyết toán (NĐ 253/2026 Điều 46.2.a)
+  const tax = calculateFreelancerTax(annualRevenue, dependents, { annualDeductions: selfInsurance });
 
   return {
     grossIncome: annualRevenue,
-    withholdingTax,
-    netIncome,
+    expenses,
+    withholdingTax: tax.withheld,
+    finalTax: tax.finalTax,
+    settlement: tax.settlement,
     selfInsurance,
-    effectiveTaxRate,
+    netIncome: annualRevenue - expenses - tax.finalTax - selfInsurance,
+    effectiveTaxRate: safeRate(tax.finalTax, annualRevenue),
     prosCons: {
       pros: [
-        'Thuế suất cố định 10% (có thể thấp hơn lũy tiến)',
         'Linh hoạt về thời gian và địa điểm làm việc',
-        'Có thể làm nhiều dự án cùng lúc',
+        'Được giảm trừ gia cảnh khi quyết toán theo biểu lũy tiến',
         'Thủ tục đơn giản, không cần đăng ký kinh doanh',
-        'Được khấu trừ chi phí khi quyết toán (nếu có chứng từ)',
+        'Có thể làm nhiều dự án cùng lúc',
+        'Nộp thừa (đã khấu trừ 10%) được hoàn khi quyết toán',
       ],
       cons: [
-        'Không có BHXH, BHTN',
-        'Phải tự mua BHYT hoặc không có bảo hiểm',
-        'Không có lương hưu từ BHXH',
+        'Không có BHXH, BHTN; phải tự mua BHYT',
+        'Không được trừ chi phí khi tính thuế',
+        'Bị tạm khấu trừ 10% khoản chi từ 5 triệu đồng/lần',
         'Thu nhập không ổn định',
         'Rủi ro pháp lý nếu hợp đồng không rõ ràng',
       ],
@@ -227,125 +208,83 @@ function calculateFreelancerTax(
 }
 
 /**
- * Ngưỡng miễn thuế hộ kinh doanh năm 2026 (Nghị định 141/2026/NĐ-CP: 1 tỷ)
- */
-const HOUSEHOLD_EXEMPT_THRESHOLD_2026 = 1_000_000_000;
-
-/**
- * Tính thuế cho Hộ kinh doanh
+ * Hộ kinh doanh: DT ≤ 1 tỷ không nộp thuế; 1–3 tỷ lấy phương pháp có lợi hơn;
+ * trên 3 tỷ bắt buộc phương pháp thu nhập
  */
 function calculateHouseholdTax(
   annualRevenue: number,
+  expenseRatio: number,
   businessCategory: BusinessCategory,
   hasSelfInsurance: boolean
 ): HouseholdBusinessResult {
-  const selfInsurance = hasSelfInsurance ? SELF_INSURANCE_ANNUAL : 0;
-
-  // Kiểm tra miễn thuế (dưới ngưỡng 1 tỷ năm 2026 - Nghị định 141/2026)
-  const isExempt = annualRevenue <= HOUSEHOLD_EXEMPT_THRESHOLD_2026;
-
-  if (isExempt) {
-    return {
-      grossIncome: annualRevenue,
-      pitTax: 0,
-      vatTax: 0,
-      totalTax: 0,
-      netIncome: annualRevenue - selfInsurance,
-      effectiveTaxRate: 0,
-      isExempt: true,
-      prosCons: {
-        pros: [
-          'Miễn thuế hoàn toàn (doanh thu ≤ 1 tỷ/năm)',
-          'Thủ tục đơn giản',
-          'Không cần kế toán phức tạp',
-          'Phù hợp kinh doanh nhỏ lẻ',
-        ],
-        cons: [
-          'Không có BHXH, BHTN',
-          'Giới hạn quy mô kinh doanh',
-          'Khó mở rộng, khó vay vốn',
-          'Không xuất được hóa đơn VAT',
-        ],
-      },
-    };
-  }
-
-  // Tính thuế theo hộ kinh doanh với API mới
-  // Tạo business object để tính thuế
-  const business = {
-    id: 'temp',
-    name: 'Hoạt động kinh doanh',
-    category: businessCategory,
-    monthlyRevenue: annualRevenue / 12,
-    monthlyExpenses: 0,
-    operatingMonths: 12,
-    hasBusinessLicense: true,
-    applyThresholdDeduction: true,
-  };
-
-  const householdResult = calculateHouseholdBusinessTax({
-    businesses: [business],
-    year: 2026,
-    taxMethod: 'khoan', // Phương pháp khoán đơn giản
-  });
-
-  const totalTax = householdResult.summary.totalTax;
-  const netIncome = annualRevenue - totalTax - selfInsurance;
-  const effectiveTaxRate = totalTax / annualRevenue;
+  const expenses = annualRevenue * expenseRatio;
+  const selfInsurance = hasSelfInsurance ? getSelfHealthInsuranceAnnual() : 0;
+  const lines = [{ category: businessCategory, revenue: annualRevenue, expenses }];
+  const percentage = calculateBusinessLinesTax(lines, 2026, 'khoan');
+  const income = calculateBusinessLinesTax(lines, 2026, 'income');
+  const best = percentage.pit <= income.pit ? percentage : income;
+  const totalTax = best.pit + best.vat;
+  const isExempt = !best.isAboveThreshold;
 
   return {
     grossIncome: annualRevenue,
-    pitTax: householdResult.summary.totalPIT,
-    vatTax: householdResult.summary.totalVAT,
+    expenses,
+    pitTax: best.pit,
+    vatTax: best.vat,
     totalTax,
-    netIncome,
-    effectiveTaxRate,
-    isExempt: false,
-    prosCons: {
-      pros: [
-        'Thuế suất thấp (chỉ đóng trên phần vượt ngưỡng 1 tỷ)',
-        'Được xuất hóa đơn, ký hợp đồng chính thức',
-        'Tự chủ kinh doanh hoàn toàn',
-        'Có thể thuê nhân viên',
-        'Chi phí tuân thủ thấp hơn công ty',
-      ],
-      cons: [
-        'Không có BHXH, BHTN tự động',
-        'Phải đóng thuế khoán hàng quý',
-        'Trách nhiệm vô hạn với nợ',
-        'Khó huy động vốn từ bên ngoài',
-        'Phải tự quản lý sổ sách, thuế',
-      ],
-    },
+    selfInsurance,
+    netIncome: annualRevenue - expenses - totalTax - selfInsurance,
+    effectiveTaxRate: safeRate(totalTax, annualRevenue),
+    isExempt,
+    method: best.method,
+    prosCons: isExempt
+      ? {
+          pros: [
+            'Không nộp TNCN, GTGT (doanh thu ≤ 1 tỷ/năm)',
+            'Chỉ thông báo doanh thu 1 lần/năm (Mẫu 01/TKN-CNKD, hạn 31/01 năm sau)',
+            'Được xuất hóa đơn, ký hợp đồng chính thức',
+            'Phù hợp kinh doanh nhỏ lẻ',
+          ],
+          cons: [
+            'Không có BHXH, BHTN',
+            'Vượt 1 tỷ phải khai thuế theo quý và dùng hóa đơn điện tử',
+            'Khó mở rộng, khó vay vốn',
+            'Không xuất hóa đơn GTGT (chỉ hóa đơn bán hàng)',
+          ],
+        }
+      : {
+          pros: [
+            'TNCN chỉ tính trên phần doanh thu vượt 1 tỷ (tỷ lệ %) hoặc trên lợi nhuận',
+            'Được xuất hóa đơn, ký hợp đồng chính thức',
+            'Tự chủ kinh doanh hoàn toàn',
+            'Có thể thuê nhân viên',
+            'Chi phí tuân thủ thấp hơn công ty',
+          ],
+          cons: [
+            'Không có BHXH, BHTN tự động',
+            'Kê khai GTGT, TNCN theo quý từ quý doanh thu lũy kế vượt 1 tỷ',
+            'Trách nhiệm vô hạn với nợ',
+            'Khó huy động vốn từ bên ngoài',
+            'Phải dùng hóa đơn điện tử, tự quản lý sổ sách',
+          ],
+        },
   };
 }
 
 /**
- * Xác định hình thức tối ưu
+ * Xác định hình thức tối ưu (thu nhập thực nhận cao nhất)
  */
 function determineRecommendation(
   employee: EmployeeResult,
   freelancer: FreelancerResult,
   household: HouseholdBusinessResult
 ): BusinessForm {
-  // So sánh thu nhập thực nhận
-  const netIncomes = {
-    employee: employee.netIncome,
-    freelancer: freelancer.netIncome,
-    household: household.netIncome,
-  };
-
-  // Tìm max
-  const maxNet = Math.max(netIncomes.employee, netIncomes.freelancer, netIncomes.household);
-
-  if (maxNet === netIncomes.household) return 'household';
-  if (maxNet === netIncomes.freelancer) return 'freelancer';
+  const maxNet = Math.max(employee.netIncome, freelancer.netIncome, household.netIncome);
+  if (maxNet === household.netIncome) return 'household';
+  if (maxNet === freelancer.netIncome) return 'freelancer';
   return 'employee';
 }
 
-/**
- * Tạo summary text
- */
 function generateSummary(
   recommendation: BusinessForm,
   annualRevenue: number,
@@ -353,22 +292,17 @@ function generateSummary(
   freelancer: FreelancerResult,
   household: HouseholdBusinessResult
 ): string {
-  const formatMoney = (n: number) => Math.round(n / 1_000_000) + ' triệu';
-
-  const savings = {
-    freelancer: freelancer.netIncome - employee.netIncome,
-    household: household.netIncome - employee.netIncome,
-  };
+  const formatMoney = (n: number) => Math.round(n / 1_000_000).toLocaleString('vi-VN') + ' triệu';
 
   switch (recommendation) {
     case 'household':
       if (household.isExempt) {
-        return `Với doanh thu ${formatMoney(annualRevenue)}/năm, bạn được miễn thuế nếu đăng ký Hộ kinh doanh. Đây là lựa chọn tối ưu nhất.`;
+        return `Với doanh thu ${formatMoney(annualRevenue)}/năm, hộ kinh doanh không phải nộp TNCN, GTGT (doanh thu ≤ 1 tỷ/năm), chỉ cần thông báo doanh thu. Thu nhập thực nhận cao hơn làm công ăn lương ${formatMoney(household.netIncome - employee.netIncome)}.`;
       }
-      return `Với doanh thu ${formatMoney(annualRevenue)}/năm, Hộ kinh doanh có lợi nhất. Bạn tiết kiệm được ${formatMoney(savings.household)} so với làm công ăn lương.`;
+      return `Với doanh thu ${formatMoney(annualRevenue)}/năm, hộ kinh doanh có lợi nhất. Thu nhập thực nhận cao hơn làm công ăn lương ${formatMoney(household.netIncome - employee.netIncome)}.`;
 
     case 'freelancer':
-      return `Với thu nhập ${formatMoney(annualRevenue)}/năm, làm Freelancer có lợi hơn. Bạn tiết kiệm được ${formatMoney(savings.freelancer)} so với làm công ăn lương, nhưng cần cân nhắc việc không có BHXH.`;
+      return `Với thu nhập ${formatMoney(annualRevenue)}/năm, làm freelancer có lợi hơn ${formatMoney(freelancer.netIncome - employee.netIncome)} so với làm công ăn lương, nhưng cần cân nhắc việc không có BHXH.`;
 
     case 'employee':
     default:
@@ -382,44 +316,25 @@ function generateSummary(
 export function compareBusinessForms(
   input: BusinessFormComparisonInput
 ): BusinessFormComparisonResult {
-  const {
-    annualRevenue,
-    businessCategory,
-    region,
-    dependents,
-    hasSelfInsurance,
-  } = input;
+  const { annualRevenue, businessCategory, region, dependents, hasSelfInsurance } = input;
+  const expenseRatio = Math.min(1, Math.max(0, input.expenseRatio || 0));
 
-  // Tính cho từng hình thức
   const employee = calculateEmployeeTax(annualRevenue, region, dependents);
-  const freelancer = calculateFreelancerTax(annualRevenue, hasSelfInsurance);
-  const householdBusiness = calculateHouseholdTax(annualRevenue, businessCategory, hasSelfInsurance);
+  const freelancer = calculateFreelancerOption(annualRevenue, expenseRatio, dependents, hasSelfInsurance);
+  const householdBusiness = calculateHouseholdTax(annualRevenue, expenseRatio, businessCategory, hasSelfInsurance);
 
-  // Xác định khuyến nghị
   const recommendation = determineRecommendation(employee, freelancer, householdBusiness);
-
-  // Tính số tiền tiết kiệm
-  const savingsVsEmployee = {
-    freelancer: freelancer.netIncome - employee.netIncome,
-    householdBusiness: householdBusiness.netIncome - employee.netIncome,
-  };
-
-  // Tạo summary
-  const summary = generateSummary(
-    recommendation,
-    annualRevenue,
-    employee,
-    freelancer,
-    householdBusiness
-  );
 
   return {
     employee,
     freelancer,
     householdBusiness,
     recommendation,
-    savingsVsEmployee,
-    summary,
+    savingsVsEmployee: {
+      freelancer: freelancer.netIncome - employee.netIncome,
+      householdBusiness: householdBusiness.netIncome - employee.netIncome,
+    },
+    summary: generateSummary(recommendation, annualRevenue, employee, freelancer, householdBusiness),
   };
 }
 
@@ -435,30 +350,27 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Format percent
+ * Format percent: 0.105 -> "10,5%"
  */
 export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+  return `${(value * 100).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }
 
 /**
  * Mô tả hình thức kinh doanh
  */
-export const BUSINESS_FORM_INFO: Record<BusinessForm, { name: string; icon: string; description: string }> = {
+export const BUSINESS_FORM_INFO: Record<BusinessForm, { name: string; description: string }> = {
   employee: {
     name: 'Làm công ăn lương',
-    icon: '👔',
-    description: 'Ký hợp đồng lao động, có BHXH đầy đủ, thuế lũy tiến 5-35%',
+    description: 'Ký hợp đồng lao động, có BHXH đầy đủ, thuế lũy tiến 5–35%',
   },
   freelancer: {
     name: 'Freelancer',
-    icon: '💻',
-    description: 'Hợp đồng dịch vụ, thuế khoán 10%, không có BHXH',
+    description: 'Hợp đồng dịch vụ, tạm khấu trừ 10%, quyết toán theo biểu lũy tiến, không có BHXH',
   },
   household: {
     name: 'Hộ kinh doanh',
-    icon: '🏪',
-    description: 'Đăng ký kinh doanh, thuế khoán 1.5-7%, miễn thuế nếu ≤ 100tr/năm',
+    description: 'Doanh thu ≤ 1 tỷ/năm không nộp TNCN, GTGT; trên 1 tỷ nộp TNCN theo tỷ lệ % hoặc 15–20% lợi nhuận',
   },
 };
 

@@ -10,11 +10,11 @@ import {
   InheritanceGiftTaxResult,
   calculateInheritanceGiftTax,
   isExemptRelationship,
-  getRelationshipLabel,
-  getAssetTypeLabel,
+  isTaxableAssetType,
   getTransactionTypeLabel,
   getAllRelationships,
   getAllAssetTypes,
+  parseDateInput,
   INHERITANCE_GIFT_TAX_RATE,
 } from '@/lib/inheritanceGiftTaxCalculator';
 import { formatNumber, getPerTransactionThreshold } from '@/lib/taxCalculator';
@@ -139,7 +139,7 @@ function AssetInput({ asset, index, onUpdate, onRemove, canRemove }: AssetInputP
           </button>
         )}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Loại tài sản</label>
           <select
@@ -149,10 +149,15 @@ function AssetInput({ asset, index, onUpdate, onRemove, canRemove }: AssetInputP
           >
             {assetTypes.map((type) => (
               <option key={type.value} value={type.value}>
-                {type.label}
+                {type.label}{type.taxable ? '' : ' (không chịu thuế)'}
               </option>
             ))}
           </select>
+          {!isTaxableAssetType(asset.type) && (
+            <p className="mt-1 text-xs text-green-700">
+              Không chịu thuế TNCN: không phải tài sản phải đăng ký sở hữu
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">
@@ -167,7 +172,7 @@ function AssetInput({ asset, index, onUpdate, onRemove, canRemove }: AssetInputP
               onUpdate(index, { ...asset, value });
             }}
             className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800 text-sm"
-            placeholder="VD: 500,000,000"
+            placeholder="VD: 500.000.000"
           />
         </div>
       </div>
@@ -221,7 +226,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
                   : 'text-amber-800'
               }`}
             >
-              {result.isExempt ? 'Miễn thuế' : 'Phải nộp thuế'}
+              {result.isExempt ? 'Không phải nộp thuế' : 'Phải nộp thuế'}
             </h4>
             {result.exemptReason && (
               <p
@@ -239,7 +244,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
       </div>
 
       {/* Tax Breakdown */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="p-3 bg-white rounded-lg border border-gray-200">
           <div className="text-xs text-gray-500">Tổng giá trị</div>
           <div className="font-semibold text-gray-800">
@@ -247,15 +252,23 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
           </div>
         </div>
         <div className="p-3 bg-white rounded-lg border border-gray-200">
-          <div className="text-xs text-gray-500">Ngưỡng miễn thuế</div>
+          <div className="text-xs text-gray-500">Giá trị chịu thuế</div>
           <div className="font-semibold text-gray-800">
-            {formatNumber(result.threshold)} VNĐ
+            {formatNumber(result.taxableValue)} VNĐ
           </div>
+          {result.taxableValue < result.totalValue && (
+            <div className="text-xs text-gray-500">
+              Đã loại {formatNumber(result.totalValue - result.taxableValue)} VNĐ không chịu thuế/miễn thuế
+            </div>
+          )}
         </div>
         <div className="p-3 bg-white rounded-lg border border-gray-200">
-          <div className="text-xs text-gray-500">Thu nhập chịu thuế</div>
+          <div className="text-xs text-gray-500">Thu nhập tính thuế</div>
           <div className="font-semibold text-gray-800">
             {formatNumber(result.taxableAmount)} VNĐ
+          </div>
+          <div className="text-xs text-gray-500">
+            Phần vượt {formatNumber(result.threshold)} VNĐ/lần nhận
           </div>
         </div>
         <div
@@ -285,7 +298,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
           </div>
           {result.effectiveRate > 0 && (
             <div className="text-xs text-red-600">
-              (Thuế suất thực: {result.effectiveRate.toFixed(1)}%)
+              (Thuế suất thực: {result.effectiveRate.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%)
             </div>
           )}
         </div>
@@ -325,6 +338,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
       )}
 
       {/* Required Documents (Collapsible) */}
+      {result.requiredDocuments.length > 0 && (
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <button
           onClick={() => setShowDocuments(!showDocuments)}
@@ -358,6 +372,7 @@ function ResultDisplay({ result, transactionType }: ResultDisplayProps) {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -368,14 +383,15 @@ function InheritanceGiftTaxCalculatorComponent() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [transactionType, setTransactionType] = useState<TransactionType>('gift');
   const [relationship, setRelationship] = useState<Relationship>('non_relative');
-  const [assets, setAssets] = useState<AssetInfo[]>([{ type: 'cash', value: 0 }]);
+  const [assets, setAssets] = useState<AssetInfo[]>([{ type: 'real_estate', value: 0 }]);
   const [transactionDate, setTransactionDate] = useState<string>('');
+  const parsedDate = parseDateInput(transactionDate);
 
   const relationships = getAllRelationships();
 
   // Add asset
   const addAsset = useCallback(() => {
-    setAssets((prev) => [...prev, { type: 'cash', value: 0 }]);
+    setAssets((prev) => [...prev, { type: 'real_estate', value: 0 }]);
   }, []);
 
   // Update asset
@@ -397,7 +413,7 @@ function InheritanceGiftTaxCalculatorComponent() {
       transactionType,
       relationship,
       assets,
-      transactionDate: transactionDate ? new Date(transactionDate) : undefined,
+      transactionDate: parseDateInput(transactionDate),
     };
 
     return calculateInheritanceGiftTax(input);
@@ -473,14 +489,14 @@ function InheritanceGiftTaxCalculatorComponent() {
             >
               {relationships.map((r) => (
                 <option key={r.value} value={r.value}>
-                  {r.label} {r.isExempt ? '(Miễn thuế)' : ''}
+                  {r.label}{r.isExempt ? ' (miễn với BĐS)' : ''}
                 </option>
               ))}
             </select>
             {isExempt && (
-              <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
-                <CheckCircleIcon className="w-4 h-4" />
-                Quan hệ này được miễn thuế hoàn toàn theo Điều 4, Khoản 4 Luật Thuế TNCN
+              <p className="mt-2 text-sm text-green-600 flex items-start gap-1">
+                <CheckCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                Bất động sản nhận từ quan hệ này được miễn thuế (Luật 109/2025/QH15 Điều 4.1); chứng khoán, phần vốn góp, ô tô, xe máy... vẫn chịu thuế.
               </p>
             )}
           </div>
@@ -488,7 +504,7 @@ function InheritanceGiftTaxCalculatorComponent() {
           {/* Transaction Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ngày phát sinh (tùy chọn)
+              Ngày nhận (tùy chọn)
             </label>
             <input
               type="date"
@@ -497,7 +513,7 @@ function InheritanceGiftTaxCalculatorComponent() {
               className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-800"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Dùng để tính hạn khai thuế (10 ngày kể từ ngày phát sinh)
+              Tài sản phải đăng ký: ngày đăng ký quyền sở hữu. Dùng để xác định ngưỡng (10 triệu trước 01/7/2026, 20 triệu từ 01/7/2026) và hạn khai thuế.
             </p>
           </div>
 
@@ -544,16 +560,19 @@ function InheritanceGiftTaxCalculatorComponent() {
             </h5>
             <ul className="space-y-1 text-sm text-blue-700">
               <li>
-                • <strong>Miễn thuế hoàn toàn:</strong> Tài sản từ vợ/chồng, cha mẹ-con cái, ông bà-cháu, anh chị em ruột
+                • <strong>Chịu thuế:</strong> bất động sản, chứng khoán, phần vốn góp, ô tô, xe máy và tài sản khác phải đăng ký sở hữu/sử dụng. Tiền mặt, tiền gửi, vàng, trang sức không chịu thuế.
               </li>
               <li>
-                • <strong>Ngưỡng miễn thuế:</strong> {formatNumber(getPerTransactionThreshold(transactionDate ? new Date(transactionDate) : undefined))} VNĐ cho quan hệ khác
+                • <strong>Miễn thuế (chỉ với bất động sản):</strong> giữa vợ – chồng; cha mẹ đẻ/nuôi – con; cha mẹ chồng – con dâu; cha mẹ vợ – con rể; ông bà – cháu nội/ngoại; anh, chị, em ruột
               </li>
               <li>
-                • <strong>Thuế suất:</strong> {INHERITANCE_GIFT_TAX_RATE * 100}% trên phần vượt ngưỡng
+                • <strong>Thuế suất:</strong> {INHERITANCE_GIFT_TAX_RATE * 100}% trên phần giá trị vượt {formatNumber(getPerTransactionThreshold(parsedDate))} VNĐ mỗi lần nhận (không cộng dồn trong năm)
               </li>
               <li>
-                • <strong>Căn cứ:</strong> Điều 3, 4, 23 Luật Thuế TNCN; NĐ 65/2013/NĐ-CP
+                • <strong>Giá trị tính thuế:</strong> chứng khoán niêm yết theo giá tham chiếu; chứng khoán khác, phần vốn góp theo giá trị sổ sách; bất động sản theo bảng giá đất và giá tính lệ phí trước bạ nhà; ô tô, xe máy... theo giá tính lệ phí trước bạ
+              </li>
+              <li>
+                • <strong>Căn cứ:</strong> Luật Thuế TNCN 109/2025/QH15 Điều 3.9, 4.1, 18; NĐ 253/2026/NĐ-CP Điều 15, 61
               </li>
             </ul>
           </div>

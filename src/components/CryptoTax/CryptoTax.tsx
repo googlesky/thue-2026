@@ -5,7 +5,6 @@ import {
   CRYPTO_ASSETS,
   CRYPTO_TAX_CONFIG,
   calculateCryptoTax,
-  formatCurrency,
   formatPercent,
   getTransactionTypeLabel,
   generateTransactionId,
@@ -13,31 +12,28 @@ import {
   type CryptoAssetType,
   type TransactionType,
   type CryptoTransaction,
-  type CryptoTaxInput,
 } from '@/lib/cryptoTaxCalculator';
+import { formatCurrency } from '@/lib/taxCalculator';
 
-interface CryptoTaxProps {
-  year?: number;
-  onYearChange?: (year: number) => void;
-}
-
-const CURRENT_YEAR = new Date().getFullYear();
-const AVAILABLE_YEARS = [2025, 2026, 2027];
-
-const TRANSACTION_TYPES: { value: TransactionType; label: string; icon: string }[] = [
-  { value: 'buy', label: 'Mua', icon: '📥' },
-  { value: 'sell', label: 'Bán', icon: '📤' },
-  { value: 'swap', label: 'Hoán đổi', icon: '🔄' },
-  { value: 'transfer', label: 'Chuyển ví', icon: '➡️' },
+const TRANSACTION_TYPES: { value: TransactionType; label: string }[] = [
+  { value: 'buy', label: 'Mua' },
+  { value: 'sell', label: 'Bán' },
+  { value: 'swap', label: 'Hoán đổi' },
+  { value: 'transfer', label: 'Chuyển ví' },
 ];
 
-export default function CryptoTax({
-  year: externalYear,
-  onYearChange,
-}: CryptoTaxProps) {
-  const [internalYear, setInternalYear] = useState(CURRENT_YEAR >= 2026 ? 2026 : 2025);
-  const year = externalYear ?? internalYear;
+// Ngày YYYY-MM-DD theo giờ địa phương cho input type=date (không dùng toISOString - UTC)
+function todayInput(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
+function parseDateInput(value: string): Date {
+  const [y, m, d] = value.split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : new Date();
+}
+
+export default function CryptoTax() {
   const [transactions, setTransactions] = useState<CryptoTransaction[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'transactions' | 'result'>('transactions');
@@ -50,34 +46,28 @@ export default function CryptoTax({
     quantity: 0,
     pricePerUnit: 0,
     fee: 0,
-    date: new Date().toISOString().split('T')[0],
+    date: todayInput(),
     notes: '',
   });
 
-  // Handle year change
-  const handleYearChange = useCallback((newYear: number) => {
-    if (onYearChange) {
-      onYearChange(newYear);
-    } else {
-      setInternalYear(newYear);
-    }
-  }, [onYearChange]);
+  // Giao dịch đang nhập (dùng cho xem trước thuế và khi thêm)
+  const draft: CryptoTransaction = {
+    id: '',
+    date: parseDateInput(formData.date),
+    type: formData.type,
+    assetType: formData.assetType,
+    assetName: formData.assetName,
+    quantity: formData.quantity,
+    pricePerUnit: formData.pricePerUnit,
+    totalValue: formData.quantity * formData.pricePerUnit,
+    fee: formData.fee,
+    notes: formData.notes || undefined,
+  };
+  const preview = calculateCryptoTax({ transactions: [draft] }).transactionsWithTax[0];
 
   // Add transaction
   const addTransaction = useCallback(() => {
-    const totalValue = formData.quantity * formData.pricePerUnit;
-    const newTransaction: CryptoTransaction = {
-      id: generateTransactionId(),
-      date: new Date(formData.date),
-      type: formData.type,
-      assetType: formData.assetType,
-      assetName: formData.assetName,
-      quantity: formData.quantity,
-      pricePerUnit: formData.pricePerUnit,
-      totalValue,
-      fee: formData.fee,
-      notes: formData.notes || undefined,
-    };
+    const newTransaction: CryptoTransaction = { ...draft, id: generateTransactionId() };
 
     setTransactions(prev => [...prev, newTransaction]);
     setShowAddForm(false);
@@ -88,10 +78,10 @@ export default function CryptoTax({
       quantity: 0,
       pricePerUnit: 0,
       fee: 0,
-      date: new Date().toISOString().split('T')[0],
+      date: todayInput(),
       notes: '',
     });
-  }, [formData]);
+  }, [draft]);
 
   // Remove transaction
   const removeTransaction = useCallback((id: string) => {
@@ -101,52 +91,17 @@ export default function CryptoTax({
   // Calculate result
   const result = useMemo(() => {
     if (transactions.length === 0) return null;
-    const input: CryptoTaxInput = { year, transactions };
-    return calculateCryptoTax(input);
-  }, [year, transactions]);
-
-  // Check if law is effective
-  const isLawEffective = year >= 2026;
+    return calculateCryptoTax({ transactions });
+  }, [transactions]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">Thuế Tài sản số</h2>
+        <h2 className="text-2xl font-bold mb-2">Thuế tài sản số</h2>
         <p className="opacity-90">
-          Tính thuế chuyển nhượng Bitcoin, Ethereum, NFT và các tài sản số khác
+          Tính thuế chuyển nhượng Bitcoin, Ethereum, NFT và các tài sản số khác – 0,1% giá chuyển nhượng từ 01/7/2026
         </p>
-      </div>
-
-      {/* Year Selection */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Năm tính thuế
-        </label>
-        <div className="flex gap-2">
-          {AVAILABLE_YEARS.map(y => (
-            <button
-              key={y}
-              onClick={() => handleYearChange(y)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                year === y
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-
-        {!isLawEffective && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              ⚠️ Luật thuế tài sản số có hiệu lực từ <strong>1/7/2026</strong>.
-              Giao dịch trước ngày này không chịu thuế theo quy định mới.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Tax Rate Info */}
@@ -174,7 +129,9 @@ export default function CryptoTax({
           ))}
         </div>
         <p className="mt-3 text-sm text-gray-500">
-          Thuế tài sản số = 0,1% × Giá trị giao dịch (tương đương chứng khoán và vàng miếng)
+          Thuế tài sản số = 0,1% × giá chuyển nhượng từng lần (bán, hoán đổi) từ 01/7/2026, không phân
+          biệt lãi/lỗ – Luật Thuế TNCN số 109/2025/QH15 Điều 19 khoản 2. Vàng miếng: luật định 0,1% nhưng
+          hiện chưa thu.
         </p>
       </div>
 
@@ -228,19 +185,18 @@ export default function CryptoTax({
                   <label className="block text-sm text-gray-500 mb-1">
                     Loại giao dịch
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {TRANSACTION_TYPES.map(t => (
                       <button
                         key={t.value}
                         onClick={() => setFormData(prev => ({ ...prev, type: t.value }))}
-                        className={`p-2 rounded-lg text-center transition-colors ${
+                        className={`p-2 min-h-[44px] rounded-lg text-center text-sm transition-colors ${
                           formData.type === t.value
                             ? 'bg-orange-100 border-2 border-orange-500'
                             : 'bg-gray-100 border-2 border-transparent'
                         }`}
                       >
-                        <span className="text-lg">{t.icon}</span>
-                        <span className="block text-xs mt-1">{t.label}</span>
+                        {t.label}
                       </button>
                     ))}
                   </div>
@@ -265,7 +221,7 @@ export default function CryptoTax({
                   >
                     {CRYPTO_ASSETS.map(asset => (
                       <option key={asset.id} value={asset.id}>
-                        {asset.icon} {asset.name}
+                        {asset.name}
                       </option>
                     ))}
                   </select>
@@ -351,13 +307,15 @@ export default function CryptoTax({
                       {formatCurrency(formData.quantity * formData.pricePerUnit)}
                     </span>
                   </div>
-                  {(formData.type === 'sell' || formData.type === 'swap') && isLawEffective && (
+                  {preview.isTaxable ? (
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-200">
                       <span className="text-gray-700">Thuế dự kiến (0,1%):</span>
                       <span className="font-bold text-red-600">
-                        {formatCurrency(formData.quantity * formData.pricePerUnit * 0.001)}
+                        {formatCurrency(preview.taxAmount)}
                       </span>
                     </div>
+                  ) : (
+                    <p className="mt-2 pt-2 border-t border-orange-200 text-sm text-gray-600">{preview.taxNote}</p>
                   )}
                 </div>
               )}
@@ -390,17 +348,12 @@ export default function CryptoTax({
                 </h3>
               </div>
               <div className="divide-y divide-gray-100">
-                {transactions.map(tx => {
-                  const asset = getAssetByType(tx.assetType);
-                  const isTaxable = (tx.type === 'sell' || tx.type === 'swap') && tx.date >= CRYPTO_TAX_CONFIG.effectiveDate;
-                  const taxAmount = isTaxable ? tx.totalValue * CRYPTO_TAX_CONFIG.transferRate : 0;
-
+                {(result?.transactionsWithTax ?? []).map(tx => {
                   return (
-                    <div key={tx.id} className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{asset?.icon || '🪙'}</span>
-                        <div>
-                          <div className="flex items-center gap-2">
+                    <div key={tx.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className={`text-xs px-2 py-0.5 rounded ${
                               tx.type === 'buy' ? 'bg-green-100 text-green-700' :
                               tx.type === 'sell' ? 'bg-red-100 text-red-700' :
@@ -419,15 +372,17 @@ export default function CryptoTax({
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        {isTaxable && (
+                        {tx.isTaxable && (
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Thuế</p>
-                            <p className="font-medium text-red-600">{formatCurrency(taxAmount)}</p>
+                            <p className="font-medium text-red-600">{formatCurrency(tx.taxAmount)}</p>
                           </div>
                         )}
                         <button
                           onClick={() => removeTransaction(tx.id)}
                           className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Xóa"
+                          aria-label="Xóa giao dịch"
                         >
                           ✕
                         </button>
@@ -484,7 +439,7 @@ export default function CryptoTax({
           {/* Result Summary */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 mb-4">
-              Kết quả tính thuế năm {year}
+              Kết quả tính thuế
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -501,9 +456,9 @@ export default function CryptoTax({
                 </p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500">Thuế suất thực tế</p>
+                <p className="text-sm text-gray-500">Thuế / giá chuyển nhượng</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {result.effectiveTaxRate.toFixed(3)}%
+                  {formatPercent(result.effectiveTaxRate / 100)}
                 </p>
               </div>
             </div>
@@ -517,12 +472,10 @@ export default function CryptoTax({
               </h3>
               <div className="space-y-3">
                 {result.taxByAsset.map(item => {
-                  const asset = getAssetByType(item.assetType);
                   return (
-                    <div key={item.assetType} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{asset?.icon || '🪙'}</span>
-                        <div>
+                    <div key={item.assetType} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="min-w-0">
                           <p className="font-medium text-gray-900">{item.assetName}</p>
                           <p className="text-sm text-gray-500">
                             {item.transactionCount} giao dịch • {formatCurrency(item.totalValue)}
@@ -576,10 +529,20 @@ export default function CryptoTax({
           <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
             <h4 className="font-medium text-gray-900 mb-2">Căn cứ pháp lý</h4>
             <ul className="list-disc list-inside space-y-1">
-              <li>Luật Thuế TNCN 2025 - Điều khoản về tài sản số</li>
-              <li>Luật Công nghiệp công nghệ số (hiệu lực 1/1/2026)</li>
-              <li>Nghị quyết 05/2025 về thí điểm thị trường tài sản mã hóa</li>
-              <li>Thuế suất: 0,1% trên giá trị giao dịch (từ 1/7/2026)</li>
+              <li>
+                Luật Thuế TNCN số 109/2025/QH15: Điều 3 khoản 10 điểm d; Điều 19 khoản 2 (cá nhân cư trú),
+                Điều 27 khoản 2 (cá nhân không cư trú) – 0,1% × giá chuyển nhượng từng lần, từ 01/7/2026.
+              </li>
+              <li>
+                Nghị định 253/2026/NĐ-CP: Điều 16 khoản 4 (tài sản ảo, tài sản mã hóa, tài sản số khác), Điều 62
+                khoản 2.
+              </li>
+              <li>
+                Thông tư 32/2026/TT-BTC (từ 27/3/2026): 0,1% cho giao dịch qua tổ chức cung cấp dịch vụ tài sản
+                mã hóa được cấp phép thí điểm theo Nghị quyết 05/2025/NQ-CP.
+              </li>
+              <li>Hoán đổi tài sản số được tính như chuyển nhượng; chuyển ví của chính mình không chịu thuế.</li>
+              <li>Luật Công nghiệp công nghệ số (hiệu lực 01/01/2026): khái niệm tài sản số.</li>
             </ul>
           </div>
         </>

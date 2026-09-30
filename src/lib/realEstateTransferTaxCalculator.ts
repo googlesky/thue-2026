@@ -1,88 +1,81 @@
 /**
- * Real Estate Transfer Tax Calculator for Vietnam
- * Reference: Luật Thuế TNCN 2007, Circular 111/2013/TT-BTC
+ * Thuế TNCN khi chuyển nhượng, nhận thừa kế, tặng cho bất động sản + lệ phí trước bạ
  *
- * Tax Structure:
- * - PIT on real estate transfer: 2% of transfer value
- * - Registration fee: 0.5% of property value
- * - Notary fees: varies
- *
- * Exemptions:
- * - Transfer between spouse, parents-children, siblings
- * - First-time homebuyers (with conditions)
- * - Inherited property (subject to inheritance tax rules)
+ * Căn cứ pháp lý:
+ * - Luật Thuế TNCN 109/2025/QH15: Điều 4.1 (miễn giữa người thân: chuyển nhượng, thừa kế, tặng cho),
+ *   Điều 4.2 (nhà ở/đất ở duy nhất), Điều 14 (2% × giá chuyển nhượng), Điều 18 (thừa kế, quà tặng:
+ *   10% × phần vượt ngưỡng mỗi lần nhận), Điều 24 (không cư trú: 2%)
+ * - NĐ 253/2026/NĐ-CP: Điều 18 (miễn, kể cả chia tài sản khi ly hôn), Điều 19 (điều kiện nhà ở,
+ *   đất ở duy nhất), Điều 57 (giá chuyển nhượng), Điều 61 (giá trị BĐS thừa kế, quà tặng)
+ * - NĐ 10/2022/NĐ-CP: lệ phí trước bạ nhà, đất 0,5% do bên mua/bên nhận nộp
  */
 
-// Property types for transfer
+import { getPerTransactionThreshold } from './taxCalculator';
+import {
+  Relationship,
+  isExemptRelationship,
+  getRelationshipLabel,
+  parseDateInput,
+} from './inheritanceGiftTaxCalculator';
+
 export type RealEstateType =
-  | 'land'           // Đất đai
-  | 'house'          // Nhà ở
-  | 'apartment'      // Căn hộ chung cư
-  | 'land_house'     // Đất và nhà trên đất
-  | 'commercial';    // Bất động sản thương mại
+  | 'land' // Đất đai
+  | 'house' // Nhà ở
+  | 'apartment' // Căn hộ chung cư
+  | 'land_house' // Đất và nhà trên đất
+  | 'commercial'; // Bất động sản thương mại (không phải nhà ở, đất ở)
 
-// Transfer type
 export type TransferType =
-  | 'sale'           // Mua bán thông thường
-  | 'inheritance'    // Thừa kế
-  | 'gift'           // Tặng cho
-  | 'family';        // Chuyển nhượng trong gia đình
+  | 'sale' // Chuyển nhượng (mua bán)
+  | 'inheritance' // Thừa kế
+  | 'gift' // Tặng cho
+  | 'divorce'; // Chia tài sản khi ly hôn
 
-// Family relationship for exemption check
-export type FamilyRelationship =
-  | 'spouse'         // Vợ/chồng
-  | 'parent_child'   // Cha mẹ - con cái
-  | 'sibling'        // Anh chị em ruột
-  | 'grandparent'    // Ông bà - cháu
-  | 'other'          // Quan hệ khác
-  | 'none';          // Không có quan hệ
-
-// Real estate transfer transaction
 export interface RealEstateTransfer {
   id: string;
   propertyType: RealEstateType;
   transferType: TransferType;
   propertyAddress: string;
-  landArea: number;          // m2
-  buildingArea?: number;     // m2 (for houses/apartments)
-  transferValue: number;     // Giá chuyển nhượng
-  purchaseValue?: number;    // Giá mua ban đầu (nếu có)
-  purchaseDate?: string;     // Ngày mua ban đầu
-  transferDate: string;      // Ngày chuyển nhượng
-  relationship?: FamilyRelationship;
-  isFirstHome?: boolean;     // Nhà đầu tiên
+  landArea: number; // m2
+  buildingArea?: number; // m2
+  transferValue: number; // Giá chuyển nhượng / giá trị BĐS nhận
+  purchaseValue?: number; // Giá mua ban đầu (tham khảo lợi nhuận)
+  transferDate: string; // YYYY-MM-DD
+  relationship?: Relationship; // Quan hệ giữa hai bên (Luật 109 Điều 4.1)
+  // Nhà ở/đất ở duy nhất của người chuyển nhượng (NĐ 253/2026 Điều 19)
+  isOnlyHome?: boolean; // Chỉ có 1 nhà ở/thửa đất ở tại VN, không có thêm nhà hình thành trong tương lai
+  certificateDate?: string; // Ngày cấp Giấy chứng nhận (YYYY-MM-DD)
+  transfersWhole?: boolean; // Chuyển nhượng toàn bộ
+  isFutureHousing?: boolean; // Nhà ở hình thành trong tương lai
   notes?: string;
 }
 
-// Tax calculation input
 export interface RealEstateTransferTaxInput {
   transfers: RealEstateTransfer[];
 }
 
-// Individual transfer result
 export interface RealEstateTransferResult {
   id: string;
   propertyType: RealEstateType;
   transferType: TransferType;
   transferValue: number;
-  // Capital gains calculation (for reference)
-  capitalGain: number;
-  holdingPeriod: number; // months
-  // Tax calculations
-  pitTaxable: number;
-  pitRate: number;
+  capitalGain: number; // Lợi nhuận tham khảo
+  // Thuế TNCN
+  pitTaxable: number; // Giá chuyển nhượng (2%) hoặc phần vượt ngưỡng (10%)
+  pitRate: number; // %
   pitAmount: number;
+  pitPayer: 'seller' | 'recipient';
+  // Lệ phí trước bạ: bên mua/bên nhận nộp, KHÔNG trừ vào tiền bên bán nhận
   registrationFee: number;
-  registrationRate: number;
-  totalFees: number;
-  netProceeds: number;
-  // Exemption info
+  registrationRate: number; // %
+  totalFees: number; // Thuế TNCN + lệ phí trước bạ của giao dịch
+  netProceeds: number; // Bên bán thực nhận = giá − thuế TNCN (chỉ mua bán)
   isExempt: boolean;
-  exemptionReason?: string;
-  exemptionAmount: number;
+  exemptionReason?: string; // Lý do miễn, hoặc điều kiện nhà ở duy nhất chưa đạt
+  exemptionAmount: number; // Thuế TNCN được miễn
+  notes: string[];
 }
 
-// Complete real estate transfer tax result
 export interface RealEstateTransferTaxResult {
   transfers: RealEstateTransferResult[];
   summary: {
@@ -91,257 +84,169 @@ export interface RealEstateTransferTaxResult {
     totalPIT: number;
     totalRegistrationFee: number;
     totalFees: number;
-    totalNetProceeds: number;
+    totalNetProceeds: number; // Tổng bên bán thực nhận (các giao dịch mua bán)
     totalExemptions: number;
     effectiveTaxRate: number;
   };
 }
 
-// Tax rates
 export const REAL_ESTATE_TAX_RATES = {
-  pit: 0.02,                 // 2% PIT on transfer value
-  registrationFee: 0.005,    // 0.5% registration fee
+  pit: 0.02, // 2% giá chuyển nhượng (Luật 109 Điều 14, 24)
+  inheritanceGift: 0.10, // 10% phần vượt ngưỡng mỗi lần nhận (Luật 109 Điều 18)
+  registrationFee: 0.005, // Lệ phí trước bạ nhà, đất 0,5% (NĐ 10/2022/NĐ-CP)
 };
 
-// Property type labels
+/** Số ngày sở hữu tối thiểu để miễn nhà ở/đất ở duy nhất (NĐ 253 Điều 19.2.b) */
+export const ONLY_HOME_MIN_DAYS = 183;
+
 export const PROPERTY_TYPE_LABELS: Record<RealEstateType, string> = {
   land: 'Đất đai (chỉ có quyền sử dụng đất)',
   house: 'Nhà ở riêng lẻ',
   apartment: 'Căn hộ chung cư',
   land_house: 'Đất và nhà trên đất',
-  commercial: 'Bất động sản thương mại',
+  commercial: 'Bất động sản thương mại (không phải nhà ở)',
 };
 
-// Transfer type labels
 export const TRANSFER_TYPE_LABELS: Record<TransferType, string> = {
-  sale: 'Mua bán thông thường',
+  sale: 'Chuyển nhượng (mua bán)',
   inheritance: 'Thừa kế',
   gift: 'Tặng cho',
-  family: 'Chuyển nhượng trong gia đình',
+  divorce: 'Chia tài sản khi ly hôn',
 };
 
-// Family relationship labels
-export const FAMILY_RELATIONSHIP_LABELS: Record<FamilyRelationship, string> = {
-  spouse: 'Vợ/chồng',
-  parent_child: 'Cha mẹ - con cái',
-  sibling: 'Anh chị em ruột',
-  grandparent: 'Ông bà - cháu',
-  other: 'Quan hệ họ hàng khác',
-  none: 'Không có quan hệ gia đình',
-};
-
-/**
- * Generate unique ID
- */
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 }
 
-/**
- * Check if transfer is exempt from PIT
- */
-export function checkExemption(
-  transfer: RealEstateTransfer
-): { isExempt: boolean; reason?: string } {
-  // Family transfers (spouse, parent-child, siblings)
-  if (transfer.transferType === 'family') {
-    if (transfer.relationship === 'spouse') {
-      return {
-        isExempt: true,
-        reason: 'Chuyển nhượng giữa vợ và chồng được miễn thuế TNCN',
-      };
-    }
-    if (transfer.relationship === 'parent_child') {
-      return {
-        isExempt: true,
-        reason: 'Chuyển nhượng giữa cha mẹ và con cái được miễn thuế TNCN',
-      };
-    }
-    if (transfer.relationship === 'sibling') {
-      return {
-        isExempt: true,
-        reason: 'Chuyển nhượng giữa anh chị em ruột được miễn thuế TNCN',
-      };
-    }
-  }
+/** Số ngày giữa hai ngày YYYY-MM-DD (theo lịch địa phương) */
+export function daysBetween(from?: string, to?: string): number | undefined {
+  const a = from ? parseDateInput(from) : undefined;
+  const b = to ? parseDateInput(to) : undefined;
+  return a && b ? Math.round((b.getTime() - a.getTime()) / 86_400_000) : undefined;
+}
 
-  // Inheritance
-  if (transfer.transferType === 'inheritance') {
-    if (
-      transfer.relationship === 'spouse' ||
-      transfer.relationship === 'parent_child'
-    ) {
-      return {
-        isExempt: true,
-        reason: 'Thừa kế từ vợ/chồng, cha mẹ/con cái được miễn thuế TNCN',
-      };
-    }
-    // Other inheritance is taxed at 10% on value above 10M
+/** Các điều kiện miễn nhà ở/đất ở duy nhất chưa đạt (rỗng = đủ điều kiện) */
+export function getOnlyHomeShortfalls(t: RealEstateTransfer): string[] {
+  const shortfalls: string[] = [];
+  if (t.propertyType === 'commercial') shortfalls.push('không phải nhà ở, đất ở');
+  if (t.isFutureHousing) shortfalls.push('nhà ở hình thành trong tương lai không được miễn');
+  if (t.transfersWhole === false) shortfalls.push('chỉ chuyển nhượng một phần');
+  const days = daysBetween(t.certificateDate, t.transferDate);
+  if (days === undefined) {
+    shortfalls.push('chưa nhập ngày cấp Giấy chứng nhận');
+  } else if (days < ONLY_HOME_MIN_DAYS) {
+    shortfalls.push(`mới sở hữu ${Math.max(0, days)} ngày (cần tối thiểu ${ONLY_HOME_MIN_DAYS} ngày tính từ ngày cấp Giấy chứng nhận)`);
+  }
+  return shortfalls;
+}
+
+export function checkExemption(t: RealEstateTransfer): { isExempt: boolean; reason?: string } {
+  if (t.transferType === 'divorce') {
     return {
-      isExempt: false,
-      reason: 'Thừa kế từ người khác chịu thuế 10% trên phần giá trị trên 10 triệu',
+      isExempt: true,
+      reason: 'Bất động sản phân chia khi ly hôn (theo thỏa thuận hoặc phán quyết của tòa án) được miễn thuế TNCN (NĐ 253/2026/NĐ-CP Điều 18.2).',
     };
   }
-
-  // Gift between certain family members
-  if (transfer.transferType === 'gift') {
-    if (
-      transfer.relationship === 'spouse' ||
-      transfer.relationship === 'parent_child' ||
-      transfer.relationship === 'sibling' ||
-      transfer.relationship === 'grandparent'
-    ) {
-      return {
-        isExempt: true,
-        reason: 'Tặng cho trong gia đình (vợ chồng, cha mẹ con, anh chị em, ông bà cháu) được miễn thuế',
-      };
-    }
-  }
-
-  // First home exemption (limited conditions)
-  if (transfer.isFirstHome && transfer.transferType === 'sale') {
-    // Note: This exemption has specific conditions in Vietnamese law
+  if (t.relationship && isExemptRelationship(t.relationship)) {
     return {
-      isExempt: false,
-      reason: 'Mua nhà lần đầu: cần kiểm tra điều kiện cụ thể theo quy định',
+      isExempt: true,
+      reason: `${t.transferType === 'sale' ? 'Chuyển nhượng' : TRANSFER_TYPE_LABELS[t.transferType]} bất động sản giữa ${getRelationshipLabel(t.relationship).toLowerCase()} được miễn thuế TNCN (Luật 109/2025/QH15 Điều 4.1).`,
     };
   }
-
+  if (t.transferType === 'sale' && t.isOnlyHome) {
+    const shortfalls = getOnlyHomeShortfalls(t);
+    if (shortfalls.length === 0) {
+      return {
+        isExempt: true,
+        reason: 'Nhà ở/đất ở duy nhất của người chuyển nhượng, sở hữu từ 183 ngày, chuyển nhượng toàn bộ: miễn thuế TNCN (Luật 109/2025/QH15 Điều 4.2; NĐ 253/2026/NĐ-CP Điều 19). Người chuyển nhượng tự khai và chịu trách nhiệm.',
+      };
+    }
+    return { isExempt: false, reason: `Chưa đủ điều kiện miễn nhà ở/đất ở duy nhất: ${shortfalls.join('; ')}.` };
+  }
   return { isExempt: false };
 }
 
-/**
- * Calculate holding period in months
- */
-export function calculateHoldingPeriod(
-  purchaseDate?: string,
-  transferDate?: string
-): number {
-  if (!purchaseDate || !transferDate) return 0;
-
-  const purchase = new Date(purchaseDate);
-  const transfer = new Date(transferDate);
-  const months =
-    (transfer.getFullYear() - purchase.getFullYear()) * 12 +
-    (transfer.getMonth() - purchase.getMonth());
-
-  return Math.max(0, months);
-}
-
-/**
- * Calculate tax for a single real estate transfer
- */
-export function calculateTransferTax(
-  transfer: RealEstateTransfer
-): RealEstateTransferResult {
-  // Check exemption
+export function calculateTransferTax(transfer: RealEstateTransfer): RealEstateTransferResult {
   const { isExempt, reason } = checkExemption(transfer);
+  const value = transfer.transferValue;
+  const isGratuitous = transfer.transferType === 'inheritance' || transfer.transferType === 'gift';
 
-  // Calculate capital gain (for reference)
-  const capitalGain =
-    transfer.purchaseValue !== undefined
-      ? transfer.transferValue - transfer.purchaseValue
-      : 0;
+  const capitalGain = transfer.purchaseValue !== undefined ? value - transfer.purchaseValue : 0;
 
-  const holdingPeriod = calculateHoldingPeriod(
-    transfer.purchaseDate,
-    transfer.transferDate
-  );
+  // Thừa kế, tặng cho: 10% × phần vượt ngưỡng mỗi lần nhận; mua bán (và ly hôn nếu không miễn): 2% × giá
+  const threshold = getPerTransactionThreshold(parseDateInput(transfer.transferDate));
+  const pitRate = isGratuitous ? REAL_ESTATE_TAX_RATES.inheritanceGift : REAL_ESTATE_TAX_RATES.pit;
+  const pitBase = isGratuitous ? Math.max(0, value - threshold) : value;
+  const fullPit = Math.round(pitBase * pitRate);
+  const pitAmount = isExempt ? 0 : fullPit;
 
-  // Calculate PIT
-  let pitAmount = 0;
-  let exemptionAmount = 0;
-  const pitRate = REAL_ESTATE_TAX_RATES.pit;
+  // Lệ phí trước bạ luôn tính (miễn thuế TNCN không kéo theo miễn lệ phí trước bạ)
+  const registrationFee = Math.round(value * REAL_ESTATE_TAX_RATES.registrationFee);
 
-  if (isExempt) {
-    exemptionAmount = Math.round(transfer.transferValue * pitRate);
+  const notes: string[] = [];
+  if (isGratuitous) {
+    notes.push(
+      `Thừa kế, tặng cho: thuế TNCN = 10% × phần giá trị vượt ${threshold.toLocaleString('vi-VN')} đồng mỗi lần nhận; giá trị theo bảng giá đất và giá tính lệ phí trước bạ nhà (NĐ 253/2026/NĐ-CP Điều 61).`
+    );
+    if (transfer.relationship && isExemptRelationship(transfer.relationship)) {
+      notes.push('Có thể được miễn lệ phí trước bạ khi nhận thừa kế, quà tặng nhà đất giữa người thân (NĐ 10/2022/NĐ-CP Điều 10) — kiểm tra với cơ quan thuế.');
+    }
   } else {
-    pitAmount = Math.round(transfer.transferValue * pitRate);
+    notes.push('Giá tính thuế là giá trên hợp đồng; nếu thấp hơn giá theo bảng giá đất thì tính theo bảng giá đất (NĐ 253/2026/NĐ-CP Điều 57).');
   }
-
-  // Registration fee (always applicable, even for exempt transfers)
-  // Exempt transfers may have reduced registration fee in some cases
-  const registrationRate = REAL_ESTATE_TAX_RATES.registrationFee;
-  const registrationFee = isExempt
-    ? 0 // Family transfers often exempt from registration fee too
-    : Math.round(transfer.transferValue * registrationRate);
-
-  const totalFees = pitAmount + registrationFee;
-  const netProceeds = transfer.transferValue - totalFees;
 
   return {
     id: transfer.id,
     propertyType: transfer.propertyType,
     transferType: transfer.transferType,
-    transferValue: transfer.transferValue,
+    transferValue: value,
     capitalGain,
-    holdingPeriod,
-    pitTaxable: isExempt ? 0 : transfer.transferValue,
+    pitTaxable: isExempt ? 0 : pitBase,
     pitRate: pitRate * 100,
     pitAmount,
+    pitPayer: isGratuitous ? 'recipient' : 'seller',
     registrationFee,
-    registrationRate: registrationRate * 100,
-    totalFees,
-    netProceeds,
+    registrationRate: REAL_ESTATE_TAX_RATES.registrationFee * 100,
+    totalFees: pitAmount + registrationFee,
+    netProceeds: transfer.transferType === 'sale' ? value - pitAmount : 0,
     isExempt,
     exemptionReason: reason,
-    exemptionAmount,
+    exemptionAmount: isExempt ? fullPit : 0,
+    notes,
   };
 }
 
-/**
- * Calculate complete real estate transfer tax
- */
-export function calculateRealEstateTransferTax(
-  input: RealEstateTransferTaxInput
-): RealEstateTransferTaxResult {
-  // Calculate tax for each transfer
-  const transferResults = input.transfers.map(calculateTransferTax);
+export function calculateRealEstateTransferTax(input: RealEstateTransferTaxInput): RealEstateTransferTaxResult {
+  const transfers = input.transfers.map(calculateTransferTax);
+  const total = (pick: (t: RealEstateTransferResult) => number) => transfers.reduce((s, t) => s + pick(t), 0);
 
-  // Calculate summary
-  const totalTransferValue = transferResults.reduce(
-    (sum, t) => sum + t.transferValue,
-    0
-  );
-  const totalCapitalGain = transferResults.reduce(
-    (sum, t) => sum + t.capitalGain,
-    0
-  );
-  const totalPIT = transferResults.reduce((sum, t) => sum + t.pitAmount, 0);
-  const totalRegistrationFee = transferResults.reduce(
-    (sum, t) => sum + t.registrationFee,
-    0
-  );
+  const totalTransferValue = total((t) => t.transferValue);
+  const totalPIT = total((t) => t.pitAmount);
+  const totalRegistrationFee = total((t) => t.registrationFee);
   const totalFees = totalPIT + totalRegistrationFee;
-  const totalNetProceeds = transferResults.reduce(
-    (sum, t) => sum + t.netProceeds,
-    0
-  );
-  const totalExemptions = transferResults.reduce(
-    (sum, t) => sum + t.exemptionAmount,
-    0
-  );
-  const effectiveTaxRate =
-    totalTransferValue > 0 ? (totalFees / totalTransferValue) * 100 : 0;
+  const effectiveTaxRate = totalTransferValue > 0 ? (totalFees / totalTransferValue) * 100 : 0;
 
   return {
-    transfers: transferResults,
+    transfers,
     summary: {
       totalTransferValue,
-      totalCapitalGain,
+      totalCapitalGain: total((t) => t.capitalGain),
       totalPIT,
       totalRegistrationFee,
       totalFees,
-      totalNetProceeds,
-      totalExemptions,
+      totalNetProceeds: total((t) => t.netProceeds),
+      totalExemptions: total((t) => t.exemptionAmount),
       effectiveTaxRate: Math.round(effectiveTaxRate * 100) / 100,
     },
   };
 }
 
-/**
- * Create empty transfer
- */
+/** Ngày hôm nay dạng YYYY-MM-DD theo giờ địa phương */
+function todayInputValue(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function createEmptyTransfer(): RealEstateTransfer {
   return {
     id: generateId(),
@@ -351,15 +256,15 @@ export function createEmptyTransfer(): RealEstateTransfer {
     landArea: 0,
     buildingArea: 0,
     transferValue: 0,
-    transferDate: new Date().toISOString().split('T')[0],
-    relationship: 'none',
-    isFirstHome: false,
+    transferDate: todayInputValue(),
+    relationship: 'non_relative',
+    isOnlyHome: false,
+    certificateDate: '',
+    transfersWhole: true,
+    isFutureHousing: false,
   };
 }
 
-/**
- * Format currency in VND
- */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -369,27 +274,8 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Average property prices by location (for reference)
- */
-export const REFERENCE_PROPERTY_PRICES = {
-  hcm: {
-    district1: { apartment: 150_000_000, house: 300_000_000 }, // per m2
-    district2: { apartment: 80_000_000, house: 150_000_000 },
-    district7: { apartment: 70_000_000, house: 120_000_000 },
-    thuDuc: { apartment: 50_000_000, house: 80_000_000 },
-    suburban: { apartment: 30_000_000, house: 50_000_000 },
-  },
-  hanoi: {
-    hoanKiem: { apartment: 200_000_000, house: 400_000_000 },
-    dongDa: { apartment: 100_000_000, house: 200_000_000 },
-    cauGiay: { apartment: 80_000_000, house: 150_000_000 },
-    longBien: { apartment: 50_000_000, house: 80_000_000 },
-    suburban: { apartment: 30_000_000, house: 50_000_000 },
-  },
-};
-
-/**
- * Estimate tax for quick calculation
+ * Tính nhanh cho giao dịch mua bán: thuế TNCN 2% (bên bán, trừ khi được miễn) và
+ * lệ phí trước bạ 0,5% (bên mua — luôn phải nộp, kể cả khi thuế TNCN được miễn).
  */
 export function estimateTransferTax(
   transferValue: number,
@@ -398,16 +284,9 @@ export function estimateTransferTax(
   pit: number;
   registrationFee: number;
   total: number;
-  netProceeds: number;
+  netProceeds: number; // Bên bán thực nhận
 } {
-  const pit = isExempt
-    ? 0
-    : Math.round(transferValue * REAL_ESTATE_TAX_RATES.pit);
-  const registrationFee = isExempt
-    ? 0
-    : Math.round(transferValue * REAL_ESTATE_TAX_RATES.registrationFee);
-  const total = pit + registrationFee;
-  const netProceeds = transferValue - total;
-
-  return { pit, registrationFee, total, netProceeds };
+  const pit = isExempt ? 0 : Math.round(transferValue * REAL_ESTATE_TAX_RATES.pit);
+  const registrationFee = Math.round(transferValue * REAL_ESTATE_TAX_RATES.registrationFee);
+  return { pit, registrationFee, total: pit + registrationFee, netProceeds: transferValue - pit };
 }

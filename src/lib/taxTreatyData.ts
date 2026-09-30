@@ -4,9 +4,12 @@
  * Việt Nam đã ký kết hiệp định thuế với 80+ quốc gia và vùng lãnh thổ.
  * Dữ liệu này cung cấp thông tin tham khảo về thuế suất tối đa theo hiệp định.
  *
- * Căn cứ: Các hiệp định thuế song phương của Việt Nam
+ * Căn cứ: Các hiệp định thuế song phương của Việt Nam; thủ tục áp dụng: TT 89/2026/TT-BTC Điều 76.
+ * Hiệp định đã ký nhưng chưa có hiệu lực (status 'pending', VD Hoa Kỳ) không được áp dụng ưu đãi.
  * Nguồn: Bộ Tài chính Việt Nam, OECD
  */
+
+import { getPerTransactionThreshold } from './taxCalculator';
 
 // ===== TYPES =====
 
@@ -16,8 +19,8 @@ export interface TaxTreaty {
   countryName: string;           // Tên tiếng Việt
   countryNameEn: string;         // Tên tiếng Anh
   signDate: string;              // Ngày ký (YYYY-MM-DD)
-  effectiveDate: string;         // Ngày có hiệu lực (YYYY-MM-DD)
-  status: 'active' | 'pending' | 'terminated';
+  effectiveDate: string;         // Ngày có hiệu lực (YYYY-MM-DD); rỗng nếu chưa có hiệu lực
+  status: 'active' | 'pending' | 'terminated'; // pending: đã ký, chưa hiệu lực → không áp dụng ưu đãi
 
   // Thuế suất tối đa theo hiệp định (%)
   rates: {
@@ -172,7 +175,7 @@ export const TAX_TREATIES: Record<TreatyCountryCode, TaxTreaty> = {
         standard: 12.5,
         qualified: 5,
         qualifiedThreshold: 25,
-        note: '5% nếu góp vốn >= 25%, 12.5% các trường hợp khác',
+        note: '5% nếu góp vốn ≥ 25%, 12,5% các trường hợp khác',
       },
       interest: {
         standard: 10,
@@ -313,7 +316,7 @@ export const TAX_TREATIES: Record<TreatyCountryCode, TaxTreaty> = {
         standard: 15,
         qualified: 7,
         qualifiedThreshold: 70,
-        note: '7% nếu góp vốn >= 70%, 15% các trường hợp khác',
+        note: '7% nếu góp vốn ≥ 70%, 15% các trường hợp khác',
       },
       interest: {
         standard: 0,
@@ -416,13 +419,14 @@ export const TAX_TREATIES: Record<TreatyCountryCode, TaxTreaty> = {
   },
 
   // CHÂU MỸ
+  // Ký 07/7/2015 nhưng đến nay CHƯA có hiệu lực → không áp dụng ưu đãi (mức thuế suất dưới chỉ để tham khảo)
   US: {
     countryCode: 'US',
     countryName: 'Hoa Kỳ',
     countryNameEn: 'United States',
     signDate: '2015-07-07',
-    effectiveDate: '2016-12-22',
-    status: 'active',
+    effectiveDate: '',
+    status: 'pending',
     rates: {
       dividends: {
         standard: 15,
@@ -444,7 +448,6 @@ export const TAX_TREATIES: Record<TreatyCountryCode, TaxTreaty> = {
     },
     specialProvisions: [
       'Điều khoản chống lạm dụng (LOB)',
-      'Trao đổi thông tin thuế tự động (CRS)',
     ],
     method: 'credit',
   },
@@ -594,19 +597,21 @@ export const TAX_TREATIES: Record<TreatyCountryCode, TaxTreaty> = {
 // ===== HELPER FUNCTIONS =====
 
 /**
- * Lấy danh sách quốc gia có hiệp định thuế
+ * Danh sách quốc gia có hiệp định (kể cả hiệp định đã ký nhưng chưa có hiệu lực — pending)
  */
 export function getTreatyCountries(): Array<{
   code: string;
   name: string;
   nameEn: string;
+  pending: boolean;
 }> {
   return Object.values(TAX_TREATIES)
-    .filter(t => t.status === 'active')
+    .filter(t => t.status !== 'terminated')
     .map(t => ({
       code: t.countryCode,
       name: t.countryName,
       nameEn: t.countryNameEn,
+      pending: t.status !== 'active',
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
 }
@@ -619,84 +624,62 @@ export function getTreaty(countryCode: string): TaxTreaty | null {
 }
 
 /**
- * So sánh thuế suất trong nước và theo hiệp định
- */
-export function compareRates(countryCode: string): {
-  country: TaxTreaty;
-  comparison: {
-    dividends: { domestic: number; treaty: number; savings: number };
-    interest: { domestic: number; treaty: number; savings: number };
-    royalties: { domestic: number; treaty: number; savings: number };
-  };
-} | null {
-  const treaty = getTreaty(countryCode);
-  if (!treaty) return null;
-
-  // Thuế suất trong nước cho người không cư trú
-  const DOMESTIC_RATES = {
-    dividends: 5,     // 5%
-    interest: 5,      // 5%
-    royalties: 5,     // 5%
-  };
-
-  return {
-    country: treaty,
-    comparison: {
-      dividends: {
-        domestic: DOMESTIC_RATES.dividends,
-        treaty: treaty.rates.dividends.standard,
-        savings: DOMESTIC_RATES.dividends - Math.min(DOMESTIC_RATES.dividends, treaty.rates.dividends.standard),
-      },
-      interest: {
-        domestic: DOMESTIC_RATES.interest,
-        treaty: treaty.rates.interest.standard,
-        savings: DOMESTIC_RATES.interest - Math.min(DOMESTIC_RATES.interest, treaty.rates.interest.standard),
-      },
-      royalties: {
-        domestic: DOMESTIC_RATES.royalties,
-        treaty: treaty.rates.royalties.standard,
-        savings: DOMESTIC_RATES.royalties - Math.min(DOMESTIC_RATES.royalties, treaty.rates.royalties.standard),
-      },
-    },
-  };
-}
-
-/**
- * Kiểm tra điều kiện 183 ngày cho thu nhập từ lao động
+ * Điều khoản thu nhập từ lao động phụ thuộc của hiệp định: tiền lương của đối tượng cư trú nước kia
+ * làm việc tại Việt Nam chỉ được miễn thuế tại Việt Nam khi ĐỒNG THỜI (a) có mặt KHÔNG QUÁ 183 ngày
+ * trong kỳ quy định; (b) không do chủ lao động là đối tượng cư trú Việt Nam trả hoặc trả thay;
+ * (c) không do cơ sở thường trú của chủ lao động tại Việt Nam chịu.
+ * Hiệp định chưa có hiệu lực → không áp dụng.
  */
 export function check183DayRule(
   countryCode: string,
-  daysInVietnam: number,
-  period: 'calendar' | '12months' = '12months'
+  daysInVietnam: number
 ): {
   eligible: boolean;
   daysThreshold: number;
   daysRemaining: number;
   explanation: string;
+  conditions: string[];
 } {
   const treaty = getTreaty(countryCode);
   const threshold = treaty?.employment.daysThreshold || 183;
+  const period = treaty?.employment.period === 'calendar' ? 'trong năm dương lịch' : 'trong bất kỳ giai đoạn 12 tháng nào';
+  const conditions = [
+    `Có mặt tại Việt Nam không quá ${threshold} ngày ${period}`,
+    'Tiền lương không do chủ lao động là đối tượng cư trú của Việt Nam trả hoặc trả thay',
+    'Tiền lương không do cơ sở thường trú của chủ lao động tại Việt Nam chịu',
+  ];
 
-  const eligible = daysInVietnam < threshold;
-  const daysRemaining = threshold - daysInVietnam;
-
-  let explanation: string;
-  if (eligible) {
-    explanation = `Có mặt ${daysInVietnam} ngày (< ${threshold} ngày) - có thể được miễn thuế thu nhập từ lao động tại Việt Nam theo hiệp định.`;
-  } else {
-    explanation = `Có mặt ${daysInVietnam} ngày (>= ${threshold} ngày) - phải nộp thuế thu nhập từ lao động tại Việt Nam.`;
+  if (treaty?.status !== 'active') {
+    return {
+      eligible: false,
+      daysThreshold: threshold,
+      daysRemaining: 0,
+      explanation: treaty
+        ? `Hiệp định với ${treaty.countryName} chưa có hiệu lực: không áp dụng miễn thuế theo hiệp định.`
+        : 'Không có hiệp định thuế với quốc gia này.',
+      conditions,
+    };
   }
 
+  const eligible = daysInVietnam <= threshold;
   return {
     eligible,
     daysThreshold: threshold,
-    daysRemaining: Math.max(0, daysRemaining),
-    explanation,
+    daysRemaining: Math.max(0, threshold - daysInVietnam),
+    explanation: eligible
+      ? `Có mặt ${daysInVietnam} ngày (không quá ${threshold} ngày): đạt điều kiện số ngày; chỉ được miễn thuế tại Việt Nam khi đồng thời đáp ứng 2 điều kiện còn lại.`
+      : `Có mặt ${daysInVietnam} ngày (quá ${threshold} ngày): không được miễn theo hiệp định, tiền lương làm việc tại Việt Nam chịu thuế tại Việt Nam.`,
+    conditions,
   };
 }
 
+// Thuế suất trong nước đối với cá nhân không cư trú: cổ tức, lãi 5% (Luật 109/2025/QH15 Điều 22);
+// bản quyền 5% × phần vượt ngưỡng mỗi hợp đồng (Điều 25)
+const DOMESTIC_RATE = 0.05;
+
 /**
- * Tính thuế khấu trừ có áp dụng hiệp định
+ * Tính thuế khấu trừ có áp dụng hiệp định: Việt Nam thu theo mức thấp hơn giữa thuế trong nước
+ * và mức trần của hiệp định (tính trên tổng số tiền).
  */
 export function calculateWithholdingWithTreaty(
   countryCode: string,
@@ -709,86 +692,63 @@ export function calculateWithholdingWithTreaty(
   treatyRate: number;
   treatyTax: number;
   savings: number;
-  appliedRate: number;
   notes: string[];
 } {
   const treaty = getTreaty(countryCode);
   const notes: string[] = [];
 
-  // Thuế suất trong nước
-  const DOMESTIC_RATES: Record<string, number> = {
-    dividends: 0.05,
-    interest: 0.05,
-    royalties: 0.05,
-  };
-
-  const domesticRate = DOMESTIC_RATES[incomeType];
-  const domesticTax = Math.round(amount * domesticRate);
-
-  if (!treaty) {
-    notes.push('Không có hiệp định thuế với quốc gia này - áp dụng thuế suất trong nước.');
-    return {
-      domesticRate,
-      domesticTax,
-      treatyRate: domesticRate,
-      treatyTax: domesticTax,
-      savings: 0,
-      appliedRate: domesticRate,
-      notes,
-    };
+  const domesticRate = DOMESTIC_RATE;
+  const domesticBase = incomeType === 'royalties' ? Math.max(0, amount - getPerTransactionThreshold()) : amount;
+  const domesticTax = Math.round(domesticBase * domesticRate);
+  if (incomeType === 'royalties') {
+    notes.push(`Thuế trong nước: 5% × phần vượt ${getPerTransactionThreshold().toLocaleString('vi-VN')} đồng mỗi hợp đồng (Luật 109/2025/QH15 Điều 25).`);
+  }
+  if (incomeType === 'interest') {
+    notes.push('Lãi tiền gửi tại tổ chức tín dụng, lãi trái phiếu Chính phủ được miễn thuế trong nước (Luật 109/2025/QH15 Điều 4.6).');
   }
 
-  // Thuế suất theo hiệp định
-  let treatyRate: number;
-  const rateInfo = treaty.rates[incomeType];
+  if (treaty?.status !== 'active') {
+    notes.push(
+      treaty
+        ? `Hiệp định với ${treaty.countryName} chưa có hiệu lực: áp dụng thuế suất trong nước.`
+        : 'Không có hiệp định thuế với quốc gia này: áp dụng thuế suất trong nước.'
+    );
+    return { domesticRate, domesticTax, treatyRate: domesticRate, treatyTax: domesticTax, savings: 0, notes };
+  }
 
-  if (incomeType === 'dividends' && isQualified && treaty.rates.dividends.qualified) {
+  let treatyRate = treaty.rates[incomeType].standard / 100;
+  if (incomeType === 'dividends' && isQualified && treaty.rates.dividends.qualified !== undefined) {
     treatyRate = treaty.rates.dividends.qualified / 100;
-    notes.push(`Áp dụng thuế suất ưu đãi ${treaty.rates.dividends.qualified}% cho cổ tức (góp vốn >= ${treaty.rates.dividends.qualifiedThreshold}%).`);
-  } else if (incomeType === 'interest' && treaty.rates.interest.govBond === 0) {
-    // Check if special interest provisions apply
-    treatyRate = treaty.rates.interest.standard / 100;
-  } else {
-    treatyRate = (rateInfo as { standard: number }).standard / 100;
+    notes.push(`Áp dụng thuế suất ưu đãi ${treaty.rates.dividends.qualified}% cho cổ tức (góp vốn ≥ ${treaty.rates.dividends.qualifiedThreshold}%).`);
   }
 
   const treatyTax = Math.round(amount * treatyRate);
-  const appliedRate = Math.min(domesticRate, treatyRate);
-  const savings = domesticTax - Math.round(amount * appliedRate);
+  const savings = domesticTax - Math.min(domesticTax, treatyTax);
 
-  notes.push(`Hiệp định với ${treaty.countryName}: thuế suất tối đa ${(treatyRate * 100).toFixed(0)}%.`);
-
+  notes.push(
+    `Hiệp định với ${treaty.countryName}: thuế suất tối đa ${(treatyRate * 100).toLocaleString('vi-VN')}%; Việt Nam thu theo mức thấp hơn giữa thuế trong nước và mức trần hiệp định.`
+  );
   if (savings > 0) {
-    notes.push(`Tiết kiệm ${savings.toLocaleString('vi-VN')} VND so với thuế suất trong nước.`);
+    notes.push(`Tiết kiệm ${savings.toLocaleString('vi-VN')} đồng so với thuế suất trong nước.`);
   }
 
-  return {
-    domesticRate,
-    domesticTax,
-    treatyRate,
-    treatyTax,
-    savings,
-    appliedRate,
-    notes,
-  };
+  return { domesticRate, domesticTax, treatyRate, treatyTax, savings, notes };
 }
 
 /**
- * Lấy danh sách tài liệu cần thiết để áp dụng hiệp định
+ * Hồ sơ đề nghị miễn, giảm thuế theo hiệp định đối với cá nhân là đối tượng cư trú nước ngoài
+ * (TT 89/2026/TT-BTC Điều 76). Hiệp định chưa có hiệu lực → không có hồ sơ áp dụng.
  */
 export function getRequiredDocuments(countryCode: string): string[] {
-  const treaty = getTreaty(countryCode);
-  if (!treaty) {
-    return ['Không có hiệp định thuế với quốc gia này.'];
-  }
+  if (getTreaty(countryCode)?.status !== 'active') return [];
 
   return [
-    'Giấy chứng nhận cư trú (Certificate of Residence) do cơ quan thuế nước ngoài cấp',
-    'Hợp đồng hoặc chứng từ chứng minh nguồn thu nhập',
-    'Xác nhận tư cách thụ hưởng thực sự (Beneficial Owner)',
-    'Đơn đề nghị áp dụng hiệp định thuế theo mẫu',
-    'Giấy tờ tùy thân (hộ chiếu)',
-    'Các chứng từ liên quan khác theo yêu cầu cụ thể',
+    'Văn bản đề nghị miễn, giảm thuế theo Hiệp định (mẫu 01/HTQT, Phụ lục III TT 89/2026/TT-BTC)',
+    'Giấy chứng nhận cư trú do cơ quan thuế nước cư trú cấp, đã hợp pháp hóa lãnh sự, ghi rõ năm tính thuế đề nghị miễn, giảm',
+    'Bản sao hợp đồng lao động với chủ lao động ở nước ngoài và tại Việt Nam (hoặc hợp đồng dịch vụ, đại lý), có cam kết của cá nhân',
+    'Bản sao hộ chiếu sử dụng khi xuất nhập cảnh Việt Nam, có cam kết của cá nhân',
+    'Cổ tức, lãi, bản quyền: bản sao hợp đồng, chứng từ chứng minh nguồn thu nhập',
+    'Nộp cùng hồ sơ khai thuế lần đầu tại cơ quan thuế nơi đăng ký nộp thuế, hoặc ủy quyền cho bên Việt Nam chi trả thu nhập (TT 89/2026/TT-BTC Điều 76)',
   ];
 }
 

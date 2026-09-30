@@ -9,16 +9,19 @@ import {
   getIncomeTypeOptions,
   formatCurrency,
   formatPercent,
-  INCOME_TYPE_LABELS,
-  WHT_THRESHOLDS,
   FOREIGN_CONTRACTOR_TAX_RATES,
   type IncomeType,
-  type ResidencyStatus,
   type ForeignContractorType,
   type WHTResult,
   type ForeignContractorTaxResult,
 } from '@/lib/withholdingTaxCalculator';
-import { WithholdingTaxTabState, DEFAULT_WITHHOLDING_TAX_STATE } from '@/lib/snapshotTypes';
+import {
+  formatNumber,
+  getCasualWithholdingThreshold,
+  getPerTransactionThreshold,
+  getRentalIncomeThreshold,
+} from '@/lib/taxCalculator';
+import { WithholdingTaxTabState } from '@/lib/snapshotTypes';
 
 interface WithholdingTaxProps {
   tabState: WithholdingTaxTabState;
@@ -28,12 +31,14 @@ interface WithholdingTaxProps {
 type CalculatorMode = 'individual' | 'contractor';
 
 const CONTRACTOR_TYPE_LABELS: Record<ForeignContractorType, string> = {
-  service: 'Dịch vụ',
-  goods_with_service: 'Hàng hóa kèm dịch vụ',
-  goods_only: 'Chỉ hàng hóa',
-  equipment_rental: 'Thuê máy móc, thiết bị',
+  service: 'Dịch vụ, xây dựng không bao thầu NVL',
+  goods_with_service: 'Sản xuất, vận tải, dịch vụ gắn với hàng hóa',
+  goods_only: 'Phân phối, cung cấp hàng hóa',
+  equipment_rental: 'Cho thuê máy móc, thiết bị',
   property_rental: 'Cho thuê BĐS',
   insurance: 'Bảo hiểm',
+  digital_content: 'Nội dung số (trò chơi, phim, nhạc, quảng cáo số...)',
+  other_business: 'Hoạt động kinh doanh khác',
 };
 
 export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxProps) {
@@ -57,9 +62,8 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       paymentAmount: tabState.paymentAmount,
       incomeType: tabState.incomeType,
       residencyStatus: tabState.residencyStatus,
-      isFamilyMember: tabState.isFamilyMember,
     });
-  }, [tabState.paymentAmount, tabState.incomeType, tabState.residencyStatus, tabState.isFamilyMember]);
+  }, [tabState.paymentAmount, tabState.incomeType, tabState.residencyStatus]);
 
   // Comparison result
   const comparisonResult = useMemo(() => {
@@ -82,8 +86,10 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
     return getWHTRate(tabState.incomeType, tabState.residencyStatus);
   }, [tabState.incomeType, tabState.residencyStatus]);
 
-  // Check if inheritance type needs family member option
-  const showFamilyOption = tabState.incomeType === 'inheritance';
+  // Ngưỡng hiện hành cho chú thích bảng tham khảo
+  const casualThreshold = formatNumber(getCasualWithholdingThreshold());
+  const perTxThreshold = formatNumber(getPerTransactionThreshold());
+  const rentalThreshold = formatNumber(getRentalIncomeThreshold());
 
   return (
     <div className="space-y-6">
@@ -174,26 +180,26 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 </select>
               </div>
 
-              {/* Family Member Option (for inheritance) */}
-              {showFamilyOption && (
-                <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="isFamilyMember"
-                    checked={tabState.isFamilyMember}
-                    onChange={(e) => updateField('isFamilyMember', e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <label htmlFor="isFamilyMember" className="text-sm text-gray-700">
-                    Người cho là thành viên gia đình (vợ/chồng, cha mẹ, con)
-                  </label>
+              {/* Thừa kế, quà tặng, BĐS: người nhận/người bán tự khai — dẫn sang tab tính chi tiết */}
+              {(tabState.incomeType === 'inheritance' || tabState.incomeType === 'real_estate') && (
+                <div className="p-3 bg-yellow-50 rounded-lg text-sm text-gray-700">
+                  Không thuộc diện khấu trừ tại nguồn (NĐ 253/2026/NĐ-CP Điều 67.4).{' '}
+                  {tabState.incomeType === 'inheritance' ? (
+                    <a href="#calculator" className="font-medium text-primary-700 underline">
+                      Tính thuế thừa kế, quà tặng (tab Tính thuế, mục Thuế thừa kế &amp; quà tặng)
+                    </a>
+                  ) : (
+                    <a href="#real-estate" className="font-medium text-primary-700 underline">
+                      Tính thuế tại tab Chuyển nhượng BĐS
+                    </a>
+                  )}
                 </div>
               )}
 
               {/* Payment Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số tiền chi trả (VND)
+                  {tabState.incomeType === 'rental' ? 'Doanh thu cho thuê cả năm (VND)' : 'Số tiền chi trả (VND)'}
                 </label>
                 <input
                   type="text"
@@ -254,14 +260,16 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
 
               {/* Requires Withholding */}
               {!whtResult.requiresWithholding && whtResult.exemptReason && (
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span className="text-sm text-green-700">
-                      {whtResult.exemptReason}
-                    </span>
+                // Thừa kế, BĐS: không khấu trừ nhưng người nhận/người bán vẫn tự khai, nộp → màu cảnh báo
+                tabState.incomeType === 'inheritance' || tabState.incomeType === 'real_estate' ? (
+                  <div className="p-3 bg-amber-50 rounded-lg">
+                    <p className="text-sm text-amber-800">{whtResult.exemptReason}</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-700">{whtResult.exemptReason}</p>
+                  </div>
+                )
               )}
 
               {/* Applied Rate */}
@@ -433,7 +441,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 {/* PIT */}
                 <div className="flex items-center justify-between py-2 border-b border-gray-200">
                   <span className="text-gray-600">
-                    Thuế TNCN ({(fctResult.pitRate * 100).toFixed(0)}%):
+                    Thuế TNCN ({formatPercent(fctResult.pitRate)}):
                   </span>
                   <span className="font-medium text-red-600">
                     {formatCurrency(fctResult.pitAmount)}
@@ -443,7 +451,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 {/* VAT */}
                 <div className="flex items-center justify-between py-2 border-b border-gray-200">
                   <span className="text-gray-600">
-                    Thuế GTGT ({(fctResult.vatRate * 100).toFixed(0)}%):
+                    Thuế GTGT ({formatPercent(fctResult.vatRate)}):
                   </span>
                   <span className={`font-medium ${fctResult.vatAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                     {fctResult.vatAmount > 0 ? formatCurrency(fctResult.vatAmount) : 'Không áp dụng'}
@@ -453,7 +461,7 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 {/* Total Tax */}
                 <div className="flex items-center justify-between py-2 border-b border-gray-200">
                   <span className="font-medium text-gray-700">
-                    Tổng thuế ({(fctResult.totalRate * 100).toFixed(0)}%):
+                    Tổng thuế ({formatPercent(fctResult.totalRate)}):
                   </span>
                   <span className="font-bold text-red-600">
                     {formatCurrency(fctResult.totalTax)}
@@ -506,18 +514,18 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Lương (không HĐLĐ hoặc &lt;3 tháng)</td>
+                  <td className="py-2 px-3 text-gray-600">Lương, tiền công (không HĐLĐ hoặc &lt; 3 tháng)</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%*</td>
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Thu nhập tự do / Dịch vụ</td>
+                  <td className="py-2 px-3 text-gray-600">Thù lao dịch vụ (cá nhân không đăng ký kinh doanh)</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%*</td>
                   <td className="py-2 px-3 text-center text-orange-600">20%</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-3 text-gray-600">Cho thuê tài sản</td>
-                  <td className="py-2 px-3 text-center text-blue-600">5%</td>
+                  <td className="py-2 px-3 text-center text-blue-600">5%***</td>
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
@@ -526,30 +534,46 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Lãi tiền gửi</td>
+                  <td className="py-2 px-3 text-gray-600">Lãi cho vay, trái phiếu doanh nghiệp</td>
                   <td className="py-2 px-3 text-center text-blue-600">5%</td>
                   <td className="py-2 px-3 text-center text-orange-600">5%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng chứng khoán</td>
-                  <td className="py-2 px-3 text-center text-blue-600">0.1%</td>
-                  <td className="py-2 px-3 text-center text-orange-600">0.1%</td>
+                  <td className="py-2 px-3 text-gray-600">Lãi tiền gửi TCTD, trái phiếu Chính phủ</td>
+                  <td className="py-2 px-3 text-center text-blue-600">Miễn</td>
+                  <td className="py-2 px-3 text-center text-orange-600">Miễn</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng BĐS</td>
+                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng chứng khoán</td>
+                  <td className="py-2 px-3 text-center text-blue-600">0,1%</td>
+                  <td className="py-2 px-3 text-center text-orange-600">0,1%</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 text-gray-600">Chuyển nhượng BĐS (người bán tự khai)</td>
                   <td className="py-2 px-3 text-center text-blue-600">2%</td>
                   <td className="py-2 px-3 text-center text-orange-600">2%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-3 text-gray-600">Trúng thưởng (&gt;10 triệu)</td>
+                  <td className="py-2 px-3 text-gray-600">Trúng thưởng</td>
                   <td className="py-2 px-3 text-center text-blue-600">10%**</td>
-                  <td className="py-2 px-3 text-center text-orange-600">10%</td>
+                  <td className="py-2 px-3 text-center text-orange-600">10%**</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 text-gray-600">Bản quyền, nhượng quyền thương mại</td>
+                  <td className="py-2 px-3 text-center text-blue-600">5%**</td>
+                  <td className="py-2 px-3 text-center text-orange-600">5%**</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 text-gray-600">Thừa kế, quà tặng (người nhận tự khai)</td>
+                  <td className="py-2 px-3 text-center text-blue-600">10%**</td>
+                  <td className="py-2 px-3 text-center text-orange-600">10%**</td>
                 </tr>
               </tbody>
             </table>
             <p className="text-xs text-gray-500 mt-2">
-              * Chỉ khấu trừ khi thu nhập ≥ {formatCurrency(WHT_THRESHOLDS.perPayment)}/lần<br />
-              ** Tính trên phần vượt 10 triệu đồng
+              * Khấu trừ khi chi trả từ {casualThreshold} đồng/lần; dưới mức này chỉ khấu trừ khi cá nhân yêu cầu<br />
+              ** Tính trên phần vượt {perTxThreshold} đồng mỗi lần (bản quyền, nhượng quyền: mỗi hợp đồng)<br />
+              *** Tính trên phần doanh thu cả năm vượt {rentalThreshold} đồng
             </p>
           </div>
         ) : (
@@ -567,19 +591,19 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
                 {Object.entries(FOREIGN_CONTRACTOR_TAX_RATES).map(([key, rates]) => (
                   <tr key={key}>
                     <td className="py-2 px-3 text-gray-600">
-                      {CONTRACTOR_TYPE_LABELS[key as ForeignContractorType] || key}
+                      {CONTRACTOR_TYPE_LABELS[key as ForeignContractorType]}
                     </td>
-                    <td className="py-2 px-3 text-center text-blue-600">{(rates.pit * 100).toFixed(0)}%</td>
-                    <td className="py-2 px-3 text-center text-green-600">{(rates.vat * 100).toFixed(0)}%</td>
+                    <td className="py-2 px-3 text-center text-blue-600">{formatPercent(rates.pit)}</td>
+                    <td className="py-2 px-3 text-center text-green-600">{formatPercent(rates.vat)}</td>
                     <td className="py-2 px-3 text-center font-medium text-gray-900">
-                      {(rates.total * 100).toFixed(0)}%
+                      {formatPercent(rates.pit + rates.vat)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="text-xs text-gray-500 mt-2">
-              Căn cứ: Thông tư 103/2014/TT-BTC về thuế nhà thầu nước ngoài
+              TNCN: Luật 109/2025/QH15 Điều 20.3 (cá nhân không cư trú kinh doanh). GTGT: tham khảo theo quy định hiện hành về thuế nhà thầu.
             </p>
           </div>
         )}
@@ -589,10 +613,10 @@ export function WithholdingTax({ tabState, onTabStateChange }: WithholdingTaxPro
       <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500">
         <p className="font-medium mb-2">Căn cứ pháp lý:</p>
         <ul className="list-disc list-inside space-y-1">
-          <li>Luật Thuế TNCN 2007 (sửa đổi 2012, 2014) - Điều 25 về khấu trừ thuế</li>
-          <li>Thông tư 111/2013/TT-BTC hướng dẫn Luật Thuế TNCN</li>
-          <li>Thông tư 92/2015/TT-BTC về thuế TNCN từ cho thuê tài sản</li>
-          <li>Thông tư 103/2014/TT-BTC về thuế nhà thầu nước ngoài (FCT)</li>
+          <li>Luật Thuế TNCN 109/2025/QH15 (Điều 4.6, 7, 12–18, 20–27)</li>
+          <li>Nghị định 253/2026/NĐ-CP: Điều 8.2.c (thù lao là tiền công), Điều 50 (khấu trừ thuế), Điều 67 (thu nhập không khấu trừ)</li>
+          <li>Nghị định 68/2026/NĐ-CP (sửa đổi bởi NĐ 141/2026/NĐ-CP): cho thuê tài sản, mức doanh thu 1 tỷ đồng/năm</li>
+          <li>Thông tư 89/2026/TT-BTC: hồ sơ khai thuế, mẫu cam kết</li>
         </ul>
       </div>
     </div>

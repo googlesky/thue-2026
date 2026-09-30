@@ -1,33 +1,37 @@
 /**
  * Gold Tax Calculator
- * Tính thuế chuyển nhượng vàng miệng
+ * Thuế TNCN đối với chuyển nhượng vàng miếng
  *
  * Căn cứ pháp lý:
- * - Luật Thuế TNCN sửa đổi 2025 (Quốc hội thông qua 10/12/2025)
- * - Có hiệu lực từ 01/07/2026
+ * - Luật Thuế TNCN số 109/2025/QH15 (hiệu lực 01/7/2026): Điều 3 khoản 10 điểm đ (thu nhập từ
+ *   chuyển nhượng vàng miếng chịu thuế), Điều 19 khoản 2 / Điều 27 khoản 2 (0,1% × giá chuyển
+ *   nhượng từng lần). Luật giao Chính phủ quy định ngưỡng giá trị vàng miếng chịu thuế, thời điểm
+ *   áp dụng thu và điều chỉnh thuế suất.
+ * - NĐ 253/2026/NĐ-CP (Điều 16) không quy định vàng miếng; Bộ Tài chính (30/6/2026): CHƯA thu thuế
+ *   chuyển nhượng vàng miếng, đang xây dựng nghị định riêng.
  *
- * Quy định chính:
- * - Thuế suất: 0,1% trên giá trị giao dịch chuyển nhượng
- * - Áp dụng cho vàng miệng (gold bars/ingots)
- * - Không phân biệt lãi/lỗ - tính trên giá trị giao dịch
- * - Chỉ áp dụng khi BÁN, không áp dụng khi MUA
- * - Vàng trang sức/mỹ nghệ: không thuộc phạm vi này
+ * => Thuế phải nộp = 0; statutoryTax = số thuế NẾU áp dụng mức luật định 0,1% (để ước tính).
+ * - Chỉ lệnh BÁN vàng miếng thuộc diện; nhẫn tròn trơn, vàng trang sức không phải vàng miếng.
+ * - Không phân biệt lãi/lỗ - tính trên giá chuyển nhượng.
  */
 
 import type { GoldTypeCode } from './goldPriceService';
+import { formatNumber } from './taxCalculator';
 
 // Tax configuration
 export const GOLD_TAX_CONFIG = {
-  // Thuế suất chuyển nhượng vàng miệng
+  // Thuế suất luật định (Luật 109/2025/QH15 Điều 19 khoản 2)
   transferRate: 0.001, // 0,1%
 
-  // Ngày hiệu lực
-  effectiveDate: new Date('2026-07-01'),
+  // Chính phủ chưa quy định ngưỡng giá trị và thời điểm thu -> chưa thu.
+  // ponytail: khi có nghị định, bật true + thêm ngưỡng/ngày áp dụng vào isTransactionTaxable
+  // và sửa các ghi chú "chưa thu" trong GoldTaxCalculator.tsx.
+  collected: false,
 
-  // So sánh với các loại thuế tương tự
+  // So sánh với các loại thuế tương tự (trên giá trị bán vàng miếng)
   comparison: {
-    gold: { rate: 0.001, name: 'Vàng miệng', label: 'Vàng' },
-    securities: { rate: 0.001, name: 'Chứng khoán niêm yết', label: 'CK' },
+    gold: { rate: 0.001, name: 'Vàng miếng (chưa thu)', label: 'Vàng' },
+    securities: { rate: 0.001, name: 'Chứng khoán', label: 'CK' },
     crypto: { rate: 0.001, name: 'Tài sản số', label: 'Crypto' },
     realEstate: { rate: 0.02, name: 'Bất động sản', label: 'BĐS' },
   },
@@ -50,21 +54,21 @@ export const GOLD_CLASSIFICATIONS: GoldClassificationInfo[] = [
     name: 'Vàng miếng',
     description: 'SJC, DOJI, PNJ, BTMC dạng miếng (1 chỉ, 2 chỉ, 1 lượng, 5 lượng, 10 lượng)',
     isTaxable: true,
-    taxNote: 'Chịu thuế 0,1% khi bán (từ 01/07/2026)',
+    taxNote: 'Thuộc diện chịu thuế 0,1% khi bán theo Luật 109/2025/QH15 – hiện chưa thu',
   },
   {
     id: 'ring',
     name: 'Vàng nhẫn trơn',
     description: 'Nhẫn tròn trơn 9999, 24K (dùng như phương tiện tích trữ)',
-    isTaxable: true,
-    taxNote: 'Chịu thuế 0,1% khi bán (từ 01/07/2026)',
+    isTaxable: false,
+    taxNote: 'Không phải vàng miếng – không thuộc diện thuế chuyển nhượng vàng miếng',
   },
   {
     id: 'jewelry',
     name: 'Vàng trang sức',
     description: 'Dây chuyền, lắc tay, nhẫn đính đá... (vàng mỹ nghệ)',
     isTaxable: false,
-    taxNote: 'Không thuộc phạm vi thuế chuyển nhượng vàng miệng',
+    taxNote: 'Không thuộc diện thuế chuyển nhượng vàng miếng',
   },
 ];
 
@@ -120,8 +124,9 @@ export interface GoldTaxInput {
 
 // Transaction with tax calculated
 export interface GoldTransactionWithTax extends GoldTransaction {
-  taxAmount: number;
-  isTaxable: boolean;
+  taxAmount: number;    // Thuế phải nộp (0 khi chưa thu)
+  statutoryTax: number; // Nếu áp dụng mức luật định 0,1%
+  isTaxable: boolean;   // Thuộc diện chịu thuế theo luật (bán vàng miếng)
   taxNote: string;
   weightInLuong: number;
 }
@@ -139,9 +144,10 @@ export interface GoldTaxResult {
   totalSellWeight: number; // lượng
 
   // Thuế
-  totalTaxableValue: number;
-  totalTax: number;
-  effectiveTaxRate: number;
+  totalTaxableValue: number;  // Giá trị bán vàng miếng (thuộc diện)
+  totalTax: number;           // Thuế phải nộp (0 khi chưa thu)
+  totalStatutoryTax: number;  // Nếu áp dụng mức luật định 0,1%
+  effectiveTaxRate: number;   // % thuế phải nộp / giá trị bán
 
   // Chi tiết theo loại vàng
   taxByGoldType: {
@@ -149,18 +155,18 @@ export interface GoldTaxResult {
     transactionCount: number;
     totalValue: number;
     taxAmount: number;
+    statutoryTax: number;
   }[];
 
   // Lãi/lỗ ước tính (nếu có cả mua và bán)
   estimatedProfitLoss: number | null;
 
-  // So sánh thuế suất
+  // So sánh thuế suất (trên giá trị bán vàng miếng)
   taxComparison: {
     asset: string;
     label: string;
     rate: number;
     taxAmount: number;
-    difference: number;
   }[];
 
   // Giao dịch chi tiết
@@ -187,56 +193,40 @@ export function calculateTotalValue(
 }
 
 /**
- * Check if transaction is taxable
- * - Only SELL transactions are taxable
- * - Only bar and ring gold (not jewelry)
- * - Only after effective date
+ * Thuộc diện chịu thuế theo luật: chỉ lệnh BÁN vàng miếng
+ * (nhẫn tròn trơn, vàng trang sức không phải vàng miếng).
  */
 function isTransactionTaxable(tx: GoldTransaction): boolean {
   if (tx.type !== 'sell') return false;
+  return GOLD_CLASSIFICATIONS.find(c => c.id === tx.classification)?.isTaxable === true;
+}
 
-  const classification = GOLD_CLASSIFICATIONS.find(c => c.id === tx.classification);
-  if (!classification || !classification.isTaxable) return false;
-
-  if (tx.date < GOLD_TAX_CONFIG.effectiveDate) return false;
-
-  return true;
+function getTaxNote(tx: GoldTransaction, statutoryTax: number): string {
+  if (tx.type === 'buy') return 'Mua vào không chịu thuế';
+  if (!isTransactionTaxable(tx)) {
+    return GOLD_CLASSIFICATIONS.find(c => c.id === tx.classification)?.taxNote
+      ?? 'Không thuộc diện thuế chuyển nhượng vàng miếng';
+  }
+  return GOLD_TAX_CONFIG.collected
+    ? `Thuế 0,1% × ${formatNumber(tx.totalValue)} đ`
+    : `Chưa thu thuế – nếu áp dụng mức luật định 0,1%: ${formatNumber(statutoryTax)} đ`;
 }
 
 /**
- * Get tax note for a transaction
+ * Tính thuế cho một giao dịch (dùng chung cho bảng kết quả và xem trước trên form)
  */
-function getTaxNote(tx: GoldTransaction): string {
-  if (tx.type === 'buy') {
-    return 'Mua vào không chịu thuế';
-  }
-
-  const classification = GOLD_CLASSIFICATIONS.find(c => c.id === tx.classification);
-  if (!classification?.isTaxable) {
-    return 'Vàng trang sức không thuộc phạm vi chịu thuế';
-  }
-
-  if (tx.date < GOLD_TAX_CONFIG.effectiveDate) {
-    return 'Giao dịch trước ngày luật có hiệu lực (01/07/2026)';
-  }
-
-  return `Chịu thuế 0,1% × ${new Intl.NumberFormat('vi-VN').format(tx.totalValue)} đ`;
-}
-
-/**
- * Calculate tax for a single transaction
- */
-function calculateTransactionTax(tx: GoldTransaction): GoldTransactionWithTax {
+export function calculateGoldTransactionTax(tx: GoldTransaction): GoldTransactionWithTax {
   const isTaxable = isTransactionTaxable(tx);
-  const taxAmount = isTaxable ? Math.round(tx.totalValue * GOLD_TAX_CONFIG.transferRate) : 0;
-  const weightInLuong = convertToLuong(tx.weight, tx.weightUnit);
+  const statutoryTax = isTaxable ? Math.round(tx.totalValue * GOLD_TAX_CONFIG.transferRate) : 0;
+  const taxAmount = GOLD_TAX_CONFIG.collected ? statutoryTax : 0;
 
   return {
     ...tx,
     taxAmount,
+    statutoryTax,
     isTaxable,
-    taxNote: getTaxNote(tx),
-    weightInLuong,
+    taxNote: getTaxNote(tx, statutoryTax),
+    weightInLuong: convertToLuong(tx.weight, tx.weightUnit),
   };
 }
 
@@ -247,7 +237,7 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
   const { transactions } = input;
 
   // Calculate tax for each transaction
-  const transactionsWithTax = transactions.map(calculateTransactionTax);
+  const transactionsWithTax = transactions.map(calculateGoldTransactionTax);
 
   // Summary
   let totalBuyValue = 0;
@@ -256,11 +246,13 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
   let totalSellWeight = 0;
   let totalTaxableValue = 0;
   let totalTax = 0;
+  let totalStatutoryTax = 0;
 
   const goldTypeMap = new Map<string, {
     transactionCount: number;
     totalValue: number;
     taxAmount: number;
+    statutoryTax: number;
   }>();
 
   for (const tx of transactionsWithTax) {
@@ -275,6 +267,7 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
     if (tx.isTaxable) {
       totalTaxableValue += tx.totalValue;
       totalTax += tx.taxAmount;
+      totalStatutoryTax += tx.statutoryTax;
     }
 
     // Group by gold type
@@ -283,10 +276,12 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
       transactionCount: 0,
       totalValue: 0,
       taxAmount: 0,
+      statutoryTax: 0,
     };
     existing.transactionCount++;
     existing.totalValue += tx.totalValue;
     existing.taxAmount += tx.taxAmount;
+    existing.statutoryTax += tx.statutoryTax;
     goldTypeMap.set(key, existing);
   }
 
@@ -302,21 +297,16 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
     estimatedProfitLoss = totalSellValue - totalBuyValue;
   }
 
-  // Tax comparison
-  const taxComparison = Object.entries(GOLD_TAX_CONFIG.comparison).map(([, config]) => {
-    const taxAmount = Math.round(totalTaxableValue * config.rate);
-    return {
-      asset: config.name,
-      label: config.label,
-      rate: config.rate,
-      taxAmount,
-      difference: taxAmount - totalTax,
-    };
-  });
+  // Tax comparison (trên giá trị bán vàng miếng)
+  const taxComparison = Object.values(GOLD_TAX_CONFIG.comparison).map(config => ({
+    asset: config.name,
+    label: config.label,
+    rate: config.rate,
+    taxAmount: Math.round(totalTaxableValue * config.rate),
+  }));
 
-  // Effective tax rate
-  const totalValue = totalBuyValue + totalSellValue;
-  const effectiveTaxRate = totalValue > 0 ? (totalTax / totalValue) * 100 : 0;
+  // Thuế suất thực tế trên giá chuyển nhượng (chỉ lệnh bán)
+  const effectiveTaxRate = totalSellValue > 0 ? (totalTax / totalSellValue) * 100 : 0;
 
   return {
     totalTransactions: transactions.length,
@@ -327,6 +317,7 @@ export function calculateGoldTax(input: GoldTaxInput): GoldTaxResult {
     totalSellWeight,
     totalTaxableValue,
     totalTax,
+    totalStatutoryTax,
     effectiveTaxRate,
     taxByGoldType,
     estimatedProfitLoss,
@@ -347,11 +338,13 @@ export function generateGoldTransactionId(): string {
  */
 export function formatWeight(weight: number, unit: GoldWeightUnit): string {
   const luong = convertToLuong(weight, unit);
+  // Số thập phân kiểu Việt Nam (0,5 lượng)
+  const fmt = (v: number, digits = 3) => v.toLocaleString('vi-VN', { maximumFractionDigits: digits });
   if (unit === 'luong') {
-    return `${weight} lượng`;
+    return `${fmt(weight)} lượng`;
   }
   if (unit === 'chi') {
-    return `${weight} chỉ (${luong.toFixed(1)} lượng)`;
+    return `${fmt(weight)} chỉ (${fmt(luong, 2)} lượng)`;
   }
-  return `${weight}g (${luong.toFixed(2)} lượng)`;
+  return `${fmt(weight)}g (${fmt(luong, 2)} lượng)`;
 }

@@ -6,8 +6,8 @@ import {
   GOLD_CLASSIFICATIONS,
   COMMON_WEIGHTS,
   calculateGoldTax,
+  calculateGoldTransactionTax,
   calculateTotalValue,
-  convertToLuong,
   generateGoldTransactionId,
   formatWeight,
   type GoldClassification,
@@ -31,9 +31,9 @@ const GOLD_TYPE_OPTIONS: { code: GoldTypeCode; name: string }[] = POPULAR_GOLD_T
   .filter(c => c !== 'XAUUSD')
   .map(code => ({ code, name: GOLD_TYPE_NAMES[code] }));
 
-const TRANSACTION_TYPES: { value: GoldTransactionType; label: string; icon: string }[] = [
-  { value: 'buy', label: 'Mua', icon: '📥' },
-  { value: 'sell', label: 'Bán', icon: '📤' },
+const TRANSACTION_TYPES: { value: GoldTransactionType; label: string }[] = [
+  { value: 'buy', label: 'Mua' },
+  { value: 'sell', label: 'Bán' },
 ];
 
 const WEIGHT_UNITS: { value: GoldWeightUnit; label: string }[] = [
@@ -44,6 +44,24 @@ const WEIGHT_UNITS: { value: GoldWeightUnit; label: string }[] = [
 
 function formatVND(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount);
+}
+
+// Số thập phân kiểu Việt Nam: 0,1 / 2,5
+const formatDecimal = (value: number, digits = 1) =>
+  value.toLocaleString('vi-VN', { maximumFractionDigits: digits });
+
+// Mã giá nhẫn tròn trơn (không phải vàng miếng)
+const isRingCode = (code: string) => /9999|NTT|NHTV/.test(code);
+
+// Ngày YYYY-MM-DD theo giờ địa phương cho input type=date (không dùng toISOString - UTC)
+function todayInput(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseDateInput(value: string): Date {
+  const [y, m, d] = value.split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : new Date();
 }
 
 export default function GoldTaxCalculator() {
@@ -62,7 +80,7 @@ export default function GoldTaxCalculator() {
     weightUnit: 'luong' as GoldWeightUnit,
     pricePerLuong: 0,
     useMarketPrice: true,
-    date: new Date().toISOString().split('T')[0],
+    date: todayInput(),
     notes: '',
   });
 
@@ -79,13 +97,26 @@ export default function GoldTaxCalculator() {
     [formData.weight, formData.weightUnit, effectivePrice]
   );
 
+  // Xem trước thuế của giao dịch đang nhập (cùng logic với bảng kết quả)
+  const preview = calculateGoldTransactionTax({
+    id: '',
+    date: new Date(),
+    type: formData.type,
+    classification: formData.classification,
+    goldTypeName: '',
+    weight: formData.weight,
+    weightUnit: formData.weightUnit,
+    pricePerLuong: effectivePrice,
+    totalValue,
+  });
+
   // Add transaction
   const addTransaction = useCallback(() => {
     if (formData.weight <= 0 || effectivePrice <= 0) return;
 
     const newTx: GoldTransaction = {
       id: generateGoldTransactionId(),
-      date: new Date(formData.date),
+      date: parseDateInput(formData.date),
       type: formData.type,
       classification: formData.classification,
       goldTypeCode: formData.goldTypeCode,
@@ -117,13 +148,13 @@ export default function GoldTaxCalculator() {
   const quickAddSell = useCallback((price: GoldPrice) => {
     setFormData({
       type: 'sell',
-      classification: price.typeCode.includes('9999') || price.typeCode.includes('NTT') || price.typeCode.includes('NHTV') ? 'ring' : 'bar',
+      classification: isRingCode(price.typeCode) ? 'ring' : 'bar',
       goldTypeCode: price.typeCode,
       weight: 1,
       weightUnit: 'luong',
       pricePerLuong: price.buy,
       useMarketPrice: true,
-      date: new Date().toISOString().split('T')[0],
+      date: todayInput(),
       notes: '',
     });
     setShowAddForm(true);
@@ -146,9 +177,9 @@ export default function GoldTaxCalculator() {
       <div className="bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl p-6 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Thuế vàng miệng</h2>
+            <h2 className="text-2xl font-bold mb-2">Thuế vàng miếng</h2>
             <p className="opacity-90">
-              Tính thuế chuyển nhượng vàng miệng 0,1% (có hiệu lực từ 01/07/2026)
+              Thuế chuyển nhượng vàng miếng 0,1% theo Luật 109/2025/QH15 – hiện chưa thu
             </p>
           </div>
           {worldGold && (
@@ -161,6 +192,18 @@ export default function GoldTaxCalculator() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Trạng thái pháp lý: luật đã quy định nhưng chưa thu */}
+      <div className="card flex flex-col sm:flex-row sm:items-start gap-3">
+        <span className="stamp stamp-flat self-start">Chưa thu thuế</span>
+        <p className="text-sm text-gray-700 min-w-0">
+          Luật Thuế TNCN số 109/2025/QH15 (Điều 3 khoản 10 điểm đ, Điều 19 khoản 2) đưa thu nhập từ
+          chuyển nhượng vàng miếng vào diện chịu thuế 0,1% trên giá chuyển nhượng, nhưng giao Chính phủ
+          quy định ngưỡng giá trị chịu thuế và thời điểm bắt đầu thu. Nghị định 253/2026/NĐ-CP chưa quy
+          định nội dung này; ngày 30/6/2026 Bộ Tài chính xác nhận chưa thu thuế chuyển nhượng vàng miếng.
+          Các số &ldquo;0,1%&rdquo; trên trang chỉ để ước tính.
+        </p>
       </div>
 
       {/* Navigation Tabs */}
@@ -280,21 +323,29 @@ export default function GoldTaxCalculator() {
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-0 border-t border-gray-100">
                         <div className="mt-3 space-y-2">
-                          {/* Quick estimate */}
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            {[1, 5, 10].map(luong => {
-                              const value = price.buy * luong;
-                              const tax = Math.round(value * GOLD_TAX_CONFIG.transferRate);
-                              return (
-                                <div key={luong} className="bg-yellow-50 rounded-lg p-2">
-                                  <p className="text-xs text-gray-500">Bán {luong}L</p>
-                                  <p className="text-xs font-semibold text-yellow-700">
-                                    Thuế: {formatVND(tax)}đ
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {/* Ước tính giả định nếu áp dụng 0,1% (hiện chưa thu) */}
+                          {isRingCode(price.typeCode) ? (
+                            <p className="text-xs text-gray-500">
+                              Nhẫn tròn trơn không phải vàng miếng – không thuộc diện thuế chuyển nhượng vàng miếng.
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-500">Chưa thu thuế – ước tính nếu áp dụng 0,1%:</p>
+                              <div className="grid grid-cols-3 gap-2 text-center">
+                                {[1, 5, 10].map(luong => {
+                                  const tax = Math.round(price.buy * luong * GOLD_TAX_CONFIG.transferRate);
+                                  return (
+                                    <div key={luong} className="bg-yellow-50 rounded-lg p-2">
+                                      <p className="text-xs text-gray-500">Bán {luong}L</p>
+                                      <p className="text-xs font-semibold text-yellow-700">
+                                        {formatVND(tax)} đ
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                           <button
                             onClick={() => quickAddSell(price)}
                             className="w-full py-2 text-sm font-medium bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
@@ -347,7 +398,7 @@ export default function GoldTaxCalculator() {
                   <p className={`text-lg font-bold ${
                     key === 'gold' ? 'text-yellow-700' : 'text-gray-900'
                   }`}>
-                    {(config.rate * 100).toFixed(1)}%
+                    {formatDecimal(config.rate * 100)}%
                   </p>
                 </div>
               ))}
@@ -403,14 +454,13 @@ export default function GoldTaxCalculator() {
                       <button
                         key={t.value}
                         onClick={() => setFormData(prev => ({ ...prev, type: t.value }))}
-                        className={`p-2.5 rounded-lg text-center transition-colors ${
+                        className={`p-2.5 rounded-lg text-center text-sm font-medium transition-colors ${
                           formData.type === t.value
                             ? 'bg-yellow-100 border-2 border-yellow-500'
                             : 'bg-gray-100 border-2 border-transparent'
                         }`}
                       >
-                        <span className="text-lg">{t.icon}</span>
-                        <span className="block text-xs mt-1 font-medium">{t.label}</span>
+                        {t.label}
                       </button>
                     ))}
                   </div>
@@ -426,7 +476,7 @@ export default function GoldTaxCalculator() {
                   >
                     {GOLD_CLASSIFICATIONS.map(cls => (
                       <option key={cls.id} value={cls.id}>
-                        {cls.name} {cls.isTaxable ? '' : '(không chịu thuế)'}
+                        {cls.name} {cls.isTaxable ? '' : '(không thuộc diện thuế)'}
                       </option>
                     ))}
                   </select>
@@ -437,7 +487,15 @@ export default function GoldTaxCalculator() {
                   <label className="block text-sm text-gray-500 mb-1">Thương hiệu vàng</label>
                   <select
                     value={formData.goldTypeCode}
-                    onChange={e => setFormData(prev => ({ ...prev, goldTypeCode: e.target.value as GoldTypeCode }))}
+                    onChange={e => {
+                      const code = e.target.value as GoldTypeCode;
+                      // Mã nhẫn tròn trơn -> phân loại nhẫn; đổi sang mã vàng miếng thì bỏ phân loại nhẫn
+                      setFormData(prev => ({
+                        ...prev,
+                        goldTypeCode: code,
+                        classification: isRingCode(code) ? 'ring' : prev.classification === 'ring' ? 'bar' : prev.classification,
+                      }));
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
                   >
                     {GOLD_TYPE_OPTIONS.map(opt => (
@@ -550,26 +608,20 @@ export default function GoldTaxCalculator() {
               {/* Preview */}
               {effectivePrice > 0 && formData.weight > 0 && (
                 <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">
-                        {formData.type === 'buy' ? 'Mua' : 'Bán'}{' '}
-                        {formatWeight(formData.weight, formData.weightUnit)}{' '}
-                        {GOLD_TYPE_NAMES[formData.goldTypeCode]}
-                      </p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {formatVND(totalValue)} đ
-                      </p>
+                  <p className="text-sm text-gray-600">
+                    {formData.type === 'buy' ? 'Mua' : 'Bán'}{' '}
+                    {formatWeight(formData.weight, formData.weightUnit)}{' '}
+                    {GOLD_TYPE_NAMES[formData.goldTypeCode]}
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {formatVND(totalValue)} đ
+                  </p>
+                  {formData.type === 'sell' && (
+                    <div className="mt-2 pt-2 border-t border-yellow-200 text-sm text-gray-700">
+                      Thuế phải nộp: <span className="font-bold text-yellow-700">{formatVND(preview.taxAmount)} đ</span>
+                      <p className="text-xs text-gray-500 mt-0.5">{preview.taxNote}</p>
                     </div>
-                    {formData.type === 'sell' && (
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">Thuế ước tính</p>
-                        <p className="text-lg font-bold text-yellow-700">
-                          {formatVND(Math.round(totalValue * GOLD_TAX_CONFIG.transferRate))} đ
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -595,53 +647,48 @@ export default function GoldTaxCalculator() {
           {/* Transaction list */}
           {transactions.length === 0 && !showAddForm ? (
             <div className="text-center py-12 text-gray-400">
-              <p className="text-4xl mb-3">🏆</p>
               <p className="font-medium">Chưa có giao dịch</p>
               <p className="text-sm mt-1">Thêm giao dịch mua/bán vàng để tính thuế</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {transactions.map(tx => {
-                const classInfo = GOLD_CLASSIFICATIONS.find(c => c.id === tx.classification);
-                return (
-                  <div
-                    key={tx.id}
-                    className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
-                  >
-                    <span className={`text-2xl ${tx.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
-                      {tx.type === 'buy' ? '📥' : '📤'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 text-sm">
-                          {tx.type === 'buy' ? 'Mua' : 'Bán'} {formatWeight(tx.weight, tx.weightUnit)}
-                        </span>
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                          {tx.goldTypeName}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(tx.date).toLocaleDateString('vi-VN')} · {formatVND(tx.pricePerLuong)} đ/lượng
-                      </p>
+              {(result?.transactionsWithTax ?? []).map(tx => (
+                <div
+                  key={tx.id}
+                  className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-gray-900 text-sm">
+                        {tx.type === 'buy' ? 'Mua' : 'Bán'} {formatWeight(tx.weight, tx.weightUnit)}
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                        {tx.goldTypeName}
+                      </span>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-gray-900 text-sm">{formatVND(tx.totalValue)} đ</p>
-                      {tx.type === 'sell' && classInfo?.isTaxable && (
-                        <p className="text-xs text-yellow-700">
-                          Thuế: {formatVND(Math.round(tx.totalValue * GOLD_TAX_CONFIG.transferRate))} đ
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => removeTransaction(tx.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                      title="Xóa"
-                    >
-                      ✕
-                    </button>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {tx.date.toLocaleDateString('vi-VN')} · {formatVND(tx.pricePerLuong)} đ/lượng
+                    </p>
+                    {tx.type === 'sell' && (
+                      <p className="text-xs text-yellow-700 mt-0.5">{tx.taxNote}</p>
+                    )}
                   </div>
-                );
-              })}
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-gray-900 text-sm">{formatVND(tx.totalValue)} đ</p>
+                    {tx.isTaxable && (
+                      <p className="text-xs text-yellow-700">Thuế: {formatVND(tx.taxAmount)} đ</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeTransaction(tx.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                    title="Xóa"
+                    aria-label="Xóa giao dịch"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -667,23 +714,30 @@ export default function GoldTaxCalculator() {
               <p className="text-lg font-bold text-green-600">
                 {formatVND(result.totalBuyValue)} đ
               </p>
-              <p className="text-xs text-gray-400">{result.totalBuyWeight.toFixed(1)} lượng</p>
+              <p className="text-xs text-gray-400">{formatDecimal(result.totalBuyWeight, 2)} lượng</p>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm">
               <p className="text-xs text-gray-500">Tổng bán</p>
               <p className="text-lg font-bold text-red-600">
                 {formatVND(result.totalSellValue)} đ
               </p>
-              <p className="text-xs text-gray-400">{result.totalSellWeight.toFixed(1)} lượng</p>
+              <p className="text-xs text-gray-400">{formatDecimal(result.totalSellWeight, 2)} lượng</p>
             </div>
             <div className="bg-yellow-50 rounded-xl p-4 shadow-sm border border-yellow-200">
               <p className="text-xs text-yellow-700">Thuế phải nộp</p>
               <p className="text-xl font-bold text-yellow-700">
                 {formatVND(result.totalTax)} đ
               </p>
-              <p className="text-xs text-yellow-600">
-                {result.totalTaxableTransactions}/{result.totalTransactions} GD chịu thuế
-              </p>
+              {GOLD_TAX_CONFIG.collected ? (
+                <p className="text-xs text-yellow-600">
+                  {result.totalTaxableTransactions}/{result.totalTransactions} GD chịu thuế
+                </p>
+              ) : (
+                <p className="text-xs text-yellow-600">
+                  Chưa thu thuế
+                  <span className="block">Nếu áp dụng 0,1%: {formatVND(result.totalStatutoryTax)} đ</span>
+                </p>
+              )}
             </div>
             {result.estimatedProfitLoss !== null && (
               <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -711,7 +765,11 @@ export default function GoldTaxCalculator() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">{formatVND(item.totalValue)} đ</p>
-                      <p className="text-xs text-yellow-700">Thuế: {formatVND(item.taxAmount)} đ</p>
+                      <p className="text-xs text-yellow-700">
+                        {GOLD_TAX_CONFIG.collected
+                          ? `Thuế: ${formatVND(item.taxAmount)} đ`
+                          : `Nếu áp dụng 0,1%: ${formatVND(item.statutoryTax)} đ`}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -721,7 +779,7 @@ export default function GoldTaxCalculator() {
 
           {/* Tax comparison */}
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-3">So sánh thuế suất</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">So sánh thuế suất (trên giá trị bán vàng miếng)</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {result.taxComparison.map(cmp => (
                 <div
@@ -736,7 +794,7 @@ export default function GoldTaxCalculator() {
                   <p className={`text-base font-bold ${
                     cmp.label === 'Vàng' ? 'text-yellow-700' : 'text-gray-900'
                   }`}>
-                    {(cmp.rate * 100).toFixed(1)}%
+                    {formatDecimal(cmp.rate * 100)}%
                   </p>
                   <p className="text-xs text-gray-500">{formatVND(cmp.taxAmount)} đ</p>
                 </div>
@@ -774,14 +832,19 @@ export default function GoldTaxCalculator() {
                       </td>
                       <td className="py-2 pr-2 text-gray-900 whitespace-nowrap">{tx.goldTypeName}</td>
                       <td className="py-2 pr-2 text-right text-gray-600 whitespace-nowrap">
-                        {tx.weightInLuong.toFixed(1)}L
+                        {formatDecimal(tx.weightInLuong, 2)}L
                       </td>
                       <td className="py-2 pr-2 text-right font-medium text-gray-900 whitespace-nowrap">
                         {formatVND(tx.totalValue)}
                       </td>
-                      <td className="py-2 text-right whitespace-nowrap">
+                      <td className="py-2 text-right whitespace-nowrap" title={tx.taxNote}>
                         {tx.isTaxable ? (
-                          <span className="font-medium text-yellow-700">{formatVND(tx.taxAmount)}</span>
+                          <>
+                            <span className="font-medium text-yellow-700">{formatVND(tx.taxAmount)}</span>
+                            {!GOLD_TAX_CONFIG.collected && (
+                              <span className="block text-[11px] text-gray-400">0,1%: {formatVND(tx.statutoryTax)}</span>
+                            )}
+                          </>
                         ) : (
                           <span className="text-gray-400">–</span>
                         )}
@@ -806,10 +869,10 @@ export default function GoldTaxCalculator() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <h4 className="font-semibold text-amber-800 text-sm mb-2">Lưu ý pháp lý</h4>
             <ul className="text-xs text-amber-700 space-y-1">
-              <li>• Thuế chuyển nhượng vàng miệng 0,1% có hiệu lực từ 01/07/2026 (Luật Thuế TNCN sửa đổi 2025).</li>
-              <li>• Chỉ áp dụng cho vàng miệng và vàng nhẫn trơn, không áp dụng cho vàng trang sức mỹ nghệ.</li>
-              <li>• Thuế tính trên giá trị giao dịch, không phân biệt lãi hay lỗ.</li>
-              <li>• Người mua không chịu thuế, chỉ người bán mới phải nộp thuế.</li>
+              <li>• Luật Thuế TNCN số 109/2025/QH15 (hiệu lực 01/7/2026) quy định thu nhập từ chuyển nhượng vàng miếng chịu thuế 0,1% trên giá chuyển nhượng từng lần (Điều 3 khoản 10 điểm đ, Điều 19 khoản 2).</li>
+              <li>• Luật giao Chính phủ quy định ngưỡng giá trị vàng miếng chịu thuế và thời điểm áp dụng thu. Nghị định 253/2026/NĐ-CP chưa quy định; Bộ Tài chính (30/6/2026) xác nhận chưa thu thuế, đang xây dựng nghị định riêng. Hiện số thuế phải nộp là 0 đ.</li>
+              <li>• Chỉ áp dụng cho vàng miếng; nhẫn tròn trơn và vàng trang sức, mỹ nghệ không phải vàng miếng.</li>
+              <li>• Thuế tính trên giá chuyển nhượng, không phân biệt lãi hay lỗ; người mua không chịu thuế.</li>
               <li>• Kết quả chỉ mang tính tham khảo, vui lòng liên hệ cơ quan thuế để được tư vấn chính xác.</li>
             </ul>
           </div>

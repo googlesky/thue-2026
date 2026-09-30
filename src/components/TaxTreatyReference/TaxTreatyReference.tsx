@@ -8,9 +8,9 @@ import {
   calculateWithholdingWithTreaty,
   getRequiredDocuments,
   formatCurrency,
-  type TaxTreaty,
 } from '@/lib/taxTreatyData';
-import { TaxTreatyTabState, DEFAULT_TAX_TREATY_STATE } from '@/lib/snapshotTypes';
+import { getPerTransactionThreshold } from '@/lib/taxCalculator';
+import { TaxTreatyTabState } from '@/lib/snapshotTypes';
 
 interface TaxTreatyReferenceProps {
   tabState: TaxTreatyTabState;
@@ -31,6 +31,8 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
   const treaty = useMemo(() => {
     return tabState.selectedCountry ? getTreaty(tabState.selectedCountry) : null;
   }, [tabState.selectedCountry]);
+  // Hiệp định đã ký nhưng chưa có hiệu lực (VD Hoa Kỳ): không áp dụng ưu đãi
+  const isActive = treaty?.status === 'active';
 
   // 183-day check
   const dayCheck = useMemo(() => {
@@ -89,7 +91,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
           <option value="">-- Chọn quốc gia --</option>
           {countries.map((country) => (
             <option key={country.code} value={country.code}>
-              {country.name} ({country.nameEn})
+              {country.name} ({country.nameEn}){country.pending ? ' — chưa có hiệu lực' : ''}
             </option>
           ))}
         </select>
@@ -111,12 +113,12 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
               </div>
               <div>
                 <span className="text-gray-500">Có hiệu lực:</span>
-                <span className="ml-2 font-medium">{formatDate(treaty.effectiveDate)}</span>
+                <span className="ml-2 font-medium">{isActive ? formatDate(treaty.effectiveDate) : 'Chưa'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Trạng thái:</span>
-                <span className={`ml-2 font-medium ${treaty.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {treaty.status === 'active' ? 'Đang hiệu lực' : 'Chờ hiệu lực'}
+                <span className={`ml-2 font-medium ${isActive ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {isActive ? 'Đang hiệu lực' : 'Chưa có hiệu lực'}
                 </span>
               </div>
               <div>
@@ -127,7 +129,14 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
               </div>
             </div>
 
+            {!isActive && (
+              <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
+                Hiệp định đã ký ngày {formatDate(treaty.signDate)} nhưng chưa có hiệu lực: áp dụng thuế suất trong nước, chưa được hưởng ưu đãi hiệp định (kể cả quy tắc 183 ngày).
+              </div>
+            )}
+
             {/* Tax Rates Table */}
+            {isActive && (
             <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">
                 Thuế suất tối đa theo hiệp định
@@ -148,30 +157,30 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                       <td className="py-2 px-3 text-center">5%</td>
                       <td className="py-2 px-3 text-center font-medium text-blue-600">
                         {treaty.rates.dividends.qualified
-                          ? `${treaty.rates.dividends.qualified}% - ${treaty.rates.dividends.standard}%`
-                          : `${treaty.rates.dividends.standard}%`
+                          ? `${treaty.rates.dividends.qualified}% - ${treaty.rates.dividends.standard.toLocaleString('vi-VN')}%`
+                          : `${treaty.rates.dividends.standard.toLocaleString('vi-VN')}%`
                         }
                       </td>
                       <td className="py-2 px-3 text-xs text-gray-500">
                         {treaty.rates.dividends.note || (treaty.rates.dividends.qualified
-                          ? `${treaty.rates.dividends.qualified}% nếu góp >= ${treaty.rates.dividends.qualifiedThreshold}%`
+                          ? `${treaty.rates.dividends.qualified}% nếu góp ≥ ${treaty.rates.dividends.qualifiedThreshold}%`
                           : ''
                         )}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2 px-3">Lãi tiền vay/gửi</td>
+                      <td className="py-2 px-3">Lãi cho vay</td>
                       <td className="py-2 px-3 text-center">5%</td>
                       <td className="py-2 px-3 text-center font-medium text-blue-600">
                         {treaty.rates.interest.standard}%
                       </td>
                       <td className="py-2 px-3 text-xs text-gray-500">
-                        {treaty.rates.interest.note || 'TPCP: 0%'}
+                        {treaty.rates.interest.note || 'Lãi tiền gửi TCTD, trái phiếu Chính phủ: miễn thuế trong nước'}
                       </td>
                     </tr>
                     <tr>
                       <td className="py-2 px-3">Bản quyền</td>
-                      <td className="py-2 px-3 text-center">5%</td>
+                      <td className="py-2 px-3 text-center">5%*</td>
                       <td className="py-2 px-3 text-center font-medium text-blue-600">
                         {treaty.rates.royalties.standard}%
                       </td>
@@ -182,10 +191,14 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                * Thuế trong nước tính trên phần vượt {getPerTransactionThreshold().toLocaleString('vi-VN')} đồng mỗi hợp đồng (Luật 109/2025/QH15 Điều 25). Việt Nam thu theo mức thấp hơn giữa thuế trong nước và mức trần hiệp định.
+              </p>
             </div>
+            )}
 
             {/* Special Provisions */}
-            {treaty.specialProvisions && treaty.specialProvisions.length > 0 && (
+            {isActive && treaty.specialProvisions && treaty.specialProvisions.length > 0 && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">
                   Điều khoản đặc biệt
@@ -202,7 +215,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
       )}
 
       {/* 183-Day Rule Calculator */}
-      {treaty && (
+      {treaty && isActive && (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
           <h3 className="text-md font-medium text-gray-900 mb-4">
             Kiểm tra quy tắc 183 ngày
@@ -216,7 +229,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
               <input
                 type="number"
                 min="0"
-                max="365"
+                max="366"
                 value={tabState.daysInVietnam === 0 ? '' : tabState.daysInVietnam}
                 onChange={(e) => updateField('daysInVietnam', parseInt(e.target.value) || 0)}
                 placeholder="Nhập số ngày..."
@@ -229,15 +242,12 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                 ? 'bg-green-50 border border-green-200'
                 : 'bg-red-50 border border-red-200'
               }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xl ${dayCheck.eligible ? 'text-green-600' : 'text-red-600'}`}>
-                    {dayCheck.eligible ? '✓' : '✗'}
-                  </span>
+                <div className="mb-2">
                   <span className={`font-medium ${dayCheck.eligible
                     ? 'text-green-700'
                     : 'text-red-700'
                   }`}>
-                    {dayCheck.eligible ? 'Có thể được miễn thuế' : 'Phải nộp thuế tại Việt Nam'}
+                    {dayCheck.eligible ? 'Có thể được miễn thuế (nếu đủ cả 3 điều kiện)' : 'Phải nộp thuế tại Việt Nam'}
                   </span>
                 </div>
                 <p className={`text-sm ${dayCheck.eligible
@@ -255,11 +265,11 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
             )}
 
             <div className="text-xs text-gray-500">
-              <p className="font-medium">Lưu ý về quy tắc 183 ngày:</p>
+              <p className="font-medium">Tiền lương chỉ được miễn thuế tại Việt Nam theo hiệp định với {treaty.countryName} khi đồng thời:</p>
               <ul className="mt-1 space-y-1">
-                <li>• Ngưỡng {treaty.employment.daysThreshold} ngày theo hiệp định với {treaty.countryName}</li>
-                <li>• Tính theo {treaty.employment.period === 'calendar' ? 'năm dương lịch' : 'bất kỳ giai đoạn 12 tháng nào'}</li>
-                <li>• Cần xét thêm các điều kiện khác: nơi cư trú, người sử dụng lao động...</li>
+                {check183DayRule(treaty.countryCode, tabState.daysInVietnam).conditions.map((c, idx) => (
+                  <li key={idx}>• {c}</li>
+                ))}
               </ul>
             </div>
           </div>
@@ -267,7 +277,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
       )}
 
       {/* Withholding Tax Calculator */}
-      {treaty && (
+      {treaty && isActive && (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
           <h3 className="text-md font-medium text-gray-900 mb-4">
             Tính thuế khấu trừ theo hiệp định
@@ -306,7 +316,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                   className="w-4 h-4 rounded border-gray-300"
                 />
                 <span className="text-sm text-gray-700">
-                  Góp vốn {'>='} {treaty.rates.dividends.qualifiedThreshold}% (thuế suất ưu đãi {treaty.rates.dividends.qualified}%)
+                  Góp vốn ≥ {treaty.rates.dividends.qualifiedThreshold}% (thuế suất ưu đãi {treaty.rates.dividends.qualified}%)
                 </span>
               </label>
             )}
@@ -335,13 +345,13 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <div className="text-xs text-gray-500 mb-1">Thuế suất VN</div>
-                    <div className="font-medium">{(withholdingCalc.domesticRate * 100).toFixed(0)}%</div>
+                    <div className="font-medium">{(withholdingCalc.domesticRate * 100).toLocaleString("vi-VN")}%</div>
                     <div className="text-sm text-red-600">{formatCurrency(withholdingCalc.domesticTax)}</div>
                   </div>
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="text-xs text-blue-600 mb-1">Theo hiệp định</div>
                     <div className="font-medium text-blue-700">
-                      {(withholdingCalc.treatyRate * 100).toFixed(0)}%
+                      {(withholdingCalc.treatyRate * 100).toLocaleString("vi-VN")}%
                     </div>
                     <div className="text-sm text-blue-600">{formatCurrency(withholdingCalc.treatyTax)}</div>
                   </div>
@@ -350,7 +360,6 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
                 {withholdingCalc.savings > 0 && (
                   <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center gap-2">
-                      <span className="text-green-600">💰</span>
                       <span className="font-medium text-green-700">
                         Tiết kiệm: {formatCurrency(withholdingCalc.savings)}
                       </span>
@@ -381,7 +390,7 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
           <ul className="space-y-2">
             {requiredDocs.map((doc, idx) => (
               <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                <span className="mt-0.5">📋</span>
+                <span className="text-gray-400">•</span>
                 <span>{doc}</span>
               </li>
             ))}
@@ -395,7 +404,8 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
         <ul className="list-disc list-inside space-y-1">
           <li>Thông tin trên chỉ mang tính tham khảo, không thay thế tư vấn chuyên môn</li>
           <li>Cần kiểm tra văn bản hiệp định gốc để xác định điều kiện áp dụng cụ thể</li>
-          <li>Việc áp dụng hiệp định cần có hồ sơ đầy đủ và được cơ quan thuế chấp thuận</li>
+          <li>Hồ sơ đề nghị miễn, giảm thuế theo hiệp định: TT 89/2026/TT-BTC Điều 76 (mẫu 01/HTQT), nộp cùng hồ sơ khai thuế lần đầu</li>
+          <li>Hiệp định đã ký nhưng chưa có hiệu lực (VD Việt Nam – Hoa Kỳ ký 07/7/2015) chưa được áp dụng</li>
           <li>Nguồn: Bộ Tài chính Việt Nam, các hiệp định thuế song phương</li>
         </ul>
       </div>
@@ -407,12 +417,9 @@ export function TaxTreatyReference({ tabState, onTabStateChange }: TaxTreatyRefe
  * Format date in Vietnamese style
  */
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  // YYYY-MM-DD → DD/MM/YYYY (không qua Date để tránh lệch múi giờ)
+  const [y, m, d] = dateStr.split('-');
+  return y && m && d ? `${d}/${m}/${y}` : '—';
 }
 
 export default TaxTreatyReference;

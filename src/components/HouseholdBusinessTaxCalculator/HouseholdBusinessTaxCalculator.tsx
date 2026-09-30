@@ -3,32 +3,27 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   HouseholdBusiness,
-  HouseholdBusinessTaxInput,
   calculateHouseholdBusinessTax,
   createEmptyBusiness,
   getRevenueThreshold,
   getMonthlyThreshold,
   compareTaxMethods2026,
+  formatCurrency,
+  formatRate,
+  formatTy,
   BUSINESS_CATEGORY_LABELS,
   BUSINESS_CATEGORY_DESCRIPTIONS,
   COMMON_BUSINESS_EXAMPLES,
   PIT_RATES,
+  PIT_RATES_2025,
   VAT_RATES,
   INCOME_TAX_BRACKETS_2026,
+  PERCENTAGE_METHOD_MAX_REVENUE,
   TAX_METHOD_LABELS,
   TAX_METHOD_DESCRIPTIONS,
   BusinessCategory,
   TaxMethod,
 } from '@/lib/householdBusinessTaxCalculator';
-
-// Format currency
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 export function HouseholdBusinessTaxCalculator() {
   const [businesses, setBusinesses] = useState<HouseholdBusiness[]>([
@@ -39,13 +34,10 @@ export function HouseholdBusinessTaxCalculator() {
   const [showComparison, setShowComparison] = useState(false);
   const [showMethodComparison, setShowMethodComparison] = useState(false);
 
-  // Calculate tax
-  const input: HouseholdBusinessTaxInput = useMemo(
-    () => ({ businesses, year, taxMethod }),
+  const result = useMemo(
+    () => calculateHouseholdBusinessTax({ businesses, year, taxMethod }),
     [businesses, year, taxMethod]
   );
-
-  const result = useMemo(() => calculateHouseholdBusinessTax(input), [input]);
 
   // Method comparison for 2026
   const methodComparison = useMemo(() => {
@@ -78,25 +70,25 @@ export function HouseholdBusinessTaxCalculator() {
   const threshold = getRevenueThreshold(year);
   const monthlyThreshold = getMonthlyThreshold(year);
   const isAboveThreshold = result.summary.totalAnnualRevenue > threshold;
+  // Phương pháp thực tế áp dụng (DT > 3 tỷ: bắt buộc phương pháp thu nhập)
+  const effectiveMethod = result.summary.taxMethod;
+  const percentageLocked = year === 2026 && result.summary.totalAnnualRevenue > PERCENTAGE_METHOD_MAX_REVENUE;
+  const isPercentage2026 = year === 2026 && effectiveMethod === 'khoan';
+  const pitRates = year === 2026 ? PIT_RATES : PIT_RATES_2025;
+  const threshold2026 = formatTy(getRevenueThreshold(2026));
+  const maxPercentage = formatTy(PERCENTAGE_METHOD_MAX_REVENUE);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="card">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl">🏪</span>
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">
-              Thuế hộ kinh doanh cá thể
-            </h2>
-            <p className="text-gray-600 text-sm">
-              Tính thuế cho hộ kinh doanh cá thể theo Luật 109/2025/QH15.
-              Từ 2026, ngưỡng doanh thu được nâng lên {formatCurrency(getRevenueThreshold(2026))}/năm.
-            </p>
-          </div>
-        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">
+          Thuế hộ kinh doanh, cá nhân kinh doanh
+        </h2>
+        <p className="text-gray-600 text-sm">
+          Theo Luật Thuế TNCN 109/2025/QH15 (sửa đổi bởi Luật 09/2026/QH16) và NĐ 68/2026/NĐ-CP (sửa đổi bởi NĐ 141/2026/NĐ-CP).
+          Từ kỳ tính thuế 2026, doanh thu năm từ {formatCurrency(getRevenueThreshold(2026))} trở xuống không phải nộp TNCN, GTGT; bỏ thuế khoán từ 01/01/2026.
+        </p>
 
         {/* Year selector */}
         <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -133,18 +125,20 @@ export function HouseholdBusinessTaxCalculator() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setTaxMethod('khoan')}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    taxMethod === 'khoan'
+                  disabled={percentageLocked}
+                  title={percentageLocked ? `Doanh thu trên ${maxPercentage}: không được chọn tỷ lệ % trên doanh thu` : undefined}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    effectiveMethod === 'khoan'
                       ? 'bg-orange-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  Khoán
+                  Tỷ lệ %
                 </button>
                 <button
                   onClick={() => setTaxMethod('income')}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    taxMethod === 'income'
+                    effectiveMethod === 'income'
                       ? 'bg-orange-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
@@ -159,33 +153,38 @@ export function HouseholdBusinessTaxCalculator() {
         {/* Tax method description */}
         {year === 2026 && (
           <div className="mt-3 p-3 rounded-lg bg-orange-50 border border-orange-200 text-sm">
-            <div className="font-medium text-orange-900">{TAX_METHOD_LABELS[taxMethod]}</div>
-            <div className="text-orange-700 mt-1">{TAX_METHOD_DESCRIPTIONS[taxMethod]}</div>
+            <div className="font-medium text-orange-900">{TAX_METHOD_LABELS[effectiveMethod]}</div>
+            <div className="text-orange-700 mt-1">{TAX_METHOD_DESCRIPTIONS[effectiveMethod]}</div>
+            {percentageLocked && (
+              <div className="text-orange-800 mt-1 font-medium">
+                Tổng doanh thu trên {maxPercentage}: bắt buộc phương pháp thu nhập (NĐ 68/2026 Điều 4.5).
+              </div>
+            )}
           </div>
         )}
 
         {/* Threshold info */}
-        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <span className="text-lg">📊</span>
-            </div>
-            <div>
-              <div className="font-semibold text-orange-900">
-                Ngưỡng doanh thu năm {year}: {formatCurrency(threshold)}/năm
-              </div>
-              <div className="text-sm text-orange-700">
-                Tương đương ~{formatCurrency(monthlyThreshold)}/tháng
-              </div>
-            </div>
+        <div className="mt-4 p-4 rounded-xl bg-orange-50 border border-orange-200">
+          <div className="font-semibold text-orange-900">
+            Ngưỡng doanh thu năm {year}: {formatCurrency(threshold)}/năm
+          </div>
+          <div className="text-sm text-orange-700">
+            Tương đương ~{formatCurrency(monthlyThreshold)}/tháng
           </div>
           <div className="mt-2 text-sm text-orange-800 space-y-1">
-            <p><strong>Dưới ngưỡng:</strong> Không đóng thuế TNCN và GTGT, không cần đăng ký kinh doanh.</p>
-            <p><strong>Trên ngưỡng:</strong> Phải đăng ký kinh doanh và nộp thuế theo quy định.</p>
-            {year === 2026 && (
-              <p className="text-orange-700">
-                <strong>Năm 2026:</strong> TNCN tính trên phần vượt ngưỡng (phương pháp khoán) hoặc lợi nhuận (phương pháp thu nhập). VAT tính trên toàn bộ doanh thu.
-              </p>
+            {year === 2026 ? (
+              <>
+                <p><strong>Từ ngưỡng trở xuống:</strong> không nộp TNCN, GTGT; vẫn phải thông báo doanh thu (Mẫu 01/TKN-CNKD) chậm nhất ngày 31/01 năm sau.</p>
+                <p><strong>Trên ngưỡng:</strong> khai GTGT, TNCN theo quý từ quý có doanh thu lũy kế vượt ngưỡng; bắt buộc dùng hóa đơn điện tử.</p>
+                <p className="text-orange-700">
+                  TNCN tính trên phần doanh thu vượt ngưỡng (tỷ lệ %) hoặc trên lợi nhuận (phương pháp thu nhập); GTGT tính trên toàn bộ doanh thu.
+                </p>
+              </>
+            ) : (
+              <>
+                <p><strong>Từ ngưỡng trở xuống:</strong> không nộp TNCN, GTGT.</p>
+                <p><strong>Trên ngưỡng:</strong> nộp thuế khoán hoặc kê khai theo quy định năm 2025, tính trên toàn bộ doanh thu.</p>
+              </>
             )}
           </div>
         </div>
@@ -194,51 +193,53 @@ export function HouseholdBusinessTaxCalculator() {
       {/* Tax rates reference */}
       <div className="card">
         <h3 className="font-semibold text-gray-900 mb-4">
-          Biểu thuế suất {year === 2026 && taxMethod === 'income' ? '(Phương pháp thu nhập)' : '(Phương pháp khoán)'}
+          {year === 2025
+            ? 'Biểu thuế khoán năm 2025 (trên toàn bộ doanh thu)'
+            : effectiveMethod === 'income'
+              ? 'Biểu thuế suất phương pháp thu nhập'
+              : `Biểu thuế: ${TAX_METHOD_LABELS.khoan}`}
         </h3>
 
-        {year === 2026 && taxMethod === 'income' ? (
-          // Income tax brackets for 2026
+        {year === 2026 && effectiveMethod === 'income' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">Bậc doanh thu năm</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-600">Doanh thu năm</th>
                   <th className="text-center py-2 px-3 font-medium text-gray-600">Thuế TNCN</th>
                   <th className="text-left py-2 px-3 font-medium text-gray-600">Ghi chú</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="py-3 px-3 font-medium">≤ 1 tỷ</td>
+                  <td className="py-3 px-3 font-medium">Từ {threshold2026} trở xuống</td>
                   <td className="text-center py-3 px-3">
                     <span className="px-2 py-1 rounded bg-green-50 text-green-700 font-medium">0%</span>
                   </td>
-                  <td className="py-3 px-3 text-gray-500">Miễn thuế hoàn toàn</td>
+                  <td className="py-3 px-3 text-gray-500">Không nộp TNCN, GTGT</td>
                 </tr>
                 {INCOME_TAX_BRACKETS_2026.map((bracket, index) => (
                   <tr key={index} className="border-b border-gray-100">
                     <td className="py-3 px-3 font-medium">
-                      {formatCurrency(bracket.min)} - {bracket.max === Infinity ? 'trở lên' : formatCurrency(bracket.max)}
+                      Trên {formatTy(bracket.min)}{bracket.max === Infinity ? '' : ` đến ${formatTy(bracket.max)}`}
                     </td>
                     <td className="text-center py-3 px-3">
                       <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-medium">
-                        {bracket.rate * 100}%
+                        {formatRate(bracket.rate)}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-gray-500">
-                      Tính trên (Doanh thu - Chi phí)
+                      Tính trên (Doanh thu − Chi phí)
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="mt-2 text-xs text-gray-500">
-              Lưu ý: Thuế GTGT tính riêng theo tỷ lệ ngành nghề trên toàn bộ doanh thu.
+              Lưu ý: Thuế GTGT tính riêng theo tỷ lệ ngành nghề trên toàn bộ doanh thu. Nhiều hoạt động: thu nhập tính thuế là tổng (Doanh thu − Chi phí) của mọi hoạt động, lỗ hoạt động này bù lãi hoạt động khác (diễn giải Luật 109/2025 Điều 7.2.a).
             </p>
           </div>
         ) : (
-          // Khoan method rates
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -246,15 +247,11 @@ export function HouseholdBusinessTaxCalculator() {
                   <th className="text-left py-2 px-3 font-medium text-gray-600">Ngành nghề</th>
                   <th className="text-center py-2 px-3 font-medium text-gray-600">Thuế TNCN</th>
                   <th className="text-center py-2 px-3 font-medium text-gray-600">Thuế GTGT</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-600">Tổng</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(BUSINESS_CATEGORY_LABELS).map(([key, label]) => {
                   const category = key as BusinessCategory;
-                  const pitRate = PIT_RATES[category] * 100;
-                  const vatRate = VAT_RATES[category] * 100;
-                  const totalRate = pitRate + vatRate;
                   return (
                     <tr key={key} className="border-b border-gray-100">
                       <td className="py-3 px-3">
@@ -264,18 +261,13 @@ export function HouseholdBusinessTaxCalculator() {
                         </div>
                       </td>
                       <td className="text-center py-3 px-3">
-                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-medium">
-                          {pitRate}%
+                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-medium whitespace-nowrap">
+                          {formatRate(pitRates[category])}
                         </span>
                       </td>
                       <td className="text-center py-3 px-3">
-                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 font-medium">
-                          {vatRate}%
-                        </span>
-                      </td>
-                      <td className="text-center py-3 px-3">
-                        <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 font-bold">
-                          {totalRate}%
+                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 font-medium whitespace-nowrap">
+                          {formatRate(VAT_RATES[category])}
                         </span>
                       </td>
                     </tr>
@@ -285,7 +277,7 @@ export function HouseholdBusinessTaxCalculator() {
             </table>
             {year === 2026 && (
               <p className="mt-2 text-xs text-gray-500">
-                Lưu ý năm 2026: TNCN tính trên (Doanh thu - 1 tỷ), GTGT tính trên toàn bộ doanh thu.
+                Năm 2026: TNCN tính trên (Doanh thu − {threshold2026}), GTGT tính trên toàn bộ doanh thu. Nhiều ngành: mức trừ {threshold2026} được trừ vào ngành có tỷ lệ cao nhất trước, phần chưa trừ hết trừ tiếp vào ngành khác (NĐ 68/2026 Điều 4.3).
               </p>
             )}
           </div>
@@ -378,32 +370,30 @@ export function HouseholdBusinessTaxCalculator() {
                         monthlyRevenue: parseInt(value) || 0,
                       });
                     }}
-                    placeholder="VD: 50,000,000"
+                    placeholder="VD: 50.000.000"
                     className="input-field w-full"
                   />
                 </div>
 
-                {/* Monthly expenses - only for income method */}
-                {year === 2026 && taxMethod === 'income' && (
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Chi phí/tháng
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={business.monthlyExpenses === 0 ? '' : business.monthlyExpenses.toLocaleString('vi-VN')}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d]/g, '');
-                        updateBusiness(business.id, {
-                          monthlyExpenses: parseInt(value) || 0,
-                        });
-                      }}
-                      placeholder="VD: 30,000,000"
-                      className="input-field w-full"
-                    />
-                  </div>
-                )}
+                {/* Monthly expenses */}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Chi phí/tháng (có hóa đơn)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={business.monthlyExpenses === 0 ? '' : business.monthlyExpenses.toLocaleString('vi-VN')}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d]/g, '');
+                      updateBusiness(business.id, {
+                        monthlyExpenses: parseInt(value) || 0,
+                      });
+                    }}
+                    placeholder="VD: 30.000.000"
+                    className="input-field w-full"
+                  />
+                </div>
 
                 {/* Operating months */}
                 <div>
@@ -414,12 +404,15 @@ export function HouseholdBusinessTaxCalculator() {
                     type="number"
                     min="1"
                     max="12"
-                    value={business.operatingMonths}
+                    value={business.operatingMonths || ''}
                     onChange={(e) =>
                       updateBusiness(business.id, {
-                        operatingMonths: Math.min(12, Math.max(1, parseInt(e.target.value) || 12)),
+                        operatingMonths: Math.max(0, Math.min(12, parseInt(e.target.value) || 0)),
                       })
                     }
+                    onBlur={() => {
+                      if (!business.operatingMonths) updateBusiness(business.id, { operatingMonths: 12 });
+                    }}
                     className="input-field w-full"
                   />
                 </div>
@@ -445,29 +438,6 @@ export function HouseholdBusinessTaxCalculator() {
                       Đã đăng ký kinh doanh
                     </label>
                   </div>
-
-                  {/* Threshold deduction checkbox - only for khoan method 2026 with multiple businesses */}
-                  {year === 2026 && taxMethod === 'khoan' && businesses.length > 1 && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`threshold-${business.id}`}
-                        checked={business.applyThresholdDeduction}
-                        onChange={(e) =>
-                          updateBusiness(business.id, {
-                            applyThresholdDeduction: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                      />
-                      <label
-                        htmlFor={`threshold-${business.id}`}
-                        className="text-sm text-gray-700"
-                      >
-                        Áp dụng trừ ngưỡng 1 tỷ
-                      </label>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -480,21 +450,16 @@ export function HouseholdBusinessTaxCalculator() {
         </div>
 
         {/* Threshold allocation info */}
-        {year === 2026 && taxMethod === 'khoan' && businesses.length > 1 && isAboveThreshold && (
+        {isPercentage2026 && businesses.length > 1 && isAboveThreshold && (
           <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm">
-            <div className="flex items-start gap-2">
-              <span className="text-yellow-600">⚠️</span>
-              <div>
-                <strong className="text-yellow-800">Phân bổ ngưỡng 1 tỷ:</strong>
-                <p className="text-yellow-700 mt-1">
-                  Theo Luật 109/2025/QH15, bạn có thể chọn hoạt động nào được trừ ngưỡng 1 tỷ.
-                  Tổng mức trừ không quá 1 tỷ cho tất cả hoạt động.
-                </p>
-                <p className="text-yellow-600 mt-1">
-                  Ngưỡng đã sử dụng: {formatCurrency(result.summary.thresholdUsed)} / {formatCurrency(threshold)}
-                </p>
-              </div>
-            </div>
+            <strong className="text-yellow-800">Phân bổ mức trừ {threshold2026}:</strong>
+            <p className="text-yellow-700 mt-1">
+              Theo NĐ 68/2026 Điều 4.3, mức trừ được áp dụng theo phương án có lợi nhất: trừ vào ngành có tỷ lệ cao nhất trước,
+              phần chưa trừ hết trừ tiếp vào ngành khác; tổng mức trừ không quá {threshold2026}/năm.
+            </p>
+            <p className="text-yellow-600 mt-1">
+              Ngưỡng đã trừ: {formatCurrency(result.summary.thresholdUsed)} / {formatCurrency(threshold)}
+            </p>
           </div>
         )}
       </div>
@@ -503,7 +468,7 @@ export function HouseholdBusinessTaxCalculator() {
       <div className="card">
         <h3 className="font-semibold text-gray-900 mb-4">
           Kết quả tính thuế năm {year}
-          {year === 2026 && <span className="text-sm font-normal text-gray-500 ml-2">({TAX_METHOD_LABELS[taxMethod]})</span>}
+          {year === 2026 && <span className="text-sm font-normal text-gray-500 ml-2">({TAX_METHOD_LABELS[effectiveMethod]})</span>}
         </h3>
 
         {/* Business results */}
@@ -517,11 +482,11 @@ export function HouseholdBusinessTaxCalculator() {
                   : 'bg-green-50 border-green-200'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="font-medium text-gray-800">
                   {b.name || `Hoạt động #${index + 1}`} ({BUSINESS_CATEGORY_LABELS[b.category]})
                 </span>
-                <span className={`font-bold ${b.isAboveThreshold ? 'text-red-600' : 'text-green-600'}`}>
+                <span className={`font-bold whitespace-nowrap ${b.isAboveThreshold ? 'text-red-600' : 'text-green-600'}`}>
                   {b.isAboveThreshold ? formatCurrency(b.totalTax) : 'Không thuế'}
                 </span>
               </div>
@@ -531,27 +496,27 @@ export function HouseholdBusinessTaxCalculator() {
                   <span className="text-gray-500">Doanh thu năm:</span>
                   <div className="font-medium">{formatCurrency(b.annualRevenue)}</div>
                 </div>
-                {year === 2026 && taxMethod === 'income' && (
-                  <div>
-                    <span className="text-gray-500">Chi phí năm:</span>
-                    <div className="font-medium">{formatCurrency(b.annualExpenses)}</div>
-                  </div>
-                )}
+                <div>
+                  <span className="text-gray-500">Chi phí năm:</span>
+                  <div className="font-medium">{formatCurrency(b.annualExpenses)}</div>
+                </div>
                 {b.isAboveThreshold && (
                   <div>
                     <span className="text-gray-500">
-                      {taxMethod === 'income' ? 'Thu nhập chịu thuế:' : 'DT chịu thuế (sau trừ ngưỡng):'}
+                      {year === 2025
+                        ? 'DT tính thuế:'
+                        : effectiveMethod === 'income' ? 'Thu nhập tính thuế:' : 'DT tính thuế (sau trừ ngưỡng):'}
                     </span>
                     <div className="font-medium">{formatCurrency(b.taxableIncome)}</div>
                   </div>
                 )}
                 <div>
                   <span className="text-gray-500">Thuế TNCN:</span>
-                  <div className="font-medium">{formatCurrency(b.pitAmount)} ({b.taxRate}%)</div>
+                  <div className="font-medium">{formatCurrency(b.pitAmount)} ({formatRate(b.taxRate / 100)})</div>
                 </div>
                 <div>
                   <span className="text-gray-500">Thuế GTGT:</span>
-                  <div className="font-medium">{formatCurrency(b.vatAmount)} ({b.vatRate}%)</div>
+                  <div className="font-medium">{formatCurrency(b.vatAmount)} ({formatRate(b.vatRate / 100)})</div>
                 </div>
                 <div>
                   <span className="text-gray-500">Thu nhập ròng:</span>
@@ -559,7 +524,7 @@ export function HouseholdBusinessTaxCalculator() {
                 </div>
               </div>
 
-              {b.isAboveThreshold && year === 2026 && taxMethod === 'khoan' && b.thresholdDeduction > 0 && (
+              {b.isAboveThreshold && isPercentage2026 && b.thresholdDeduction > 0 && (
                 <div className="text-xs text-orange-600 mb-2">
                   Ngưỡng được trừ: {formatCurrency(b.thresholdDeduction)}
                 </div>
@@ -575,7 +540,7 @@ export function HouseholdBusinessTaxCalculator() {
         </div>
 
         {/* Summary */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200">
+        <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
           <h4 className="font-semibold text-gray-900 mb-4">Tổng kết năm {year}</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
@@ -584,14 +549,12 @@ export function HouseholdBusinessTaxCalculator() {
                 {formatCurrency(result.summary.totalAnnualRevenue)}
               </div>
             </div>
-            {year === 2026 && taxMethod === 'income' && (
-              <div>
-                <div className="text-sm text-gray-500">Tổng chi phí</div>
-                <div className="text-xl font-bold text-gray-700">
-                  {formatCurrency(result.summary.totalAnnualExpenses)}
-                </div>
+            <div>
+              <div className="text-sm text-gray-500">Tổng chi phí</div>
+              <div className="text-xl font-bold text-gray-700">
+                {formatCurrency(result.summary.totalAnnualExpenses)}
               </div>
-            )}
+            </div>
             <div>
               <div className="text-sm text-gray-500">Thuế TNCN</div>
               <div className="text-xl font-bold text-blue-600">
@@ -616,7 +579,7 @@ export function HouseholdBusinessTaxCalculator() {
             <div>
               <div className="text-sm text-gray-500">Trạng thái</div>
               <div className={`text-lg font-semibold ${isAboveThreshold ? 'text-red-600' : 'text-green-600'}`}>
-                {isAboveThreshold ? 'Trên ngưỡng - Phải nộp thuế' : 'Dưới ngưỡng - Miễn thuế'}
+                {isAboveThreshold ? 'Trên ngưỡng - Phải nộp thuế' : 'Không vượt ngưỡng - Không nộp thuế'}
               </div>
             </div>
             <div>
@@ -625,7 +588,7 @@ export function HouseholdBusinessTaxCalculator() {
                 {formatCurrency(result.summary.totalNetIncome)}
               </div>
             </div>
-            {year === 2026 && taxMethod === 'khoan' && isAboveThreshold && (
+            {isPercentage2026 && isAboveThreshold && (
               <div>
                 <div className="text-sm text-gray-500">Ngưỡng đã trừ</div>
                 <div className="text-lg font-semibold text-orange-600">
@@ -659,27 +622,33 @@ export function HouseholdBusinessTaxCalculator() {
                     : 'bg-gray-50 border-gray-200'
                 }`}>
                   <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    Phương pháp Khoán
+                    Tỷ lệ % trên doanh thu
                     {methodComparison.recommendedMethod === 'khoan' && (
-                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">Khuyên dùng</span>
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">Có lợi hơn</span>
                     )}
                   </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Thuế TNCN:</span>
-                      <span className="font-medium">{formatCurrency(methodComparison.khoanResult.summary.totalPIT)}</span>
+                  {methodComparison.khoanResult ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Thuế TNCN:</span>
+                        <span className="font-medium">{formatCurrency(methodComparison.khoanResult.summary.totalPIT)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Thuế GTGT:</span>
+                        <span className="font-medium">{formatCurrency(methodComparison.khoanResult.summary.totalVAT)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-700 font-medium">Tổng thuế:</span>
+                        <span className="font-bold text-red-600">
+                          {formatCurrency(methodComparison.khoanResult.summary.totalTax)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Thuế GTGT:</span>
-                      <span className="font-medium">{formatCurrency(methodComparison.khoanResult.summary.totalVAT)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-gray-700 font-medium">Tổng thuế:</span>
-                      <span className="font-bold text-red-600">
-                        {formatCurrency(methodComparison.khoanResult.summary.totalTax)}
-                      </span>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      Không áp dụng: doanh thu năm trên {maxPercentage}.
+                    </p>
+                  )}
                 </div>
 
                 <div className={`p-4 rounded-xl border ${
@@ -688,9 +657,11 @@ export function HouseholdBusinessTaxCalculator() {
                     : 'bg-gray-50 border-gray-200'
                 }`}>
                   <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    Phương pháp Thu nhập
+                    Phương pháp thu nhập
                     {methodComparison.recommendedMethod === 'income' && (
-                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">Khuyên dùng</span>
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded">
+                        {methodComparison.khoanResult ? 'Có lợi hơn' : 'Bắt buộc'}
+                      </span>
                     )}
                   </h4>
                   <div className="space-y-2 text-sm">
@@ -712,18 +683,13 @@ export function HouseholdBusinessTaxCalculator() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">💡</span>
-                  <div>
-                    <div className="font-medium text-blue-900">{methodComparison.explanation}</div>
-                    {methodComparison.savings > 0 && (
-                      <div className="text-sm text-blue-700 mt-1">
-                        Chênh lệch: {formatCurrency(methodComparison.savings)}
-                      </div>
-                    )}
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                <div className="font-medium text-blue-900">{methodComparison.explanation}</div>
+                {methodComparison.savings > 0 && (
+                  <div className="text-sm text-blue-700 mt-1">
+                    Chênh lệch: {formatCurrency(methodComparison.savings)}
                   </div>
-                </div>
+                )}
               </div>
             </>
           )}
@@ -746,7 +712,7 @@ export function HouseholdBusinessTaxCalculator() {
           {showComparison && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                <h4 className="font-medium text-gray-700 mb-3">Năm 2025</h4>
+                <h4 className="font-medium text-gray-700 mb-3">Năm 2025 (thuế khoán)</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Ngưỡng:</span>
@@ -771,10 +737,10 @@ export function HouseholdBusinessTaxCalculator() {
                     <span className="font-medium">{formatCurrency(getRevenueThreshold(2026))}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tổng thuế (khoán):</span>
+                    <span className="text-gray-500">Tổng thuế:</span>
                     <span className="font-bold text-green-600">
                       {formatCurrency(
-                        calculateHouseholdBusinessTax({ businesses, year: 2026, taxMethod: 'khoan' }).summary.totalTax
+                        calculateHouseholdBusinessTax({ businesses, year: 2026, taxMethod }).summary.totalTax
                       )}
                     </span>
                   </div>
@@ -787,45 +753,44 @@ export function HouseholdBusinessTaxCalculator() {
 
       {/* Info section */}
       <div className="card bg-blue-50 border border-blue-200">
-        <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-          <span>ℹ️</span>
-          Lưu ý về thuế hộ kinh doanh năm 2026
+        <h3 className="font-semibold text-blue-900 mb-3">
+          Lưu ý về thuế hộ kinh doanh từ năm 2026
         </h3>
         <ul className="space-y-2 text-sm text-blue-800">
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Ngưỡng mới:</strong> {formatCurrency(getRevenueThreshold(2026))}/năm (tăng từ {formatCurrency(getRevenueThreshold(2025))})
+              <strong>Ngưỡng:</strong> {formatCurrency(getRevenueThreshold(2026))}/năm (trước đây {formatCurrency(getRevenueThreshold(2025))}), xét trên tổng doanh thu mọi hoạt động, kể cả doanh thu bán trên sàn TMĐT đã được khấu trừ thay. Cả năm không vượt ngưỡng thì được hoàn hoặc bù trừ số thuế đã khấu trừ, đã nộp (NĐ 68/2026 Điều 12).
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Phương pháp khoán:</strong> TNCN = (Doanh thu - 1 tỷ) × Thuế suất ngành. Không cần chứng từ chi phí.
+              <strong>Tỷ lệ % trên doanh thu:</strong> TNCN = (Doanh thu − {threshold2026}) × tỷ lệ ngành; chỉ được chọn khi doanh thu năm không quá {maxPercentage}. Không cần chứng từ chi phí.
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Phương pháp thu nhập:</strong> TNCN = (Doanh thu - Chi phí) × 15%/17%/20%. Cần hóa đơn chi phí hợp lệ.
+              <strong>Phương pháp thu nhập:</strong> TNCN = (Doanh thu − Chi phí) × {INCOME_TAX_BRACKETS_2026.map((b) => formatRate(b.rate)).join('/')}; bắt buộc khi doanh thu năm trên {maxPercentage}; áp dụng ổn định 2 năm liên tục (NĐ 68/2026 Điều 4.5.d).
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Thuế GTGT:</strong> Tính trên toàn bộ doanh thu khi vượt ngưỡng (không được trừ 1 tỷ).
+              <strong>Thuế GTGT:</strong> Tính trên toàn bộ doanh thu khi vượt ngưỡng (không trừ {threshold2026}). Mức giảm 20% tỷ lệ % tính GTGT đến hết 31/12/2026 (NQ 204/2025/QH15, NĐ 174/2025/NĐ-CP; trừ viễn thông, tài chính, ngân hàng, chứng khoán, bảo hiểm, bất động sản, kim loại, khai khoáng, hàng chịu thuế TTĐB) chưa được tự động áp dụng trong công cụ này.
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Nhiều hoạt động:</strong> Có thể chọn hoạt động nào được trừ ngưỡng 1 tỷ (tổng không quá 1 tỷ).
+              <strong>Kê khai:</strong> Doanh thu năm đến 50 tỷ khai GTGT, TNCN theo quý, hạn ngày cuối cùng của tháng đầu quý sau (30/4, 31/7, 31/10, 31/01); trên 50 tỷ khai theo tháng, hạn ngày 20 tháng sau; quyết toán TNCN phương pháp thu nhập chậm nhất 31/3 năm sau (Mẫu 02/CNKD-TNCN-QTT).
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>
-              <strong>Grab, Be, Shipper:</strong> Thuộc nhóm &quot;Sản xuất, vận tải&quot; - Thuế khoán 1.5% + 3% GTGT.
+              <strong>Grab, Be, shipper:</strong> Thuộc nhóm &quot;Sản xuất, vận tải&quot; – TNCN {formatRate(PIT_RATES.production)} trên phần doanh thu vượt {threshold2026}; GTGT {formatRate(VAT_RATES.production)} trên toàn bộ doanh thu.
             </span>
           </li>
         </ul>

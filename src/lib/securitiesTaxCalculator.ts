@@ -1,17 +1,21 @@
 /**
- * Securities Tax Calculator for Vietnam
- * Handles: Listed/Unlisted securities, capital gains, dividends, bonds
- * Reference: Circular 111/2013/TT-BTC, Law 04/2019/QH14
+ * Thuế TNCN đối với đầu tư chứng khoán (cá nhân cư trú)
+ *
+ * Căn cứ: Luật Thuế TNCN số 109/2025/QH15 Điều 12 (đầu tư vốn 5%), Điều 13 khoản 2 (chuyển nhượng
+ * chứng khoán 0,1% × giá chuyển nhượng từng lần), Điều 4 khoản 6, 16 và Điều 5 khoản 4, 5 (miễn, giảm);
+ * NĐ 253/2026/NĐ-CP Điều 24, 34, 43, 44, 52–56; TT 87/2026/TT-BTC (phái sinh 0,1%).
+ * - Mọi chứng khoán (cổ phiếu niêm yết/chưa niêm yết, trái phiếu, chứng chỉ quỹ): 0,1% giá bán, kể cả khi lỗ.
+ *   Không còn phương án 20% trên lãi (20% lãi / 2% giá chỉ áp cho chuyển nhượng VỐN GÓP - Luật Điều 13.1).
+ * - Chứng chỉ quỹ mở nắm giữ từ đủ 2 năm, bán từ 01/7/2026: miễn (mua trước bán trước).
+ * - Cổ tức 5%; lợi tức chia từ quỹ đầu tư chứng khoán/quỹ BĐS: giảm 50% (2,5%) từ 01/7/2026 đến hết 30/6/2031.
+ * - Lãi trái phiếu Chính phủ, chính quyền địa phương, trái phiếu xanh: miễn; trái phiếu doanh nghiệp: 5%.
  */
 
-// Securities type enum
+// 'fund' = chứng chỉ quỹ mở (ETF, quỹ đóng niêm yết: chọn 'listed')
 export type SecuritiesType = 'listed' | 'unlisted' | 'fund' | 'bond';
 
-// Tax calculation method for unlisted securities
-export type TaxMethod = 'transaction' | 'capitalGains';
-
 // Bond types
-export type BondType = 'government' | 'corporate';
+export type BondType = 'government' | 'localGovernment' | 'green' | 'corporate';
 
 // Individual securities transaction
 export interface SecuritiesTransaction {
@@ -21,8 +25,8 @@ export interface SecuritiesTransaction {
   quantity: number;
   buyPrice: number;
   sellPrice: number;
-  buyDate: string;
-  sellDate: string;
+  buyDate: string; // YYYY-MM-DD (cần cho chứng chỉ quỹ mở)
+  sellDate: string; // YYYY-MM-DD (trống = hôm nay)
   buyFee: number;
   sellFee: number;
 }
@@ -36,6 +40,7 @@ export interface DividendEntry {
   shares: number;
   exDate: string;
   taxWithheld: number;
+  fromFund?: boolean; // Lợi tức chia từ quỹ đầu tư chứng khoán / quỹ đầu tư BĐS
 }
 
 // Bond interest entry
@@ -54,8 +59,7 @@ export interface SecuritiesTaxInput {
   transactions: SecuritiesTransaction[];
   dividends: DividendEntry[];
   bonds: BondInterestEntry[];
-  taxMethod: TaxMethod;
-  taxYear: 2025 | 2026;
+  calculationDate?: Date; // Ngày tính (mặc định hôm nay): ngày bán trống, ngày nhận lợi tức quỹ
 }
 
 // Individual transaction result
@@ -69,9 +73,9 @@ export interface TransactionTaxResult {
   capitalGain: number;
   taxableAmount: number;
   tax: number;
-  taxRate: number;
-  taxMethod: TaxMethod;
+  taxRate: number; // %
   netProfit: number;
+  note?: string; // Lý do miễn thuế
 }
 
 // Dividend tax result
@@ -121,82 +125,57 @@ export interface SecuritiesTaxResult {
     totalIncome: number;
     totalTax: number;
     totalNet: number;
-    effectiveTaxRate: number;
+    effectiveTaxRate: number; // % thuế / tổng tiền nhận (giá bán + cổ tức + lãi)
   };
 }
 
 // Tax rates
 export const SECURITIES_TAX_RATES = {
-  // Listed securities: 0.1% on transaction value (no option for capital gains)
-  listed: 0.001,
-
-  // Unlisted securities: 0.1% on transaction OR 20% on capital gains
-  unlisted: {
-    transaction: 0.001,
-    capitalGains: 0.20,
-  },
-
-  // Investment funds: 0.1% on transaction
-  fund: 0.001,
-
-  // Bonds: 5% on interest (except government bonds which are 0%)
+  transfer: 0.001, // Mọi chứng khoán: 0,1% giá chuyển nhượng
+  dividend: 0.05, // Cổ tức, lợi tức: 5%
+  fundDistribution: 0.025, // Lợi tức từ quỹ đầu tư CK/quỹ BĐS: giảm 50%
   bond: {
+    government: 0, // Miễn (Luật Điều 4 khoản 6)
+    localGovernment: 0, // Miễn (Luật Điều 4 khoản 6)
+    green: 0, // Miễn (Luật Điều 4 khoản 16)
     corporate: 0.05,
-    government: 0,
   },
-
-  // Dividends: 5%
-  dividend: 0.05,
 };
+
+const LAW_109_EFFECTIVE = new Date(2026, 6, 1); // Luật 109/2025/QH15, NĐ 253/2026 có hiệu lực
+const FUND_DISTRIBUTION_REDUCTION_END = new Date(2031, 6, 1); // giảm 50% đến hết 30/6/2031
+
+function parseDate(value: string | undefined): Date | null {
+  const [y, m, d] = (value ?? '').split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
+}
+
+/**
+ * Chứng chỉ quỹ mở nắm giữ từ đủ 02 năm kể từ ngày mua, bán từ 01/7/2026: miễn thuế
+ * (Luật Điều 5 khoản 4; NĐ 253/2026 Điều 43 - áp dụng cả chứng chỉ mua trước 01/7/2026).
+ */
+export function isOpenFundExempt(buyDate: string, sellDate: Date): boolean {
+  const buy = parseDate(buyDate);
+  if (!buy || sellDate < LAW_109_EFFECTIVE) return false;
+  return sellDate >= new Date(buy.getFullYear() + 2, buy.getMonth(), buy.getDate());
+}
 
 /**
  * Calculate tax for a single securities transaction
  */
 export function calculateTransactionTax(
   transaction: SecuritiesTransaction,
-  method: TaxMethod
+  calculationDate: Date = new Date()
 ): TransactionTaxResult {
   const buyValue = transaction.quantity * transaction.buyPrice;
   const sellValue = transaction.quantity * transaction.sellPrice;
   const totalFees = transaction.buyFee + transaction.sellFee;
   const capitalGain = sellValue - buyValue - totalFees;
 
-  let tax = 0;
-  let taxRate = 0;
-  let taxableAmount = 0;
-  let usedMethod = method;
-
-  switch (transaction.type) {
-    case 'listed':
-    case 'fund':
-      // Always 0.1% on sell value
-      taxRate = SECURITIES_TAX_RATES.listed;
-      taxableAmount = sellValue;
-      tax = sellValue * taxRate;
-      usedMethod = 'transaction';
-      break;
-
-    case 'unlisted':
-      if (method === 'capitalGains') {
-        // 20% on capital gains (if profitable)
-        taxRate = SECURITIES_TAX_RATES.unlisted.capitalGains;
-        taxableAmount = Math.max(0, capitalGain);
-        tax = taxableAmount * taxRate;
-      } else {
-        // 0.1% on sell value
-        taxRate = SECURITIES_TAX_RATES.unlisted.transaction;
-        taxableAmount = sellValue;
-        tax = sellValue * taxRate;
-      }
-      break;
-
-    case 'bond':
-      // Bonds are handled separately (interest income)
-      taxRate = 0;
-      taxableAmount = 0;
-      tax = 0;
-      break;
-  }
+  const sellDate = parseDate(transaction.sellDate) ?? calculationDate;
+  const exempt = transaction.type === 'fund' && isOpenFundExempt(transaction.buyDate, sellDate);
+  const taxRate = exempt ? 0 : SECURITIES_TAX_RATES.transfer;
+  const tax = Math.round(sellValue * taxRate);
 
   return {
     id: transaction.id,
@@ -206,20 +185,26 @@ export function calculateTransactionTax(
     sellValue,
     totalFees,
     capitalGain,
-    taxableAmount,
-    tax: Math.round(tax),
+    taxableAmount: exempt ? 0 : sellValue,
+    tax,
     taxRate: taxRate * 100,
-    taxMethod: usedMethod,
     netProfit: capitalGain - tax,
+    note: exempt ? 'Miễn thuế: chứng chỉ quỹ mở nắm giữ từ đủ 2 năm (NĐ 253/2026 Điều 43)' : undefined,
   };
 }
 
 /**
  * Calculate tax for dividend income
  */
-export function calculateDividendTax(dividend: DividendEntry): DividendTaxResult {
+export function calculateDividendTax(
+  dividend: DividendEntry,
+  calculationDate: Date = new Date()
+): DividendTaxResult {
   const grossDividend = dividend.dividendPerShare * dividend.shares;
-  const taxRate = SECURITIES_TAX_RATES.dividend;
+  const reduced = dividend.fromFund === true
+    && calculationDate >= LAW_109_EFFECTIVE
+    && calculationDate < FUND_DISTRIBUTION_REDUCTION_END;
+  const taxRate = reduced ? SECURITIES_TAX_RATES.fundDistribution : SECURITIES_TAX_RATES.dividend;
   const tax = Math.round(grossDividend * taxRate);
 
   return {
@@ -236,7 +221,7 @@ export function calculateDividendTax(dividend: DividendEntry): DividendTaxResult
  * Calculate tax for bond interest
  */
 export function calculateBondInterestTax(bond: BondInterestEntry): BondInterestTaxResult {
-  const taxRate = SECURITIES_TAX_RATES.bond[bond.bondType];
+  const taxRate = SECURITIES_TAX_RATES.bond[bond.bondType] ?? SECURITIES_TAX_RATES.bond.corporate;
   const tax = Math.round(bond.interestReceived * taxRate);
 
   return {
@@ -254,10 +239,10 @@ export function calculateBondInterestTax(bond: BondInterestEntry): BondInterestT
  * Calculate complete securities tax
  */
 export function calculateSecuritiesTax(input: SecuritiesTaxInput): SecuritiesTaxResult {
+  const date = input.calculationDate ?? new Date();
+
   // Calculate transaction taxes
-  const transactionResults = input.transactions.map((t) =>
-    calculateTransactionTax(t, input.taxMethod)
-  );
+  const transactionResults = input.transactions.map((t) => calculateTransactionTax(t, date));
 
   const transactionSummary = {
     results: transactionResults,
@@ -269,7 +254,7 @@ export function calculateSecuritiesTax(input: SecuritiesTaxInput): SecuritiesTax
   };
 
   // Calculate dividend taxes
-  const dividendResults = input.dividends.map(calculateDividendTax);
+  const dividendResults = input.dividends.map((d) => calculateDividendTax(d, date));
 
   const dividendSummary = {
     results: dividendResults,
@@ -299,8 +284,10 @@ export function calculateSecuritiesTax(input: SecuritiesTaxInput): SecuritiesTax
     dividendSummary.totalTax +
     bondSummary.totalTax;
 
-  const totalNet = totalIncome - totalTax;
-  const effectiveTaxRate = totalIncome > 0 ? (totalTax / totalIncome) * 100 : 0;
+  // Thuế tính trên giá bán/cổ tức/lãi nhận được (lãi vốn có thể âm) -> tỷ lệ trên tổng tiền nhận
+  const totalReceived =
+    transactionSummary.totalSellValue + dividendSummary.totalGross + bondSummary.totalInterest;
+  const effectiveTaxRate = totalReceived > 0 ? (totalTax / totalReceived) * 100 : 0;
 
   return {
     transactions: transactionSummary,
@@ -309,54 +296,9 @@ export function calculateSecuritiesTax(input: SecuritiesTaxInput): SecuritiesTax
     summary: {
       totalIncome,
       totalTax,
-      totalNet,
+      totalNet: totalIncome - totalTax,
       effectiveTaxRate: Math.round(effectiveTaxRate * 100) / 100,
     },
-  };
-}
-
-/**
- * Compare transaction vs capital gains method for unlisted securities
- */
-export function compareUnlistedTaxMethods(
-  transactions: SecuritiesTransaction[]
-): {
-  transactionMethod: { totalTax: number; totalNet: number };
-  capitalGainsMethod: { totalTax: number; totalNet: number };
-  recommendation: TaxMethod;
-  savings: number;
-} {
-  const unlistedTransactions = transactions.filter((t) => t.type === 'unlisted');
-
-  const transactionResults = unlistedTransactions.map((t) =>
-    calculateTransactionTax(t, 'transaction')
-  );
-  const capitalGainsResults = unlistedTransactions.map((t) =>
-    calculateTransactionTax(t, 'capitalGains')
-  );
-
-  const transactionTotal = {
-    totalTax: transactionResults.reduce((sum, t) => sum + t.tax, 0),
-    totalNet: transactionResults.reduce((sum, t) => sum + t.netProfit, 0),
-  };
-
-  const capitalGainsTotal = {
-    totalTax: capitalGainsResults.reduce((sum, t) => sum + t.tax, 0),
-    totalNet: capitalGainsResults.reduce((sum, t) => sum + t.netProfit, 0),
-  };
-
-  const recommendation: TaxMethod =
-    transactionTotal.totalTax <= capitalGainsTotal.totalTax
-      ? 'transaction'
-      : 'capitalGains';
-
-  const savings = Math.abs(transactionTotal.totalTax - capitalGainsTotal.totalTax);
-
-  return {
-    transactionMethod: transactionTotal,
-    capitalGainsMethod: capitalGainsTotal,
-    recommendation,
-    savings,
   };
 }
 

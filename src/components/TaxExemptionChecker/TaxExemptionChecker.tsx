@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ExemptionCategory,
-  ExemptionRule,
   ExemptionCheckInput,
   ExemptionCheckResult,
   checkExemption,
@@ -11,9 +10,9 @@ import {
   getNew2026Exemptions,
   getOriginalExemptions,
   searchExemptions,
-  formatCurrency,
   EXEMPTION_RULES,
 } from '@/lib/taxExemptionChecker';
+import { formatCurrency, formatDate, parseCurrency } from '@/lib/taxCalculator';
 
 type ViewMode = 'list' | 'check';
 
@@ -24,6 +23,7 @@ export function TaxExemptionChecker() {
   const [selectedCategory, setSelectedCategory] =
     useState<ExemptionCategory | null>(null);
   const [incomeAmount, setIncomeAmount] = useState(0);
+  const [excessAmount, setExcessAmount] = useState(0);
   const [conditionAnswers, setConditionAnswers] = useState<
     Record<string, boolean>
   >({});
@@ -61,14 +61,15 @@ export function TaxExemptionChecker() {
   const handleCategorySelect = (category: ExemptionCategory) => {
     setSelectedCategory(category);
     setConditionAnswers({});
+    setExcessAmount(0);
     setCheckResult(null);
   };
 
-  // Handle condition toggle
-  const handleConditionToggle = (index: number) => {
+  // Handle condition toggle (key: condition_<i> hoặc case_<i>)
+  const handleConditionToggle = (key: string) => {
     setConditionAnswers((prev) => ({
       ...prev,
-      [`condition_${index}`]: !prev[`condition_${index}`],
+      [key]: !prev[key],
     }));
   };
 
@@ -80,6 +81,7 @@ export function TaxExemptionChecker() {
       category: selectedCategory,
       incomeAmount,
       answers: conditionAnswers,
+      excessAmount,
     };
 
     const result = checkExemption(input);
@@ -90,29 +92,10 @@ export function TaxExemptionChecker() {
   const resetCheck = () => {
     setSelectedCategory(null);
     setIncomeAmount(0);
+    setExcessAmount(0);
     setConditionAnswers({});
     setCheckResult(null);
     setViewMode('list');
-  };
-
-  // Format number input
-  const formatNumberInput = (value: string): number => {
-    const num = value.replace(/[^\d]/g, '');
-    return parseInt(num, 10) || 0;
-  };
-
-  // Status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'exempt':
-        return 'bg-green-100 text-green-800';
-      case 'partial':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'needs_review':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-red-100 text-red-800';
-    }
   };
 
   // Status label
@@ -137,42 +120,35 @@ export function TaxExemptionChecker() {
           Kiểm tra miễn thuế TNCN
         </h2>
         <p className="text-purple-100">
-          21 khoản thu nhập được miễn thuế theo Luật Thuế TNCN sửa đổi 2025
+          Thu nhập miễn thuế theo Điều 4, Điều 5 Luật Thuế TNCN 109/2025/QH15 (NĐ 253/2026/NĐ-CP) và các khoản
+          không tính vào thu nhập chịu thuế
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-3xl font-bold text-purple-600">
-            21
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-bold text-purple-600">
+            {EXEMPTION_RULES.length}
           </div>
-          <div className="text-sm text-gray-600">
-            Khoản miễn thuế
+          <div className="text-xs sm:text-sm text-gray-600">
+            Khoản tra cứu
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-3xl font-bold text-indigo-600">
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-bold text-indigo-600">
             {getOriginalExemptions().length}
           </div>
-          <div className="text-sm text-gray-600">
-            Từ 2007
+          <div className="text-xs sm:text-sm text-gray-600">
+            Có từ trước
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-3xl font-bold text-green-600">
+        <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-bold text-green-600">
             {getNew2026Exemptions().length}
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600">
             Mới 2026
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-3xl font-bold text-amber-600">
-            100%
-          </div>
-          <div className="text-sm text-gray-600">
-            Miễn thuế
           </div>
         </div>
       </div>
@@ -227,7 +203,7 @@ export function TaxExemptionChecker() {
                 htmlFor="showNew2026"
                 className="text-sm text-gray-700"
               >
-                Chỉ hiện quy định mới 2026
+                Chỉ hiện quy định mới, mở rộng 2026
               </label>
             </div>
           </div>
@@ -236,13 +212,13 @@ export function TaxExemptionChecker() {
           {!showNew2026Only && (
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-4 text-white">
               <h3 className="font-bold mb-2">
-                5 khoản miễn thuế MỚI từ 01/01/2026
+                {getNew2026Exemptions().length} khoản miễn thuế mới hoặc mở rộng theo Luật 109/2025/QH15
               </h3>
               <div className="flex flex-wrap gap-2">
                 {getNew2026Exemptions().map((rule) => (
                   <span
                     key={rule.id}
-                    className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm"
+                    className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm"
                   >
                     {rule.name}
                   </span>
@@ -265,7 +241,7 @@ export function TaxExemptionChecker() {
                         {rule.name}
                       </h3>
                       {rule.isNew2026 && (
-                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium shrink-0 whitespace-nowrap">
                           Mới 2026
                         </span>
                       )}
@@ -275,6 +251,7 @@ export function TaxExemptionChecker() {
                     </p>
                     <div className="text-xs text-gray-500">
                       {rule.legalReference}
+                      {rule.effectiveFrom && ` · áp dụng từ ${formatDate(rule.effectiveFrom)}`}
                     </div>
                   </div>
                   <button
@@ -289,24 +266,31 @@ export function TaxExemptionChecker() {
                 </div>
 
                 {/* Conditions preview */}
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="text-xs font-medium text-gray-700 mb-2">
-                    Điều kiện:
-                  </div>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    {rule.conditions.slice(0, 3).map((cond, i) => (
-                      <li key={i} className="flex items-start gap-1">
-                        <span className="text-purple-500">•</span>
-                        {cond}
-                      </li>
-                    ))}
-                    {rule.conditions.length > 3 && (
-                      <li className="text-purple-600">
-                        +{rule.conditions.length - 3} điều kiện khác...
-                      </li>
-                    )}
-                  </ul>
-                </div>
+                {[
+                  { title: 'Điều kiện:', items: rule.conditions },
+                  { title: 'Thuộc một trong các trường hợp:', items: rule.anyOf ?? [] },
+                ]
+                  .filter((group) => group.items.length > 0)
+                  .map((group) => (
+                    <div key={group.title} className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="text-xs font-medium text-gray-700 mb-2">
+                        {group.title}
+                      </div>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {group.items.slice(0, 3).map((cond, i) => (
+                          <li key={i} className="flex items-start gap-1">
+                            <span className="text-purple-500">•</span>
+                            {cond}
+                          </li>
+                        ))}
+                        {group.items.length > 3 && (
+                          <li className="text-purple-600">
+                            +{group.items.length - 3} mục khác...
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  ))}
               </div>
             ))}
 
@@ -336,14 +320,14 @@ export function TaxExemptionChecker() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">-- Chọn loại miễn thuế --</option>
-                <optgroup label="Quy định từ 2007">
+                <optgroup label="Có từ trước 2026">
                   {getOriginalExemptions().map((rule) => (
                     <option key={rule.id} value={rule.id}>
                       {rule.name}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Quy định mới 2026">
+                <optgroup label="Mới hoặc mở rộng theo Luật 109/2025/QH15">
                   {getNew2026Exemptions().map((rule) => (
                     <option key={rule.id} value={rule.id}>
                       {rule.name} (Mới)
@@ -375,14 +359,15 @@ export function TaxExemptionChecker() {
 
               {/* Income amount */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="exemption-income" className="block text-sm font-medium text-gray-700 mb-1">
                   Số tiền thu nhập (VNĐ)
                 </label>
                 <input
+                  id="exemption-income"
                   type="text"
                   value={incomeAmount > 0 ? incomeAmount.toLocaleString('vi-VN') : ''}
                   onChange={(e) =>
-                    setIncomeAmount(formatNumberInput(e.target.value))
+                    setIncomeAmount(parseCurrency(e.target.value))
                   }
                   placeholder="Nhập số tiền thu nhập"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
@@ -390,29 +375,57 @@ export function TaxExemptionChecker() {
               </div>
 
               {/* Conditions checklist */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-3">
-                  Kiểm tra các điều kiện:
+              {[
+                { title: 'Đáp ứng tất cả các điều kiện:', prefix: 'condition', items: selectedRule.conditions },
+                { title: 'Thuộc ít nhất một trường hợp:', prefix: 'case', items: selectedRule.anyOf ?? [] },
+              ]
+                .filter((group) => group.items.length > 0)
+                .map((group) => (
+                  <div key={group.prefix} className="mb-6">
+                    <div className="text-sm font-medium text-gray-700 mb-3">
+                      {group.title}
+                    </div>
+                    <div className="space-y-3">
+                      {group.items.map((condition, index) => {
+                        const key = `${group.prefix}_${index}`;
+                        return (
+                          <label
+                            key={key}
+                            className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={conditionAnswers[key] || false}
+                              onChange={() => handleConditionToggle(key)}
+                              className="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {condition}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+              {/* Phần vượt mức luật định (chịu thuế) */}
+              {selectedRule.excessLabel && (
+                <div className="mb-6">
+                  <label htmlFor="exemption-excess" className="block text-sm font-medium text-gray-700 mb-1">
+                    {selectedRule.excessLabel}
+                  </label>
+                  <input
+                    id="exemption-excess"
+                    type="text"
+                    inputMode="numeric"
+                    value={excessAmount > 0 ? excessAmount.toLocaleString('vi-VN') : ''}
+                    onChange={(e) => setExcessAmount(parseCurrency(e.target.value))}
+                    placeholder="Để trống nếu không vượt mức"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500"
+                  />
                 </div>
-                <div className="space-y-3">
-                  {selectedRule.conditions.map((condition, index) => (
-                    <label
-                      key={index}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={conditionAnswers[`condition_${index}`] || false}
-                        onChange={() => handleConditionToggle(index)}
-                        className="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span className="text-sm text-gray-700">
-                        {condition}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* Required documents */}
               <div className="mb-6 bg-amber-50 rounded-lg p-4">
@@ -456,6 +469,8 @@ export function TaxExemptionChecker() {
                 className={`rounded-xl border-2 p-6 ${
                   checkResult.status === 'exempt'
                     ? 'border-green-500 bg-green-50'
+                    : checkResult.status === 'partial'
+                    ? 'border-amber-500 bg-amber-50'
                     : checkResult.status === 'needs_review'
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-red-500 bg-red-50'
@@ -466,6 +481,8 @@ export function TaxExemptionChecker() {
                     className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
                       checkResult.status === 'exempt'
                         ? 'bg-green-500 text-white'
+                        : checkResult.status === 'partial'
+                        ? 'bg-amber-500 text-white'
                         : checkResult.status === 'needs_review'
                         ? 'bg-blue-500 text-white'
                         : 'bg-red-500 text-white'
@@ -473,6 +490,8 @@ export function TaxExemptionChecker() {
                   >
                     {checkResult.status === 'exempt'
                       ? '✓'
+                      : checkResult.status === 'partial'
+                      ? '½'
                       : checkResult.status === 'needs_review'
                       ? '?'
                       : '✕'}
@@ -482,6 +501,8 @@ export function TaxExemptionChecker() {
                       className={`font-bold text-xl ${
                         checkResult.status === 'exempt'
                           ? 'text-green-700'
+                          : checkResult.status === 'partial'
+                          ? 'text-amber-700'
                           : checkResult.status === 'needs_review'
                           ? 'text-blue-700'
                           : 'text-red-700'
@@ -499,6 +520,8 @@ export function TaxExemptionChecker() {
                   className={`text-sm mb-4 ${
                     checkResult.status === 'exempt'
                       ? 'text-green-700'
+                      : checkResult.status === 'partial'
+                      ? 'text-amber-700'
                       : checkResult.status === 'needs_review'
                       ? 'text-blue-700'
                       : 'text-red-700'
@@ -609,7 +632,8 @@ export function TaxExemptionChecker() {
             Cần chuẩn bị đầy đủ hồ sơ chứng minh theo quy định
           </li>
           <li>
-            Quy định mới 2026 có hiệu lực từ ngày 01/01/2026
+            Luật Thuế TNCN 109/2025/QH15 có hiệu lực từ 01/7/2026; quy định về tiền lương, tiền công áp dụng từ
+            kỳ tính thuế 2026 (01/01/2026)
           </li>
         </ul>
       </div>
