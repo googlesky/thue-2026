@@ -7,6 +7,7 @@ import {
   DEDUCTION_COMPARISON,
   REFORM_2026_HIGHLIGHTS,
   formatCurrency,
+  formatDecimal,
   type TaxLawMilestone,
   type TaxLawPeriod,
 } from '@/lib/taxLawHistory';
@@ -186,7 +187,7 @@ function DeductionHistory() {
               <td className="text-right py-2 px-3">{formatCurrency(item.dependentDeduction)}</td>
               <td className="text-right py-2 px-3">
                 {item.personalPercentChange !== null ? (
-                  <span className="text-green-600">+{item.personalPercentChange.toFixed(1)}%</span>
+                  <span className="text-green-600">+{formatDecimal(item.personalPercentChange)}%</span>
                 ) : (
                   <span className="text-gray-500">-</span>
                 )}
@@ -209,7 +210,6 @@ export default function TaxLawHistory() {
   if (!oldPeriod || !newPeriod) {
     return (
       <div className="card text-center py-12">
-        <div className="text-6xl mb-4">⚠️</div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Lỗi dữ liệu</h3>
         <p className="text-gray-500">Không tìm thấy thông tin về giai đoạn luật thuế</p>
       </div>
@@ -221,8 +221,10 @@ export default function TaxLawHistory() {
       {/* Header Card */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
-            <span className="text-2xl">📜</span>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">Lịch sử Luật Thuế TNCN</h2>
@@ -232,11 +234,10 @@ export default function TaxLawHistory() {
 
         {/* Key Highlights 2026 */}
         <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-4 mb-4">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="text-lg">🎯</span>
+          <h3 className="font-semibold text-gray-900 mb-3">
             Điểm nhấn cải cách 2026
           </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white/80 rounded-lg p-3">
               <div className="text-2xl font-bold text-primary-600">
                 {REFORM_2026_HIGHLIGHTS.brackets.old} → {REFORM_2026_HIGHLIGHTS.brackets.new}
@@ -245,13 +246,13 @@ export default function TaxLawHistory() {
             </div>
             <div className="bg-white/80 rounded-lg p-3">
               <div className="text-2xl font-bold text-green-600">
-                +{(REFORM_2026_HIGHLIGHTS.deductions.personal.increase / 1_000_000).toFixed(1)}tr
+                +{formatDecimal(REFORM_2026_HIGHLIGHTS.deductions.personal.increase / 1_000_000)} triệu
               </div>
               <div className="text-sm text-gray-600">Giảm trừ bản thân</div>
             </div>
             <div className="bg-white/80 rounded-lg p-3">
               <div className="text-2xl font-bold text-green-600">
-                +{(REFORM_2026_HIGHLIGHTS.deductions.dependent.increase / 1_000_000).toFixed(1)}tr
+                +{formatDecimal(REFORM_2026_HIGHLIGHTS.deductions.dependent.increase / 1_000_000)} triệu
               </div>
               <div className="text-sm text-gray-600">Giảm trừ NPT</div>
             </div>
@@ -339,10 +340,7 @@ export default function TaxLawHistory() {
           <BracketComparison oldPeriod={oldPeriod} newPeriod={newPeriod} />
 
           <div className="mt-6 p-4 bg-amber-50 rounded-xl">
-            <h4 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
-              <span>💡</span>
-              Lưu ý quan trọng
-            </h4>
+            <h4 className="font-medium text-amber-800 mb-2">Lưu ý quan trọng</h4>
             <ul className="text-sm text-amber-700 space-y-1.5">
               <li className="flex items-start gap-2">
                 <span>•</span>
@@ -350,11 +348,15 @@ export default function TaxLawHistory() {
               </li>
               <li className="flex items-start gap-2">
                 <span>•</span>
-                Khoảng thu nhập chịu mức 5% và 10% được mở rộng gấp đôi
+                Khoảng thu nhập chịu thuế suất 5% rộng gấp đôi (5 → 10 triệu), khoảng 10% rộng gấp bốn (5 → 20 triệu)
               </li>
               <li className="flex items-start gap-2">
                 <span>•</span>
-                Người có thu nhập trung bình (20-50 triệu) được hưởng lợi nhiều nhất
+                Người có thu nhập trung bình (20–50 triệu) được hưởng lợi nhiều nhất
+              </li>
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                Căn cứ: {REFORM_2026_HIGHLIGHTS.legalBasis.taxBrackets}; giảm trừ: {REFORM_2026_HIGHLIGHTS.legalBasis.deductions}
               </li>
             </ul>
           </div>
@@ -367,7 +369,7 @@ export default function TaxLawHistory() {
           <h3 className="font-semibold text-gray-900 mb-4">Lịch sử thay đổi mức giảm trừ</h3>
           <DeductionHistory />
 
-          <div className="mt-6 grid sm:grid-cols-2 gap-4">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-green-50 rounded-xl">
               <h4 className="font-medium text-green-800 mb-2">Giảm trừ bản thân</h4>
               <div className="flex items-baseline gap-2">
@@ -377,7 +379,7 @@ export default function TaxLawHistory() {
                 <span className="text-sm text-green-600">/tháng</span>
               </div>
               <p className="text-sm text-green-700 mt-1">
-                Tăng {REFORM_2026_HIGHLIGHTS.deductions.personal.percentChange}% so với giai đoạn trước
+                Tăng {formatDecimal(REFORM_2026_HIGHLIGHTS.deductions.personal.percentChange)}% so với giai đoạn trước
               </p>
             </div>
 
@@ -390,7 +392,7 @@ export default function TaxLawHistory() {
                 <span className="text-sm text-blue-600">/người/tháng</span>
               </div>
               <p className="text-sm text-blue-700 mt-1">
-                Tăng {REFORM_2026_HIGHLIGHTS.deductions.dependent.percentChange}% so với giai đoạn trước
+                Tăng {formatDecimal(REFORM_2026_HIGHLIGHTS.deductions.dependent.percentChange)}% so với giai đoạn trước
               </p>
             </div>
           </div>
@@ -399,14 +401,15 @@ export default function TaxLawHistory() {
 
       {/* Benefits Card */}
       <div className="card bg-gradient-to-br from-primary-50 to-blue-50">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="text-lg">✨</span>
+        <h3 className="font-semibold text-gray-900 mb-4">
           Lợi ích của cải cách 2026
         </h3>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {REFORM_2026_HIGHLIGHTS.benefits.map((benefit, index) => (
             <div key={index} className="flex items-start gap-2 bg-white/80 rounded-lg p-3">
-              <span className="text-green-500 mt-0.5">✓</span>
+              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
               <span className="text-sm text-gray-700">{benefit}</span>
             </div>
           ))}

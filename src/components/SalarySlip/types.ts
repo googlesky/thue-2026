@@ -36,7 +36,7 @@ export interface EarningsSection {
 
 export interface DeductionsSection {
   bhxh: number; // 8%
-  bhyt: number; // 1.5%
+  bhyt: number; // 1,5%
   bhtn: number; // 1%
   personalIncomeTax: number;
   otherDeductions: number;
@@ -101,11 +101,12 @@ export const DEFAULT_SALARY_SLIP_DATA: SalarySlipData = {
   deductions: DEFAULT_DEDUCTIONS,
 };
 
-// Allowance presets
+// Allowance presets (id trùng khóa AllowancesState để tính thuế qua engine; id khác = chịu thuế)
 export const ALLOWANCE_PRESETS = [
   { id: 'meal', label: 'Phụ cấp ăn trưa' },
   { id: 'phone', label: 'Phụ cấp điện thoại' },
   { id: 'transport', label: 'Phụ cấp xăng xe' },
+  { id: 'clothing', label: 'Phụ cấp trang phục' },
   { id: 'housing', label: 'Phụ cấp nhà ở' },
   { id: 'position', label: 'Phụ cấp chức vụ' },
   { id: 'responsibility', label: 'Phụ cấp trách nhiệm' },

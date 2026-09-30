@@ -17,7 +17,9 @@ export interface PDFOptions {
 }
 
 /**
- * Export HTML element to PDF using html2canvas + jsPDF
+ * Export HTML element to PDF using html2canvas + jsPDF.
+ * `title` ghi vào thuộc tính tài liệu PDF (Unicode): font chuẩn của jsPDF không có dấu tiếng Việt,
+ * tiêu đề hiển thị phải nằm sẵn trong element.
  */
 export async function exportToPDF(
   element: HTMLElement,
@@ -45,34 +47,26 @@ export async function exportToPDF(
       unit: 'mm',
       format: pageSize,
     });
+    pdf.setProperties({ title });
 
     // Get page dimensions
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
     // Calculate image dimensions to fit page
-    const imgWidth = pageWidth - 20; // 10mm margin each side
+    const margin = 10;
+    const imgWidth = pageWidth - 2 * margin;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const sliceHeight = pageHeight - 2 * margin; // phần ảnh hiện trên mỗi trang
 
-    // Add title
-    pdf.setFontSize(16);
-    pdf.text(title, pageWidth / 2, 15, { align: 'center' });
-
-    // Add image (may span multiple pages)
-    let heightLeft = imgHeight;
-    let position = 25; // Start after title
-
-    // First page
+    // Mỗi trang vẽ cả ảnh, dịch lên theo offset, rồi phủ trắng 2 lề để không lặp/tràn nội dung
     const imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-    heightLeft -= (pageHeight - position);
-
-    // Additional pages if needed
-    while (heightLeft > 0) {
-      pdf.addPage();
-      position = 10;
-      pdf.addImage(imgData, 'PNG', 10, position - (imgHeight - heightLeft), imgWidth, imgHeight);
-      heightLeft -= (pageHeight - position);
+    for (let offset = 0; offset < imgHeight; offset += sliceHeight) {
+      if (offset > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, margin - offset, imgWidth, imgHeight);
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, margin, 'F');
+      pdf.rect(0, pageHeight - margin, pageWidth, margin, 'F');
     }
 
     // Save PDF
@@ -91,10 +85,12 @@ export interface ExcelRow {
   [key: string]: string | number | undefined;
 }
 
-export interface ExcelSheet {
-  name: string;
-  headers: string[];
-  rows: ExcelRow[];
+// Ô bắt đầu bằng = + - @ (hoặc tab, CR) bị Excel coi là công thức → thêm ' phía trước
+export function csvCell(value: string | number | undefined | null): string {
+  if (value === undefined || value === null) return '""';
+  if (typeof value === 'number') return value.toString();
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 /**
@@ -105,17 +101,10 @@ function toCSV(headers: string[], rows: ExcelRow[]): string {
   const BOM = '\uFEFF';
 
   // Format header row
-  const headerRow = headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',');
+  const headerRow = headers.map(csvCell).join(',');
 
   // Format data rows
-  const dataRows = rows.map(row => {
-    return headers.map(header => {
-      const value = row[header];
-      if (value === undefined || value === null) return '""';
-      if (typeof value === 'number') return value.toString();
-      return `"${String(value).replace(/"/g, '""')}"`;
-    }).join(',');
-  });
+  const dataRows = rows.map(row => headers.map(header => csvCell(row[header])).join(','));
 
   return BOM + [headerRow, ...dataRows].join('\r\n');
 }
@@ -133,128 +122,14 @@ export function exportToCSV(
   downloadBlob(blob, filename);
 }
 
-/**
- * Export multiple sheets to Excel-compatible format
- * Uses SYLK format for basic Excel compatibility without external libraries
- */
-export function exportToExcel(
-  sheets: ExcelSheet[],
-  filename: string = 'bao-cao-thue.xlsx'
-): void {
-  // For simplicity, export first sheet as CSV (Excel can open it)
-  // Full Excel support would require xlsx library
-  if (sheets.length === 0) return;
-
-  const sheet = sheets[0];
-  const csv = toCSV(sheet.headers, sheet.rows);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-
-  // Change extension to .csv for proper opening
-  const csvFilename = filename.replace(/\.xlsx?$/, '.csv');
-  downloadBlob(blob, csvFilename);
-}
-
 // ============================================
 // Tax Data Export Helpers
 // ============================================
 
-export interface TaxExportData {
-  personalInfo?: {
-    fullName?: string;
-    taxCode?: string;
-    idNumber?: string;
-    employer?: string;
-  };
-  period: {
-    year: number;
-    month?: number;
-  };
-  income: {
-    grossIncome: number;
-    allowances?: number;
-    totalInsurance: number;
-  };
-  deductions: {
-    personalDeduction: number;
-    dependentDeduction: number;
-    numberOfDependents: number;
-    otherDeductions?: number;
-  };
-  tax: {
-    taxableIncome: number;
-    taxAmount: number;
-    taxPaid?: number;
-    netIncome: number;
-    effectiveRate?: number;
-  };
-}
-
-/**
- * Format tax data for export
- */
-export function formatTaxDataForExport(data: TaxExportData): ExcelSheet {
-  const { personalInfo, period, income, deductions, tax } = data;
-
-  const periodStr = period.month
-    ? `Tháng ${period.month}/${period.year}`
-    : `Năm ${period.year}`;
-
-  const rows: ExcelRow[] = [
-    // Personal Info Section
-    { 'Mục': 'THÔNG TIN CÁ NHÂN', 'Giá trị': '' },
-    { 'Mục': 'Họ và tên', 'Giá trị': personalInfo?.fullName || '(Chưa nhập)' },
-    { 'Mục': 'Mã số thuế', 'Giá trị': personalInfo?.taxCode || '(Chưa nhập)' },
-    { 'Mục': 'CCCD/CMND', 'Giá trị': personalInfo?.idNumber || '(Chưa nhập)' },
-    { 'Mục': 'Đơn vị công tác', 'Giá trị': personalInfo?.employer || '(Chưa nhập)' },
-    { 'Mục': '', 'Giá trị': '' },
-
-    // Period
-    { 'Mục': 'KỲ TÍNH THUẾ', 'Giá trị': periodStr },
-    { 'Mục': '', 'Giá trị': '' },
-
-    // Income Section
-    { 'Mục': 'THU NHẬP', 'Giá trị': '' },
-    { 'Mục': 'Thu nhập GROSS', 'Giá trị': formatCurrency(income.grossIncome) },
-    { 'Mục': 'Phụ cấp không tính thuế', 'Giá trị': formatCurrency(income.allowances || 0) },
-    { 'Mục': 'Bảo hiểm bắt buộc', 'Giá trị': formatCurrency(income.totalInsurance) },
-    { 'Mục': '', 'Giá trị': '' },
-
-    // Deductions Section
-    { 'Mục': 'GIẢM TRỪ', 'Giá trị': '' },
-    { 'Mục': 'Giảm trừ bản thân', 'Giá trị': formatCurrency(deductions.personalDeduction) },
-    { 'Mục': 'Số người phụ thuộc', 'Giá trị': deductions.numberOfDependents },
-    { 'Mục': 'Giảm trừ người phụ thuộc', 'Giá trị': formatCurrency(deductions.dependentDeduction) },
-    { 'Mục': 'Giảm trừ khác', 'Giá trị': formatCurrency(deductions.otherDeductions || 0) },
-    { 'Mục': '', 'Giá trị': '' },
-
-    // Tax Section
-    { 'Mục': 'THUẾ TNCN', 'Giá trị': '' },
-    { 'Mục': 'Thu nhập chịu thuế', 'Giá trị': formatCurrency(tax.taxableIncome) },
-    { 'Mục': 'Thuế TNCN phải nộp', 'Giá trị': formatCurrency(tax.taxAmount) },
-    { 'Mục': 'Thuế đã tạm nộp', 'Giá trị': formatCurrency(tax.taxPaid || 0) },
-    { 'Mục': 'Thuế còn phải nộp/hoàn', 'Giá trị': formatCurrency(tax.taxAmount - (tax.taxPaid || 0)) },
-    { 'Mục': '', 'Giá trị': '' },
-
-    // Summary
-    { 'Mục': 'KẾT QUẢ', 'Giá trị': '' },
-    { 'Mục': 'Thu nhập NET thực nhận', 'Giá trị': formatCurrency(tax.netIncome) },
-    { 'Mục': 'Thuế suất hiệu dụng', 'Giá trị': `${(tax.effectiveRate || 0).toFixed(2)}%` },
-  ];
-
-  return {
-    name: 'Báo cáo thuế TNCN',
-    headers: ['Mục', 'Giá trị'],
-    rows,
-  };
-}
 
 // ============================================
 // Utility Functions
 // ============================================
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ';
-}
 
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -264,5 +139,6 @@ function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  // Thu hồi URL sau khi trình duyệt bắt đầu tải (revoke ngay có thể hủy tải trên Firefox/Safari)
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

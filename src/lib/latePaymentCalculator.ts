@@ -1,26 +1,33 @@
 /**
- * Late Payment Interest Calculator
- * Tính lãi chậm nộp thuế theo quy định pháp luật Việt Nam
+ * Tính tiền chậm nộp thuế
  *
  * Căn cứ pháp lý:
- * - Luật Quản lý thuế số 38/2019/QH14
- * - Nghị định 125/2020/NĐ-CP về xử phạt vi phạm hành chính về thuế
- * - Thông tư 80/2021/TT-BTC hướng dẫn thi hành Luật Quản lý thuế
+ * - Luật Quản lý thuế số 108/2025/QH15 (Điều 16: tiền chậm nộp 0,03%/ngày; Điều 48: cưỡng chế)
+ * - Nghị định 252/2026/NĐ-CP (Điều 26.1.a: thời gian tính tiền chậm nộp; Điều 3.7: hạn trùng ngày nghỉ)
+ * - Nghị định 125/2020/NĐ-CP (sửa đổi bởi NĐ 102/2021/NĐ-CP, NĐ 310/2025/NĐ-CP): xử phạt vi phạm hành chính về thuế
  *
- * Lãi suất chậm nộp: 0.03%/ngày (tương đương ~10.95%/năm)
+ * Chậm nộp TIỀN thuế không bị phạt tiền, chỉ phải nộp tiền chậm nộp.
  */
 
+import {
+  annualDeadline,
+  daysBetween,
+  daysLate as countLateDays,
+  quarterDeadline,
+  toWorkingDay,
+} from './taxDeadlines';
+
 /**
- * Loại thuế - dùng để xác định deadline mặc định
+ * Loại thuế - dùng để hiển thị hạn nộp theo quy định
  */
 export type TaxType =
-  | 'annual_pit'           // Quyết toán TNCN năm - 31/3 năm sau
-  | 'quarterly_pit'        // TNCN hàng quý - 30 tháng đầu quý sau
-  | 'monthly_vat'          // VAT hàng tháng - 20 tháng sau
-  | 'quarterly_vat'        // VAT hàng quý - 30 tháng đầu quý sau
-  | 'property_transfer'    // Chuyển nhượng BĐS - 10 ngày từ ngày ký HĐ
-  | 'rental_income'        // Thu nhập cho thuê - theo kỳ kê khai
-  | 'household_business'   // Hộ kinh doanh - 30 tháng đầu quý sau
+  | 'annual_pit'           // Quyết toán TNCN năm - cá nhân tự quyết toán: cuối tháng 4 năm sau
+  | 'quarterly_pit'        // TNCN khai quý - cuối tháng đầu quý sau
+  | 'monthly_vat'          // GTGT khai tháng - ngày 20 tháng sau
+  | 'quarterly_vat'        // GTGT khai quý - cuối tháng đầu quý sau
+  | 'property_transfer'    // Chuyển nhượng BĐS - hạn đăng ký biến động / ngày thứ 10
+  | 'rental_income'        // Cho thuê tài sản - 31/7 và 31/01 năm sau (hoặc 1 lần 31/01)
+  | 'household_business'   // Hộ, cá nhân kinh doanh doanh thu trên 1 tỷ - khai quý/tháng
   | 'other';               // Khác
 
 /**
@@ -34,50 +41,50 @@ export interface TaxTypeInfo {
 }
 
 /**
- * Danh sách các loại thuế hỗ trợ
+ * Danh sách các loại thuế hỗ trợ (hạn nộp theo NĐ 252/2026/NĐ-CP Điều 10, NĐ 68/2026/NĐ-CP Điều 8.3)
  */
 export const TAX_TYPES: TaxTypeInfo[] = [
   {
     id: 'annual_pit',
     name: 'Quyết toán TNCN năm',
-    description: 'Thuế thu nhập cá nhân quyết toán cuối năm',
-    defaultDeadlineDescription: 'Ngày 31/3 năm sau năm tính thuế',
+    description: 'Số thuế TNCN còn phải nộp khi quyết toán năm',
+    defaultDeadlineDescription: 'Cá nhân tự quyết toán: ngày cuối cùng của tháng 4 năm sau (tổ chức quyết toán thay: 31/3)',
   },
   {
     id: 'quarterly_pit',
-    name: 'TNCN hàng quý',
-    description: 'Thuế TNCN tạm nộp hàng quý',
-    defaultDeadlineDescription: 'Ngày 30 của tháng đầu quý sau',
+    name: 'TNCN khai quý',
+    description: 'Thuế TNCN khai theo quý (tổ chức khấu trừ từ tiền lương, cá nhân nhận lương từ nước ngoài)',
+    defaultDeadlineDescription: 'Ngày cuối cùng của tháng đầu quý sau',
   },
   {
     id: 'monthly_vat',
-    name: 'VAT hàng tháng',
-    description: 'Thuế giá trị gia tăng kê khai tháng',
+    name: 'GTGT khai tháng',
+    description: 'Thuế giá trị gia tăng khai theo tháng',
     defaultDeadlineDescription: 'Ngày 20 của tháng sau',
   },
   {
     id: 'quarterly_vat',
-    name: 'VAT hàng quý',
-    description: 'Thuế giá trị gia tăng kê khai quý',
-    defaultDeadlineDescription: 'Ngày 30 của tháng đầu quý sau',
+    name: 'GTGT khai quý',
+    description: 'Thuế giá trị gia tăng khai theo quý',
+    defaultDeadlineDescription: 'Ngày cuối cùng của tháng đầu quý sau',
   },
   {
     id: 'property_transfer',
     name: 'Chuyển nhượng BĐS',
-    description: 'Thuế từ chuyển nhượng bất động sản',
-    defaultDeadlineDescription: '10 ngày từ ngày ký hợp đồng',
+    description: 'Thuế TNCN từ chuyển nhượng bất động sản',
+    defaultDeadlineDescription: 'Đã có Giấy chứng nhận: cùng hạn đăng ký biến động (30 ngày); nhà hình thành trong tương lai: ngày thứ 10 kể từ ngày hợp đồng có hiệu lực',
   },
   {
     id: 'rental_income',
-    name: 'Thu nhập cho thuê',
-    description: 'Thuế từ hoạt động cho thuê tài sản',
-    defaultDeadlineDescription: 'Theo kỳ kê khai đã đăng ký',
+    name: 'Cho thuê tài sản',
+    description: 'Thuế từ hoạt động cho thuê bất động sản, tài sản',
+    defaultDeadlineDescription: 'Khai 2 lần/năm: 31/7 và 31/01 năm sau; hoặc khai 1 lần: 31/01 năm sau',
   },
   {
     id: 'household_business',
     name: 'Hộ kinh doanh',
-    description: 'Thuế hộ kinh doanh nộp theo quý',
-    defaultDeadlineDescription: 'Ngày 30 của tháng đầu quý sau',
+    description: 'Hộ, cá nhân kinh doanh doanh thu trên 1 tỷ đồng/năm',
+    defaultDeadlineDescription: 'Khai quý: cuối tháng đầu quý sau; khai tháng (doanh thu trên 50 tỷ): ngày 20 tháng sau',
   },
   {
     id: 'other',
@@ -88,112 +95,93 @@ export const TAX_TYPES: TaxTypeInfo[] = [
 ];
 
 /**
- * Lãi suất chậm nộp theo ngày
- * Quy định: 0.03%/ngày
+ * Mức tính tiền chậm nộp theo ngày: 0,03%/ngày (Luật Quản lý thuế 108/2025 Điều 16.2.a)
  */
-export const INTEREST_RATE_PER_DAY = 0.0003; // 0.03%
+export const INTEREST_RATE_PER_DAY = 0.0003;
 
 /**
- * Lãi suất quy đổi theo năm (để hiển thị)
+ * Quy đổi theo năm (để hiển thị)
  */
-export const INTEREST_RATE_PER_YEAR = INTEREST_RATE_PER_DAY * 365; // ~10.95%
+export const INTEREST_RATE_PER_YEAR = INTEREST_RATE_PER_DAY * 365; // ~10,95%
 
 /**
- * Input để tính lãi chậm nộp
+ * Input để tính tiền chậm nộp
  */
 export interface LatePaymentInput {
   taxType: TaxType;
   taxAmount: number;      // Số tiền thuế phải nộp (VNĐ)
-  dueDate: Date;          // Ngày hết hạn nộp
+  dueDate: Date;          // Hạn nộp theo quy định (chưa dời ngày nghỉ)
   paymentDate: Date;      // Ngày dự kiến nộp (hoặc ngày thực nộp)
 }
 
 /**
- * Kết quả tính lãi chậm nộp
+ * Kết quả tính tiền chậm nộp
  */
 export interface LatePaymentResult {
-  isLate: boolean;              // Có chậm nộp không
-  daysLate: number;             // Số ngày chậm
-  interestRatePerDay: number;   // Lãi suất/ngày (0.0003)
-  interestRatePerYear: number;  // Lãi suất/năm (~10.95%)
-  interestAmount: number;       // Tiền lãi phải trả (VNĐ)
-  totalAmount: number;          // Tổng tiền phải nộp (thuế + lãi)
+  isLate: boolean;              // Có phát sinh tiền chậm nộp không
+  daysLate: number;             // Số ngày tính tiền chậm nộp
+  effectiveDueDate: Date;       // Hạn thực tế (đã dời nếu trùng ngày nghỉ)
+  interestRatePerDay: number;   // 0,0003
+  interestRatePerYear: number;  // ~10,95%
+  interestAmount: number;       // Tiền chậm nộp (VNĐ)
+  totalAmount: number;          // Tổng phải nộp (thuế + tiền chậm nộp)
   taxAmount: number;            // Số tiền thuế gốc
-  dailyInterest: number;        // Lãi mỗi ngày (VNĐ)
+  dailyInterest: number;        // Tiền chậm nộp mỗi ngày (VNĐ)
   warning?: string;             // Cảnh báo nếu có
   legalNote?: string;           // Ghi chú pháp lý
 }
 
 /**
- * Tính số ngày giữa 2 ngày (không tính ngày đầu, tính ngày cuối)
- */
-export function daysBetween(startDate: Date, endDate: Date): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  // Reset về 00:00:00 để tính chính xác số ngày
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  const diffTime = end.getTime() - start.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  return diffDays;
-}
-
-/**
- * Tính lãi chậm nộp thuế
+ * Tính tiền chậm nộp thuế
  *
- * Công thức: Tiền lãi = Số thuế × 0.03% × Số ngày chậm
+ * Công thức: Tiền chậm nộp = Số thuế × 0,03% × Số ngày tính tiền chậm nộp
  */
 export function calculateLatePayment(input: LatePaymentInput): LatePaymentResult {
   const { taxAmount, dueDate, paymentDate } = input;
+  const effectiveDueDate = toWorkingDay(dueDate);
+  const daysLate = countLateDays(dueDate, paymentDate);
+  const base = {
+    daysLate,
+    effectiveDueDate,
+    interestRatePerDay: INTEREST_RATE_PER_DAY,
+    interestRatePerYear: INTEREST_RATE_PER_YEAR,
+    taxAmount,
+  };
 
-  // Tính số ngày chậm
-  const daysLate = daysBetween(dueDate, paymentDate);
-
-  // Nếu không chậm hoặc nộp đúng hạn
-  if (daysLate <= 0) {
+  if (daysLate === 0) {
     return {
+      ...base,
       isLate: false,
-      daysLate: 0,
-      interestRatePerDay: INTEREST_RATE_PER_DAY,
-      interestRatePerYear: INTEREST_RATE_PER_YEAR,
       interestAmount: 0,
       totalAmount: taxAmount,
-      taxAmount,
       dailyInterest: 0,
-      legalNote: 'Nộp thuế đúng hạn, không phát sinh lãi chậm nộp.',
+      legalNote: daysBetween(effectiveDueDate, paymentDate) > 0
+        ? 'Nộp ngày liền sau hạn: số ngày tính tiền chậm nộp bằng 0 (tính từ ngày tiếp theo hạn nộp đến ngày liền trước ngày nộp tiền).'
+        : 'Nộp trong hạn, không phát sinh tiền chậm nộp.',
     };
   }
 
-  // Tính lãi chậm nộp
   const interestAmount = Math.round(taxAmount * INTEREST_RATE_PER_DAY * daysLate);
   const dailyInterest = Math.round(taxAmount * INTEREST_RATE_PER_DAY);
-  const totalAmount = taxAmount + interestAmount;
+  const daysOverdue = daysBetween(effectiveDueDate, paymentDate);
 
-  // Xác định mức độ cảnh báo
   let warning: string | undefined;
-  let legalNote: string | undefined;
-
-  if (daysLate > 90) {
-    warning = 'Chậm nộp trên 90 ngày có thể bị xử phạt hành chính nặng và cưỡng chế thuế.';
-    legalNote = 'Theo Nghị định 125/2020/NĐ-CP, chậm nộp thuế quá 90 ngày có thể bị phạt từ 1-3 lần số tiền thuế trốn nếu cố ý.';
-  } else if (daysLate > 30) {
-    warning = 'Chậm nộp trên 30 ngày, nên nộp sớm để tránh tích lũy lãi.';
-    legalNote = 'Lãi chậm nộp được tính liên tục cho đến ngày thực nộp. Cơ quan thuế có thể áp dụng biện pháp cưỡng chế.';
+  let legalNote: string;
+  if (daysOverdue > 90) {
+    warning = 'Nợ thuế quá 90 ngày kể từ hết hạn nộp: bị cưỡng chế (Luật Quản lý thuế 108/2025 Điều 48) và có thể bị công khai thông tin (NĐ 252/2026/NĐ-CP Điều 4).';
+    legalNote = 'Chậm nộp tiền thuế không bị phạt tiền, chỉ phải nộp tiền chậm nộp. Phạt từ 1 đến 3 lần số thuế chỉ áp dụng khi có hành vi trốn thuế (Luật Quản lý thuế 108/2025 Điều 44, Điều 45).';
+  } else if (daysOverdue > 30) {
+    warning = 'Quá 30 ngày chưa nộp: cơ quan thuế thông báo số tiền thuế nợ và số ngày chậm nộp (Luật Quản lý thuế 108/2025 Điều 16.4). Nên nộp sớm vì tiền chậm nộp tính liên tục.';
+    legalNote = 'Tiền chậm nộp tính liên tục đến ngày liền trước ngày nộp tiền vào ngân sách nhà nước.';
   } else {
-    legalNote = 'Lãi chậm nộp 0.03%/ngày theo Điều 59 Luật Quản lý thuế 2019.';
+    legalNote = 'Tiền chậm nộp 0,03%/ngày (Luật Quản lý thuế 108/2025 Điều 16.2.a); số ngày tính từ ngày tiếp theo hạn nộp đến ngày liền trước ngày nộp tiền (NĐ 252/2026/NĐ-CP Điều 26.1.a).';
   }
 
   return {
+    ...base,
     isLate: true,
-    daysLate,
-    interestRatePerDay: INTEREST_RATE_PER_DAY,
-    interestRatePerYear: INTEREST_RATE_PER_YEAR,
     interestAmount,
-    totalAmount,
-    taxAmount,
+    totalAmount: taxAmount + interestAmount,
     dailyInterest,
     warning,
     legalNote,
@@ -201,83 +189,14 @@ export function calculateLatePayment(input: LatePaymentInput): LatePaymentResult
 }
 
 /**
- * Lấy ngày hết hạn mặc định theo loại thuế
- */
-export function getDefaultDueDate(taxType: TaxType, referenceYear?: number): Date {
-  const year = referenceYear || new Date().getFullYear();
-  const now = new Date();
-
-  switch (taxType) {
-    case 'annual_pit':
-      // Quyết toán TNCN: 31/3 năm sau
-      return new Date(year + 1, 2, 31); // Tháng 3 (index 2), ngày 31
-
-    case 'quarterly_pit':
-    case 'quarterly_vat':
-    case 'household_business': {
-      // Xác định quý hiện tại và deadline
-      const currentMonth = now.getMonth();
-      const currentQuarter = Math.floor(currentMonth / 3);
-      // Deadline là ngày 30 của tháng đầu quý sau
-      const deadlineMonth = (currentQuarter + 1) * 3;
-      return new Date(year, deadlineMonth, 30);
-    }
-
-    case 'monthly_vat': {
-      // VAT hàng tháng: ngày 20 tháng sau
-      const nextMonth = now.getMonth() + 1;
-      const deadlineYear = nextMonth > 11 ? year + 1 : year;
-      const deadlineMonth = nextMonth % 12;
-      return new Date(deadlineYear, deadlineMonth, 20);
-    }
-
-    case 'property_transfer':
-      // Chuyển nhượng BĐS: 10 ngày từ ngày ký HĐ
-      // Trả về ngày hiện tại + 10 ngày làm mặc định
-      const transferDeadline = new Date(now);
-      transferDeadline.setDate(transferDeadline.getDate() + 10);
-      return transferDeadline;
-
-    case 'rental_income':
-    case 'other':
-    default:
-      // Mặc định: cuối tháng hiện tại
-      const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0);
-      return lastDayOfMonth;
-  }
-}
-
-/**
- * Format số tiền VNĐ
- */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-/**
- * Format phần trăm
+ * Format phần trăm kiểu Việt Nam (dấu phẩy thập phân)
  */
 export function formatPercent(value: number, decimals: number = 2): string {
-  return `${(value * 100).toFixed(decimals)}%`;
+  return `${(value * 100).toFixed(decimals).replace('.', ',')}%`;
 }
 
 /**
- * Format ngày tháng
- */
-export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
-}
-
-/**
- * Tạo bảng lãi chậm nộp theo các mốc thời gian
+ * Bảng tiền chậm nộp theo các mốc thời gian
  */
 export interface InterestMilestone {
   days: number;
@@ -298,7 +217,7 @@ export function generateInterestMilestones(taxAmount: number): InterestMilestone
     if (days === 7) label = '1 tuần';
     else if (days === 15) label = '2 tuần';
     else if (days === 30) label = '1 tháng';
-    else if (days === 45) label = '1.5 tháng';
+    else if (days === 45) label = '1,5 tháng';
     else if (days === 60) label = '2 tháng';
     else if (days === 90) label = '3 tháng';
     else if (days === 180) label = '6 tháng';
@@ -315,7 +234,7 @@ export function generateInterestMilestones(taxAmount: number): InterestMilestone
 }
 
 /**
- * Thông tin về các deadline thuế quan trọng trong năm
+ * Hạn nộp thuế quan trọng
  */
 export interface TaxDeadline {
   name: string;
@@ -324,51 +243,52 @@ export interface TaxDeadline {
   taxType: TaxType;
 }
 
-export function getUpcomingDeadlines(year?: number): TaxDeadline[] {
-  const y = year || new Date().getFullYear();
-  const now = new Date();
+/**
+ * Các hạn nộp trong 6 tháng tới (kể cả hôm nay), đã dời nếu trùng ngày nghỉ
+ */
+export function getUpcomingDeadlines(today: Date = new Date()): TaxDeadline[] {
+  const y = today.getFullYear();
+  const all: TaxDeadline[] = [];
 
-  const allDeadlines: TaxDeadline[] = [
-    // Quyết toán TNCN năm trước
-    {
-      name: 'Quyết toán TNCN ' + (y - 1),
-      description: 'Hạn nộp quyết toán thuế TNCN năm ' + (y - 1),
-      date: new Date(y, 2, 31), // 31/3
-      taxType: 'annual_pit',
-    },
-    // VAT/TNCN Quý 1
-    {
-      name: 'Thuế Quý 1/' + y,
-      description: 'Hạn nộp thuế quý 1',
-      date: new Date(y, 3, 30), // 30/4
-      taxType: 'quarterly_pit',
-    },
-    // VAT/TNCN Quý 2
-    {
-      name: 'Thuế Quý 2/' + y,
-      description: 'Hạn nộp thuế quý 2',
-      date: new Date(y, 6, 30), // 30/7
-      taxType: 'quarterly_pit',
-    },
-    // VAT/TNCN Quý 3
-    {
-      name: 'Thuế Quý 3/' + y,
-      description: 'Hạn nộp thuế quý 3',
-      date: new Date(y, 9, 30), // 30/10
-      taxType: 'quarterly_pit',
-    },
-    // VAT/TNCN Quý 4
-    {
-      name: 'Thuế Quý 4/' + y,
-      description: 'Hạn nộp thuế quý 4',
-      date: new Date(y + 1, 0, 30), // 30/1 năm sau
-      taxType: 'quarterly_pit',
-    },
-  ];
+  for (const year of [y - 1, y, y + 1]) {
+    all.push(
+      {
+        name: `Quyết toán thuế năm ${year} (tổ chức)`,
+        description: 'Tổ chức trả thu nhập quyết toán TNCN (kể cả quyết toán thay), quyết toán TNDN',
+        date: annualDeadline(year, 'org'),
+        taxType: 'other',
+      },
+      {
+        name: `Quyết toán TNCN năm ${year} (cá nhân)`,
+        description: 'Cá nhân tự quyết toán: nộp hồ sơ và số thuế còn thiếu',
+        date: annualDeadline(year, 'individual'),
+        taxType: 'annual_pit',
+      },
+      {
+        name: `Cho thuê tài sản 6 tháng đầu ${year}`,
+        description: 'Khai lần 1 nếu chọn khai 2 lần/năm',
+        date: toWorkingDay(new Date(year, 6, 31)),
+        taxType: 'rental_income',
+      },
+      {
+        name: `Cho thuê tài sản năm ${year}`,
+        description: 'Khai lần 2, hoặc khai 1 lần cho cả năm',
+        date: toWorkingDay(new Date(year + 1, 0, 31)),
+        taxType: 'rental_income',
+      },
+    );
+    for (const q of [1, 2, 3, 4] as const) {
+      all.push({
+        name: `Thuế quý ${q}/${year}`,
+        description: 'Khai, nộp thuế quý (TNCN đã khấu trừ, GTGT, hộ kinh doanh)',
+        date: quarterDeadline(year, q),
+        taxType: 'quarterly_pit',
+      });
+    }
+  }
 
-  // Lọc các deadline sắp tới (trong vòng 6 tháng)
-  const sixMonthsLater = new Date(now);
-  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-
-  return allDeadlines.filter(d => d.date >= now && d.date <= sixMonthsLater);
+  const end = new Date(y, today.getMonth() + 6, today.getDate());
+  return all
+    .filter(d => daysBetween(today, d.date) >= 0 && daysBetween(d.date, end) >= 0)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 }

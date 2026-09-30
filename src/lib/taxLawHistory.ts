@@ -28,7 +28,7 @@ export interface TaxLawPeriod {
   brackets: TaxBracketHistorical[];
 }
 
-// Key milestones in Vietnam PIT law history
+// Key milestones in Vietnam PIT law history (theo thứ tự thời gian)
 export const TAX_LAW_MILESTONES: TaxLawMilestone[] = [
   {
     id: '2007-enact',
@@ -37,91 +37,114 @@ export const TAX_LAW_MILESTONES: TaxLawMilestone[] = [
     description: 'Quốc hội thông qua Luật Thuế Thu nhập cá nhân số 04/2007/QH12',
     type: 'enacted',
     changes: [
-      'Thay thế Pháp lệnh Thuế TNCN 2001',
-      'Áp dụng biểu thuế lũy tiến 7 bậc',
+      'Thay thế Pháp lệnh Thuế thu nhập đối với người có thu nhập cao',
+      'Áp dụng biểu thuế lũy tiến từng phần 7 bậc (5% – 35%)',
       'Giảm trừ bản thân: 4 triệu đồng/tháng',
-      'Giảm trừ người phụ thuộc: 1.6 triệu đồng/tháng',
+      'Giảm trừ người phụ thuộc: 1,6 triệu đồng/tháng',
     ],
   },
   {
     id: '2009-effective',
     date: '01/01/2009',
     title: 'Luật Thuế TNCN có hiệu lực',
-    description: 'Luật Thuế TNCN 2007 chính thức có hiệu lực thi hành',
+    description: 'Luật Thuế TNCN 04/2007/QH12 chính thức có hiệu lực thi hành',
     type: 'effective',
   },
   {
     id: '2013-amendment',
     date: '22/11/2012',
     title: 'Sửa đổi Luật Thuế TNCN lần 1',
-    description: 'Quốc hội thông qua Luật sửa đổi, bổ sung số 26/2012/QH13',
+    description: 'Quốc hội thông qua Luật sửa đổi, bổ sung số 26/2012/QH13, hiệu lực từ 01/7/2013',
     type: 'enacted',
     changes: [
       'Tăng giảm trừ bản thân: 4 → 9 triệu đồng/tháng',
-      'Tăng giảm trừ người phụ thuộc: 1.6 → 3.6 triệu đồng/tháng',
-      'Có hiệu lực từ 01/07/2013',
+      'Tăng giảm trừ người phụ thuộc: 1,6 → 3,6 triệu đồng/tháng',
+      'Quyết toán năm 2013 tách 2 giai đoạn: 6 tháng đầu theo mức cũ, 6 tháng cuối theo mức mới',
     ],
   },
   {
     id: '2020-deduction',
     date: '02/06/2020',
-    title: 'Điều chỉnh mức giảm trừ gia cảnh',
-    description: 'Nghị quyết số 954/2020/UBTVQH14 điều chỉnh mức giảm trừ gia cảnh',
-    type: 'effective',
-    changes: [
-      'Tăng giảm trừ bản thân: 9 → 11 triệu đồng/tháng',
-      'Tăng giảm trừ người phụ thuộc: 3.6 → 4.4 triệu đồng/tháng',
-      'Áp dụng từ kỳ tính thuế năm 2020',
-    ],
-  },
-  {
-    id: '2025-enact',
-    date: '10/12/2025',
-    title: 'Luật Thuế TNCN sửa đổi được thông qua',
-    description: 'Quốc hội thông qua Luật sửa đổi, bổ sung Luật Thuế Thu nhập cá nhân',
+    title: 'Nghị quyết 954/2020/UBTVQH14',
+    description: 'Điều chỉnh mức giảm trừ gia cảnh; hiệu lực 01/7/2020, áp dụng từ kỳ tính thuế năm 2020',
     type: 'enacted',
     changes: [
-      'Giảm từ 7 bậc thuế xuống còn 5 bậc',
-      'Tăng giảm trừ bản thân: 11 → 15.5 triệu đồng/tháng',
-      'Tăng giảm trừ người phụ thuộc: 4.4 → 6.2 triệu đồng/tháng',
-      'Bỏ bậc thuế 15% và 25%',
-      'Mở rộng các mức thu nhập chịu thuế ở mỗi bậc',
+      'Tăng giảm trừ bản thân: 9 → 11 triệu đồng/tháng',
+      'Tăng giảm trừ người phụ thuộc: 3,6 → 4,4 triệu đồng/tháng',
+      'Tính cho cả năm 2020 khi quyết toán (từ 01/01/2020)',
     ],
   },
   {
     id: '2025-deduction',
     date: '17/10/2025',
     title: 'Nghị quyết 110/2025/UBTVQH15',
-    description: 'Điều chỉnh mức giảm trừ gia cảnh mới áp dụng từ kỳ tính thuế năm 2026',
+    description: 'Điều chỉnh mức giảm trừ gia cảnh, áp dụng từ kỳ tính thuế năm 2026',
     type: 'enacted',
     changes: [
-      'Tăng giảm trừ bản thân: 11 → 15.5 triệu đồng/tháng',
-      'Tăng giảm trừ người phụ thuộc: 4.4 → 6.2 triệu đồng/tháng',
-      'Có hiệu lực từ kỳ tính thuế năm 2026',
+      'Tăng giảm trừ bản thân: 11 → 15,5 triệu đồng/tháng',
+      'Tăng giảm trừ người phụ thuộc: 4,4 → 6,2 triệu đồng/tháng',
+      'Áp dụng từ kỳ tính thuế năm 2026',
+    ],
+  },
+  {
+    id: '2025-enact',
+    date: '10/12/2025',
+    title: 'Luật Thuế TNCN số 109/2025/QH15 được thông qua',
+    description: 'Quốc hội thông qua Luật Thuế thu nhập cá nhân mới thay thế Luật 04/2007/QH12; hiệu lực 01/7/2026, riêng thu nhập từ tiền lương, tiền công và kinh doanh của cá nhân cư trú áp dụng từ kỳ tính thuế 2026',
+    type: 'enacted',
+    changes: [
+      'Biểu thuế 5 bậc: 5%, 10%, 20%, 30%, 35% (Điều 9)',
+      'Bỏ bậc thuế 15% và 25%',
+      'Giảm trừ gia cảnh 15,5 triệu/6,2 triệu đồng/tháng (Điều 10)',
+      'Ngưỡng chịu thuế từng lần (trúng thưởng, bản quyền, thừa kế, quà tặng): 10 → 20 triệu đồng',
+      'Chuyển nhượng tài sản số, vàng miếng: 0,1% giá chuyển nhượng',
     ],
   },
   {
     id: '2026-effective',
     date: '01/01/2026',
-    title: 'Áp dụng đầy đủ luật mới',
-    description: 'Chính thức áp dụng biểu thuế 5 bậc và mức giảm trừ mới cho thu nhập từ tiền lương, tiền công',
+    title: 'Kỳ tính thuế 2026: áp dụng biểu thuế và giảm trừ mới',
+    description: 'Biểu thuế 5 bậc và giảm trừ 15,5 triệu/6,2 triệu áp dụng cho thu nhập từ tiền lương, tiền công năm 2026 (Luật 109/2025/QH15 Điều 29.2; NQ 110/2025/UBTVQH15)',
     type: 'effective',
     changes: [
-      'Biểu thuế lũy tiến 5 bậc mới có hiệu lực (theo điều khoản chuyển tiếp)',
-      'Áp dụng mức giảm trừ mới: 15.5 triệu/tháng + 6.2 triệu/NPT',
+      'Biểu thuế lũy tiến 5 bậc tính cho cả năm 2026 khi quyết toán',
+      'Giảm trừ 15,5 triệu đồng/tháng cho bản thân, 6,2 triệu đồng/tháng cho mỗi người phụ thuộc',
       'Lương tối thiểu vùng mới theo Nghị định 293/2025/NĐ-CP',
-      'Ngưỡng doanh thu không chịu thuế cho hộ kinh doanh, cá nhân kinh doanh: 1 tỷ/năm (Nghị định 141/2026/NĐ-CP)',
     ],
   },
   {
+    id: '2026-law-09',
+    date: '24/04/2026',
+    title: 'Luật 09/2026/QH16',
+    description: 'Sửa đổi Luật Thuế TNCN, GTGT, TNDN, TTĐB: ngưỡng doanh thu không phải nộp thuế của hộ, cá nhân kinh doanh do Chính phủ quy định (áp dụng từ 01/01/2026)',
+    type: 'enacted',
+  },
+  {
+    id: '2026-nd141',
+    date: '29/04/2026',
+    title: 'Nghị định 141/2026/NĐ-CP',
+    description: 'Ngưỡng doanh thu 1 tỷ đồng/năm: hộ, cá nhân kinh doanh (kể cả cho thuê tài sản) có doanh thu từ mức này trở xuống không nộp thuế GTGT, TNCN; áp dụng kỳ tính thuế 2026',
+    type: 'change',
+  },
+  {
     id: '2026-gold-tax',
+    date: '30/06/2026',
+    title: 'Vàng miếng: luật quy định 0,1% nhưng chưa thu',
+    description: 'Luật 109/2025/QH15 quy định thuế 0,1% giá chuyển nhượng vàng miếng và giao Chính phủ quy định ngưỡng, thời điểm áp dụng. Bộ Tài chính (30/6/2026): chưa thu từ 01/7/2026, đang xây dựng nghị định riêng.',
+    type: 'proposal',
+  },
+  {
+    id: '2026-july-effective',
     date: '01/07/2026',
-    title: 'Thuế chuyển nhượng vàng miếng',
-    description: 'Áp dụng thuế 0.1% cho chuyển nhượng vàng miếng',
+    title: 'Luật Thuế TNCN 109/2025, NĐ 253/2026 và TT 87/2026 có hiệu lực',
+    description: 'Luật Thuế TNCN 109/2025/QH15 và Luật Quản lý thuế 108/2025/QH15 có hiệu lực; NĐ 253/2026/NĐ-CP thay NĐ 65/2013, TT 87/2026/TT-BTC thay TT 111/2013',
     type: 'effective',
     changes: [
-      'Thuế chuyển nhượng vàng miếng: 0.1% trên giá chuyển nhượng',
-      'Các quy định khác của Luật Thuế TNCN sửa đổi 2025 (không liên quan tiền lương)',
+      'Ngưỡng từng lần phát sinh 20 triệu đồng (trúng thưởng, bản quyền, nhượng quyền, thừa kế, quà tặng)',
+      'Khấu trừ 10% thu nhập vãng lai từ 5 triệu đồng/lần (trước 2 triệu)',
+      'Tiền ăn giữa ca bằng tiền: miễn đến 1,2 triệu đồng/tháng',
+      'Giảm trừ chi y tế (tối đa 23 triệu/năm), giáo dục (tối đa 24 triệu/năm); hưu trí bổ sung, tự nguyện, bảo hiểm nhân thọ tối đa 3 triệu/tháng — áp dụng cho kỳ tính thuế 2026',
+      'Người phụ thuộc: thu nhập bình quân tháng không quá 3 triệu đồng',
     ],
   },
 ];
@@ -130,7 +153,7 @@ export const TAX_LAW_MILESTONES: TaxLawMilestone[] = [
 export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
   {
     id: '2009-2013',
-    name: 'Luật 2007 (gốc)',
+    name: 'Luật 04/2007/QH12',
     effectiveFrom: '01/01/2009',
     effectiveTo: '30/06/2013',
     personalDeduction: 4_000_000,
@@ -147,9 +170,9 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
   },
   {
     id: '2013-2020',
-    name: 'Luật sửa đổi 2012',
+    name: 'Luật sửa đổi 26/2012/QH13',
     effectiveFrom: '01/07/2013',
-    effectiveTo: '01/06/2020',
+    effectiveTo: '31/12/2019',
     personalDeduction: 9_000_000,
     dependentDeduction: 3_600_000,
     brackets: [
@@ -164,8 +187,8 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
   },
   {
     id: '2020-2025',
-    name: 'Điều chỉnh 2020',
-    effectiveFrom: '02/06/2020',
+    name: 'NQ 954/2020/UBTVQH14',
+    effectiveFrom: '01/01/2020',
     effectiveTo: '31/12/2025',
     personalDeduction: 11_000_000,
     dependentDeduction: 4_400_000,
@@ -181,7 +204,7 @@ export const TAX_LAW_PERIODS: TaxLawPeriod[] = [
   },
   {
     id: '2026-new',
-    name: 'Luật Thuế TNCN 2025 (5 bậc)',
+    name: 'Luật Thuế TNCN 109/2025/QH15 (5 bậc)',
     effectiveFrom: '01/01/2026',
     effectiveTo: null,
     personalDeduction: 15_500_000,
@@ -207,28 +230,28 @@ export interface DeductionComparison {
 
 export const DEDUCTION_COMPARISON: DeductionComparison[] = [
   {
-    period: '2009-2013',
+    period: '01/2009 – 06/2013',
     personalDeduction: 4_000_000,
     dependentDeduction: 1_600_000,
     personalPercentChange: null,
     dependentPercentChange: null,
   },
   {
-    period: '2013-2020',
+    period: '07/2013 – 12/2019',
     personalDeduction: 9_000_000,
     dependentDeduction: 3_600_000,
     personalPercentChange: 125,
     dependentPercentChange: 125,
   },
   {
-    period: '2020-2025',
+    period: '01/2020 – 12/2025',
     personalDeduction: 11_000_000,
     dependentDeduction: 4_400_000,
     personalPercentChange: 22.2,
     dependentPercentChange: 22.2,
   },
   {
-    period: '01/2026-',
+    period: 'Từ 01/2026',
     personalDeduction: 15_500_000,
     dependentDeduction: 6_200_000,
     personalPercentChange: 40.9,
@@ -257,16 +280,9 @@ export const REFORM_2026_HIGHLIGHTS = {
       percentChange: 40.9,
     },
   },
-  effectiveDates: {
-    enacted: '10/12/2025',
-    deductionResolution: '17/10/2025', // Nghị quyết 110/2025/UBTVQH15
-    salaryWageIncome: '01/01/2026', // Thu nhập tiền lương, tiền công
-    goldTransferTax: '01/07/2026', // Thuế chuyển nhượng vàng miếng
-  },
   legalBasis: {
-    deductions: 'Nghị quyết 110/2025/UBTVQH15',
-    taxBrackets: 'Luật Thuế TNCN sửa đổi 2025 (điều khoản chuyển tiếp)',
-    minimumWage: 'Nghị định 293/2025/NĐ-CP',
+    deductions: 'Nghị quyết 110/2025/UBTVQH15; Luật Thuế TNCN 109/2025/QH15 Điều 10',
+    taxBrackets: 'Luật Thuế TNCN 109/2025/QH15 Điều 9; áp dụng từ kỳ tính thuế 2026 theo Điều 29.2',
   },
   benefits: [
     'Giảm số bậc thuế từ 7 xuống 5, đơn giản hóa tính toán',
@@ -282,36 +298,5 @@ export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
 }
 
-// Get applicable tax period for a given date
-export function getTaxPeriodForDate(date: Date): TaxLawPeriod | null {
-  const dateStr = date.toISOString().slice(0, 10);
-
-  for (const period of TAX_LAW_PERIODS) {
-    const from = new Date(period.effectiveFrom.split('/').reverse().join('-'));
-    const to = period.effectiveTo
-      ? new Date(period.effectiveTo.split('/').reverse().join('-'))
-      : new Date('2099-12-31');
-
-    if (date >= from && date <= to) {
-      return period;
-    }
-  }
-
-  return null;
-}
-
-// Compare two periods
-export function comparePeriods(oldPeriodId: string, newPeriodId: string) {
-  const oldPeriod = TAX_LAW_PERIODS.find(p => p.id === oldPeriodId);
-  const newPeriod = TAX_LAW_PERIODS.find(p => p.id === newPeriodId);
-
-  if (!oldPeriod || !newPeriod) return null;
-
-  return {
-    personalDeductionChange: newPeriod.personalDeduction - oldPeriod.personalDeduction,
-    dependentDeductionChange: newPeriod.dependentDeduction - oldPeriod.dependentDeduction,
-    bracketCountChange: newPeriod.brackets.length - oldPeriod.brackets.length,
-    oldPeriod,
-    newPeriod,
-  };
-}
+// Số thập phân kiểu Việt Nam (dấu phẩy)
+export const formatDecimal = (value: number, digits = 1) => value.toFixed(digits).replace('.', ',');

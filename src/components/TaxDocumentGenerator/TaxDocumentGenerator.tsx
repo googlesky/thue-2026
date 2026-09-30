@@ -4,17 +4,24 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   generateTaxDocument,
   getDocumentTypes,
-  getDeductionAmounts,
   formatValue,
   DocumentType,
   DocumentInput,
   DocumentOutput,
   PersonalInfo,
 } from '@/lib/taxDocumentGenerator';
-import { formatNumber, parseCurrency, TaxResult, SharedTaxState } from '@/lib/taxCalculator';
+import {
+  formatNumber,
+  parseCurrency,
+  TaxResult,
+  SharedTaxState,
+  calculateNewTax,
+  calculateOldTax,
+} from '@/lib/taxCalculator';
+import { EDUCATION_DEDUCTION_CAP, MEDICAL_DEDUCTION_CAP } from '@/lib/annualSettlementCalculator';
 import { parseCurrencyInput } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
-import { exportToPDF, exportToCSV, formatTaxDataForExport, TaxExportData } from '@/lib/exportUtils';
+import { exportToPDF, exportToCSV } from '@/lib/exportUtils';
 
 interface TaxDocumentGeneratorProps {
   sharedState?: SharedTaxState;
@@ -36,7 +43,7 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
   // Document type selection
   const [documentType, setDocumentType] = useState<DocumentType>('personal_report');
   const [year, setYear] = useState<number>(new Date().getFullYear());
-  const [month, setMonth] = useState<number | undefined>(undefined);
+  const [quarter, setQuarter] = useState<number>(() => Math.floor(new Date().getMonth() / 3) + 1);
 
   // Personal info
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
@@ -52,6 +59,9 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
 
   // Tax paid override
   const [taxPaidInput, setTaxPaidInput] = useState<string>('0');
+  // Giảm trừ y tế, giáo dục cả năm (tờ khai quyết toán từ năm 2026)
+  const [medicalInput, setMedicalInput] = useState<string>('0');
+  const [educationInput, setEducationInput] = useState<string>('0');
   const [notes, setNotes] = useState<string>('');
 
   // Generated document
@@ -62,60 +72,43 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
   // Available document types
   const documentTypes = useMemo(() => getDocumentTypes(), []);
 
-  // Calculate deductions
-  const deductions = useMemo(() => {
-    const isSecondHalf2026 = year === 2026 && (month === undefined || month >= 7);
-    return getDeductionAmounts(year, isSecondHalf2026);
-  }, [year, month]);
-
-  // Build document input from shared state and tax result
-  const buildDocumentInput = useCallback((): DocumentInput => {
-    const grossIncome = sharedState?.grossIncome || 0;
-    const dependents = sharedState?.dependents || 0;
-    const insuranceDetail = taxResult?.insuranceDetail;
-
-    const totalInsurance = insuranceDetail
-      ? insuranceDetail.bhxh + insuranceDetail.bhyt + insuranceDetail.bhtn
-      : 0;
-
-    const taxableIncome = taxResult?.taxableIncome || 0;
-    const taxAmount = taxResult?.taxAmount || 0;
-    const taxPaid = parseCurrency(taxPaidInput);
-
-    return {
-      type: documentType,
-      period: {
-        year,
-        month: documentType === 'monthly_declaration' ? month : undefined,
-      },
-      personalInfo,
-      incomeInfo: {
-        grossIncome,
-        allowances: sharedState?.allowances
-          ? Object.values(sharedState.allowances).reduce((a, b) => a + b, 0)
-          : 0,
-        socialInsurance: insuranceDetail?.bhxh || 0,
-        healthInsurance: insuranceDetail?.bhyt || 0,
-        unemploymentInsurance: insuranceDetail?.bhtn || 0,
-        pensionContribution: sharedState?.pensionContribution || 0,
-        charitableContributions: 0,
-      },
-      deductionInfo: {
-        personalDeduction: deductions.personalDeduction,
-        dependentDeduction: dependents * deductions.dependentDeduction,
-        numberOfDependents: dependents,
-        otherDeductions: sharedState?.otherDeductions || 0,
-      },
-      taxInfo: {
-        taxableIncome,
-        taxAmount,
-        taxPaid,
-        taxOwed: taxAmount - taxPaid,
-        effectiveRate: grossIncome > 0 ? (taxAmount / grossIncome) * 100 : 0,
-      },
-      notes: notes || undefined,
+  // Kết quả thuế 1 tháng theo luật của năm tính thuế: từ 2026 dùng kết quả tab tính thuế (luật mới);
+  // năm trước dùng biểu 7 bậc, giảm trừ 11 triệu/4,4 triệu với trần bảo hiểm tại 31/12 năm đó
+  const monthResult = useMemo<TaxResult>(() => {
+    if (year >= 2026 && taxResult) return taxResult;
+    const input = {
+      grossIncome: sharedState?.grossIncome ?? 0,
+      declaredSalary: sharedState?.declaredSalary,
+      dependents: sharedState?.dependents ?? 0,
+      otherDeductions: sharedState?.otherDeductions ?? 0,
+      pensionContribution: sharedState?.pensionContribution ?? 0,
+      hasInsurance: sharedState?.hasInsurance ?? true,
+      insuranceOptions: sharedState?.insuranceOptions,
+      region: sharedState?.region,
+      allowances: sharedState?.allowances,
     };
-  }, [sharedState, taxResult, documentType, year, month, personalInfo, taxPaidInput, notes, deductions]);
+    return year >= 2026
+      ? calculateNewTax(input)
+      : calculateOldTax({ ...input, calculationDate: new Date(year, 11, 31) });
+  }, [year, sharedState, taxResult]);
+
+  // Build document input: số liệu 1 tháng, thư viện quy đổi theo kỳ (quý × 3, năm × 12)
+  const buildDocumentInput = useCallback((): DocumentInput => ({
+    type: documentType,
+    period: {
+      year,
+      quarter: documentType === 'quarterly_declaration' ? quarter : undefined,
+    },
+    personalInfo,
+    monthlyResult: monthResult,
+    numberOfDependents: sharedState?.dependents ?? 0,
+    taxPaid: parseCurrency(taxPaidInput),
+    medicalExpenses: parseCurrency(medicalInput),
+    educationExpenses: parseCurrency(educationInput),
+    notes: notes || undefined,
+  }), [sharedState, monthResult, documentType, year, quarter, personalInfo, taxPaidInput, medicalInput, educationInput, notes]);
+
+  const fileBase = `bao-cao-thue-${year}${documentType === 'quarterly_declaration' ? `-quy-${quarter}` : ''}`;
 
   // Generate document
   const handleGenerate = useCallback(() => {
@@ -189,7 +182,7 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
     setIsExporting(true);
     try {
       await exportToPDF(printRef.current, {
-        filename: `bao-cao-thue-${year}${month ? `-thang-${month}` : ''}.pdf`,
+        filename: `${fileBase}.pdf`,
         title: generatedDoc?.title || 'Báo cáo thuế TNCN',
       });
     } catch (error) {
@@ -198,52 +191,23 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
     } finally {
       setIsExporting(false);
     }
-  }, [year, month, generatedDoc]);
+  }, [fileBase, generatedDoc]);
 
-  // Export to CSV/Excel
+  // Export to CSV/Excel: đúng các dòng của tài liệu đang xem (cùng kỳ, cùng số liệu)
   const handleExportExcel = useCallback(() => {
-    const grossIncome = sharedState?.grossIncome || 0;
-    const insuranceDetail = taxResult?.insuranceDetail;
-    const totalInsurance = insuranceDetail
-      ? insuranceDetail.bhxh + insuranceDetail.bhyt + insuranceDetail.bhtn
-      : 0;
-
-    const exportData: TaxExportData = {
-      personalInfo: {
-        fullName: personalInfo.fullName || undefined,
-        taxCode: personalInfo.taxCode || undefined,
-        idNumber: personalInfo.idNumber || undefined,
-        employer: personalInfo.employer || undefined,
-      },
-      period: {
-        year,
-        month: documentType === 'monthly_declaration' ? month : undefined,
-      },
-      income: {
-        grossIncome,
-        allowances: sharedState?.allowances
-          ? Object.values(sharedState.allowances).reduce((a, b) => a + b, 0)
-          : 0,
-        totalInsurance,
-      },
-      deductions: {
-        personalDeduction: deductions.personalDeduction,
-        dependentDeduction: (sharedState?.dependents || 0) * deductions.dependentDeduction,
-        numberOfDependents: sharedState?.dependents || 0,
-        otherDeductions: sharedState?.otherDeductions || 0,
-      },
-      tax: {
-        taxableIncome: taxResult?.taxableIncome || 0,
-        taxAmount: taxResult?.taxAmount || 0,
-        taxPaid: parseCurrency(taxPaidInput),
-        netIncome: taxResult?.netIncome || 0,
-        effectiveRate: grossIncome > 0 ? ((taxResult?.taxAmount || 0) / grossIncome) * 100 : 0,
-      },
-    };
-
-    const sheet = formatTaxDataForExport(exportData);
-    exportToCSV(sheet.headers, sheet.rows, `bao-cao-thue-${year}${month ? `-thang-${month}` : ''}.csv`);
-  }, [sharedState, taxResult, personalInfo, year, month, documentType, deductions, taxPaidInput]);
+    if (!generatedDoc) return;
+    const rows = [
+      { 'Mục': generatedDoc.title, 'Giá trị': '' },
+      ...generatedDoc.content.flatMap((section) => [
+        { 'Mục': '', 'Giá trị': '' },
+        { 'Mục': section.title, 'Giá trị': '' },
+        ...section.rows.map((row) => ({ 'Mục': row.label, 'Giá trị': formatValue(row.value, row.format) })),
+      ]),
+      { 'Mục': '', 'Giá trị': '' },
+      { 'Mục': 'Ghi chú', 'Giá trị': generatedDoc.legalNote },
+    ];
+    exportToCSV(['Mục', 'Giá trị'], rows, `${fileBase}.csv`);
+  }, [generatedDoc, fileBase]);
 
   // Handle personal info change
   const handlePersonalInfoChange = (field: keyof PersonalInfo, value: string) => {
@@ -254,8 +218,10 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
     <div className="card">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl">📄</span>
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900">Tạo báo cáo thuế TNCN</h2>
@@ -264,7 +230,7 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
       </div>
 
       {!showPreview ? (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column: Document Settings */}
           <div className="space-y-5">
             <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Loại tài liệu</h3>
@@ -309,28 +275,61 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
               </select>
             </div>
 
-            {/* Month (for monthly declaration) */}
-            {documentType === 'monthly_declaration' && (
+            {/* Quarter (for quarterly declaration) */}
+            {documentType === 'quarterly_declaration' && (
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Tháng</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Quý</label>
                 <select
-                  value={month || ''}
-                  onChange={(e) => setMonth(e.target.value ? parseInt(e.target.value) : undefined)}
+                  value={quarter}
+                  onChange={(e) => setQuarter(parseInt(e.target.value))}
                   className="input-field"
                 >
-                  <option value="">Chọn tháng</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <option key={m} value={m}>Tháng {m}</option>
+                  {[1, 2, 3, 4].map((q) => (
+                    <option key={q} value={q}>Quý {q}</option>
                   ))}
                 </select>
               </div>
             )}
 
+            {/* Giảm trừ y tế, giáo dục (tự quyết toán từ năm 2026) */}
+            {documentType === 'annual_settlement' && year >= 2026 && (
+              <>
+                {[
+                  { label: 'Chi khám chữa bệnh cả năm', cap: MEDICAL_DEDUCTION_CAP, value: medicalInput, set: setMedicalInput },
+                  { label: 'Học phí, đào tạo cả năm', cap: EDUCATION_DEDUCTION_CAP, value: educationInput, set: setEducationInput },
+                ].map((field) => (
+                  <div key={field.label}>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      {field.label} (VNĐ, tối đa {formatNumber(field.cap / 1_000_000)} triệu)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === '' ? '' : formatNumber(parseCurrency(field.value))}
+                      onChange={(e) => {
+                        // Cho phép xóa trắng để gõ số mới (không khóa ở "0")
+                        if (!/\d/.test(e.target.value)) return field.set('');
+                        const parsed = parseCurrencyInput(e.target.value, { max: field.cap });
+                        field.set(parsed.value.toString());
+                      }}
+                      className="input-field"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-gray-500">
+                  Giảm trừ y tế, giáo dục chỉ áp dụng khi tự quyết toán (NĐ 253/2026/NĐ-CP Điều 49, 51.3).
+                </p>
+              </>
+            )}
+
             {/* Tax Paid */}
             <div>
               <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-                <span>Thuế đã tạm nộp/khấu trừ (VNĐ)</span>
-                <Tooltip content="Số tiền thuế đã được khấu trừ tại nguồn hoặc đã tạm nộp">
+                <span>
+                  Thuế đã khấu trừ/tạm nộp {documentType === 'quarterly_declaration' ? 'trong quý' : 'cả năm'} (VNĐ)
+                </span>
+                <Tooltip content="Tổng số thuế đã được khấu trừ tại nguồn hoặc đã tạm nộp trong cả kỳ của tài liệu">
                   <span className="text-gray-500 hover:text-gray-700 cursor-help">
                     <InfoIcon />
                   </span>
@@ -339,8 +338,9 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
               <input
                 type="text"
                 inputMode="numeric"
-                value={formatNumber(parseCurrency(taxPaidInput))}
+                value={taxPaidInput === '' ? '' : formatNumber(parseCurrency(taxPaidInput))}
                 onChange={(e) => {
+                  if (!/\d/.test(e.target.value)) return setTaxPaidInput('');
                   const parsed = parseCurrencyInput(e.target.value, { max: 100_000_000_000 });
                   setTaxPaidInput(parsed.value.toString());
                 }}
@@ -578,7 +578,7 @@ export function TaxDocumentGenerator({ sharedState, taxResult }: TaxDocumentGene
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Báo cáo này chỉ mang tính chất tham khảo, không thay thế tờ khai thuế chính thức.</li>
             <li>• Để khai thuế chính thức, sử dụng phần mềm HTKK hoặc khai trực tuyến tại <strong>thuedientu.gdt.gov.vn</strong>.</li>
-            <li>• Dữ liệu thu nhập và thuế được lấy từ các thông tin bạn đã nhập ở các tab tính thuế.</li>
+            <li>• Dữ liệu thu nhập và thuế được lấy từ các thông tin bạn đã nhập ở các tab tính thuế; số liệu quý, năm ước tính bằng thu nhập 1 tháng × 3 hoặc × 12.</li>
           </ul>
         </div>
       )}

@@ -5,20 +5,15 @@ import {
   calculateLatePayment,
   TAX_TYPES,
   TaxType,
-  TaxTypeInfo,
   LatePaymentResult,
   generateInterestMilestones,
   getUpcomingDeadlines,
-  INTEREST_RATE_PER_DAY,
-  INTEREST_RATE_PER_YEAR,
-  formatCurrency,
   formatPercent,
-  formatDate,
 } from '@/lib/latePaymentCalculator';
-import { formatNumber, parseCurrency } from '@/lib/taxCalculator';
+import { formatNumber, parseCurrency, formatCurrency, formatDate } from '@/lib/taxCalculator';
 import { parseCurrencyInput, CurrencyInputIssues } from '@/utils/inputSanitizers';
 import Tooltip from '@/components/ui/Tooltip';
-import { LatePaymentTabState } from '@/lib/snapshotTypes';
+import { LatePaymentTabState, DEFAULT_LATE_PAYMENT_STATE } from '@/lib/snapshotTypes';
 
 interface LatePaymentCalculatorProps {
   tabState?: LatePaymentTabState;
@@ -42,11 +37,10 @@ function formatDateForInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Parse date from input element
+// Parse date from input element (YYYY-MM-DD) theo giờ local, không qua UTC
 function parseDateFromInput(value: string): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return isNaN(date.getTime()) ? null : date;
+  const [y, m, d] = value.split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
 }
 
 export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymentCalculatorProps) {
@@ -56,7 +50,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
     tabState?.taxAmount?.toString() ?? '10000000'
   );
   const [dueDateInput, setDueDateInput] = useState<string>(
-    tabState?.dueDate ?? formatDateForInput(new Date(new Date().getFullYear(), 2, 31)) // Default: 31/3
+    tabState?.dueDate ?? DEFAULT_LATE_PAYMENT_STATE.dueDate // hạn cá nhân tự quyết toán năm trước
   );
   const [paymentDateInput, setPaymentDateInput] = useState<string>(
     tabState?.paymentDate ?? formatDateForInput(new Date())
@@ -114,6 +108,12 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
 
   // Handle tax amount input
   const handleTaxAmountChange = (value: string) => {
+    // Cho phép xóa trắng để gõ số mới (không khóa ở "0")
+    if (!/\d/.test(value)) {
+      setTaxAmountInput('');
+      setTaxAmountWarning(null);
+      return;
+    }
     const MAX_TAX = 100_000_000_000; // 100 tỷ
     const parsed = parseCurrencyInput(value, { max: MAX_TAX });
     setTaxAmountInput(parsed.value.toString());
@@ -145,20 +145,24 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
     return getUpcomingDeadlines();
   }, []);
 
+  const effectiveDueInput = result ? formatDateForInput(result.effectiveDueDate) : '';
+
   return (
     <div className="card">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
-          <span className="text-2xl">⏰</span>
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg flex-shrink-0">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Tính lãi chậm nộp thuế</h2>
-          <p className="text-sm text-gray-500">Lãi suất 0.03%/ngày theo Luật Quản lý thuế 2019</p>
+          <h2 className="text-xl font-bold text-gray-900">Tính tiền chậm nộp thuế</h2>
+          <p className="text-sm text-gray-500">Mức 0,03%/ngày theo Luật Quản lý thuế 108/2025/QH15</p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Input Section */}
         <div className="space-y-5">
           <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Thông tin nộp thuế</h3>
@@ -167,7 +171,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Loại thuế</span>
-              <Tooltip content="Chọn loại thuế để xem deadline mặc định">
+              <Tooltip content="Chọn loại thuế để xem hạn nộp theo quy định">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -193,7 +197,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
               <span>Số tiền thuế phải nộp (VNĐ)</span>
-              <Tooltip content="Số tiền thuế gốc chưa bao gồm lãi chậm nộp">
+              <Tooltip content="Số tiền thuế gốc, chưa gồm tiền chậm nộp">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -201,7 +205,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
             </label>
             <input
               type="text"
-              value={formatNumber(parseCurrency(taxAmountInput))}
+              value={taxAmountInput === '' ? '' : formatNumber(parseCurrency(taxAmountInput))}
               onChange={(e) => handleTaxAmountChange(e.target.value)}
               className="input-field text-lg font-semibold"
               placeholder="Nhập số tiền thuế"
@@ -214,8 +218,8 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
           {/* Due Date */}
           <div>
             <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-              <span>Ngày hết hạn nộp</span>
-              <Tooltip content="Ngày cuối cùng phải nộp thuế theo quy định">
+              <span>Hạn nộp thuế</span>
+              <Tooltip content="Hạn nộp theo quy định; nếu trùng thứ Bảy, Chủ nhật hoặc ngày nghỉ lễ thì tự dời sang ngày làm việc tiếp theo">
                 <span className="text-gray-500 hover:text-gray-700 cursor-help">
                   <InfoIcon />
                 </span>
@@ -257,7 +261,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              📊 Bảng lãi theo thời gian
+              Bảng tiền chậm nộp theo thời gian
             </button>
             <button
               onClick={() => setShowDeadlines(!showDeadlines)}
@@ -267,7 +271,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              📅 Deadline sắp tới
+              Hạn nộp sắp tới
             </button>
           </div>
         </div>
@@ -297,15 +301,14 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                       <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <h4 className="font-semibold text-green-900">Nộp đúng hạn</h4>
+                      <h4 className="font-semibold text-green-900">Không phát sinh tiền chậm nộp</h4>
                     </>
                   )}
                 </div>
                 <p className={`text-sm ${result.isLate ? 'text-red-700' : 'text-green-700'}`}>
-                  {result.isLate
-                    ? `Chậm ${result.daysLate} ngày so với deadline`
-                    : 'Không phát sinh lãi chậm nộp'
-                  }
+                  {result.isLate && `Tính tiền chậm nộp ${result.daysLate} ngày. `}
+                  Hạn nộp thực tế: <span className="font-data">{formatDate(result.effectiveDueDate)}</span>
+                  {effectiveDueInput !== dueDateInput && ' (hạn trùng ngày nghỉ, dời sang ngày làm việc liền kề sau)'}
                 </p>
               </div>
 
@@ -317,27 +320,27 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                       <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
-                      <h4 className="font-semibold text-orange-900">Chi tiết tính lãi</h4>
+                      <h4 className="font-semibold text-orange-900">Chi tiết tiền chậm nộp</h4>
                     </div>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between gap-3">
                         <span className="text-gray-600">Số tiền thuế gốc:</span>
                         <span className="font-medium">{formatCurrency(result.taxAmount)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Số ngày chậm:</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-600">Số ngày tính tiền chậm nộp:</span>
                         <span className="font-semibold text-orange-700">{result.daysLate} ngày</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Lãi suất:</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-600">Mức tính:</span>
                         <span className="font-medium">{formatPercent(result.interestRatePerDay)}/ngày</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Lãi mỗi ngày:</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-600">Mỗi ngày:</span>
                         <span className="font-medium">{formatCurrency(result.dailyInterest)}</span>
                       </div>
-                      <div className="flex justify-between pt-2 border-t border-orange-200">
-                        <span className="text-gray-700 font-medium">Tiền lãi phải trả:</span>
+                      <div className="flex justify-between gap-3 pt-2 border-t border-orange-200">
+                        <span className="text-gray-700 font-medium">Tiền chậm nộp:</span>
                         <span className="font-bold text-orange-700">{formatCurrency(result.interestAmount)}</span>
                       </div>
                     </div>
@@ -356,7 +359,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                         {formatCurrency(result.totalAmount)}
                       </div>
                       <div className="text-sm text-gray-600">
-                        = {formatCurrency(result.taxAmount)} (thuế) + {formatCurrency(result.interestAmount)} (lãi)
+                        = {formatCurrency(result.taxAmount)} (thuế) + {formatCurrency(result.interestAmount)} (tiền chậm nộp)
                       </div>
                     </div>
                   </div>
@@ -394,7 +397,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
               <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              <p className="text-gray-500">Nhập thông tin để tính lãi chậm nộp</p>
+              <p className="text-gray-500">Nhập thông tin để tính tiền chậm nộp</p>
             </div>
           )}
         </div>
@@ -404,7 +407,7 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
       {showMilestones && milestones.length > 0 && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Bảng lãi chậm nộp theo thời gian
+            Bảng tiền chậm nộp theo thời gian
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -412,8 +415,8 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
                 <tr className="bg-gray-100">
                   <th className="px-4 py-2 text-left font-medium text-gray-700">Thời gian chậm</th>
                   <th className="px-4 py-2 text-right font-medium text-gray-700">Số ngày</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-700">Tỷ lệ lãi</th>
-                  <th className="px-4 py-2 text-right font-medium text-gray-700">Tiền lãi</th>
+                  <th className="px-4 py-2 text-right font-medium text-gray-700">Tỷ lệ</th>
+                  <th className="px-4 py-2 text-right font-medium text-gray-700">Tiền chậm nộp</th>
                   <th className="px-4 py-2 text-right font-medium text-gray-700">Tổng phải nộp</th>
                 </tr>
               </thead>
@@ -444,19 +447,19 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
       {showDeadlines && upcomingDeadlines.length > 0 && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Deadline thuế sắp tới
+            Hạn nộp thuế sắp tới
           </h3>
           <div className="space-y-3">
             {upcomingDeadlines.map((deadline, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+                className="flex items-center justify-between gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
               >
-                <div>
+                <div className="min-w-0">
                   <h4 className="font-medium text-blue-900">{deadline.name}</h4>
                   <p className="text-sm text-blue-700">{deadline.description}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <div className="font-semibold text-blue-800">{formatDate(deadline.date)}</div>
                   <button
                     onClick={() => setDueDateInput(formatDateForInput(deadline.date))}
@@ -480,14 +483,23 @@ export function LatePaymentCalculator({ tabState, onTabStateChange }: LatePaymen
           Căn cứ pháp lý
         </h4>
         <ul className="text-sm text-gray-700 space-y-1">
-          <li>• <strong>Điều 59 Luật Quản lý thuế 2019</strong>: Lãi chậm nộp = 0.03%/ngày</li>
-          <li>• <strong>Nghị định 125/2020/NĐ-CP</strong>: Xử phạt vi phạm hành chính về thuế</li>
-          <li>• <strong>Thông tư 80/2021/TT-BTC</strong>: Hướng dẫn thi hành Luật Quản lý thuế</li>
+          <li>• <strong>Luật Quản lý thuế 108/2025/QH15, Điều 16</strong>: tiền chậm nộp 0,03%/ngày</li>
+          <li>• <strong>Nghị định 252/2026/NĐ-CP</strong>: Điều 26.1.a tính từ ngày tiếp theo hạn nộp đến ngày liền trước ngày nộp tiền; Điều 3.7 hạn trùng ngày nghỉ được dời sang ngày làm việc liền kề sau</li>
+          <li>• <strong>Nghị định 125/2020/NĐ-CP</strong> (sửa đổi bởi NĐ 102/2021/NĐ-CP, NĐ 310/2025/NĐ-CP): xử phạt vi phạm hành chính về thuế</li>
         </ul>
-        <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200">
-          <p className="text-sm text-amber-800">
-            <strong>Lưu ý:</strong> Ngoài tiền lãi, việc chậm nộp thuế có thể bị xử phạt hành chính
-            từ 500.000 VNĐ đến 3 lần số tiền thuế trốn (nếu có hành vi trốn thuế).
+        <div className="mt-3 p-3 bg-amber-50 rounded border border-amber-200 text-sm text-amber-800 space-y-1">
+          <p>
+            <strong>Lưu ý:</strong> Chậm nộp tiền thuế không bị phạt tiền, chỉ phải nộp tiền chậm nộp.
+          </p>
+          <p>
+            Nộp hồ sơ khai thuế trễ bị phạt riêng (NĐ 125/2020 Điều 13, mức cho tổ chức; cá nhân bằng 1/2):
+            trễ 1–5 ngày có tình tiết giảm nhẹ: cảnh cáo; 1–30 ngày: 2–5 triệu đồng; 31–60 ngày: 5–8 triệu;
+            61–90 ngày: 8–15 triệu; trên 90 ngày, đã nộp đủ thuế và tiền chậm nộp: 15–25 triệu.
+            Cá nhân tự quyết toán TNCN nộp trễ mà được hoàn thuế thì không bị phạt.
+          </p>
+          <p>
+            Khai sai dẫn đến thiếu thuế: phạt 20% số thuế khai thiếu; trốn thuế: phạt 1–3 lần số thuế trốn
+            (Luật Quản lý thuế 108/2025 Điều 44).
           </p>
         </div>
       </div>

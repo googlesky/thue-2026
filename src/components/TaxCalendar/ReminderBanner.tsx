@@ -143,7 +143,7 @@ function ReminderBannerComponent({
                 <span className="w-1.5 h-1.5 bg-white/60 rounded-full flex-shrink-0" />
                 <span className="truncate">{item.deadline.title}</span>
                 <span className="text-white/60 flex-shrink-0">
-                  ({item.daysUntil === 0 ? 'Hôm nay' : `${item.daysUntil}d`})
+                  ({item.daysUntil === 0 ? 'Hôm nay' : `${item.daysUntil} ngày`})
                 </span>
               </div>
             ))}

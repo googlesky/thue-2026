@@ -18,436 +18,289 @@ function formatVND(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + ' VND';
 }
 
-// Convert number to Vietnamese words (simplified)
-function numberToVietnameseWords(num: number): string {
-  if (num === 0) return 'Không đồng';
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
 
-  const units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
-  const positions = ['', 'nghìn', 'triệu', 'tỷ'];
-
-  const formatGroup = (n: number): string => {
-    if (n === 0) return '';
-    const hundreds = Math.floor(n / 100);
-    const tens = Math.floor((n % 100) / 10);
-    const ones = n % 10;
-
-    let result = '';
-    if (hundreds > 0) result += units[hundreds] + ' trăm ';
-    if (tens > 0) {
-      if (tens === 1) result += 'mười ';
-      else result += units[tens] + ' mươi ';
-    } else if (hundreds > 0 && ones > 0) {
-      result += 'lẻ ';
-    }
-    if (ones > 0) {
-      if (tens > 1 && ones === 1) result += 'mốt';
-      else if (tens > 0 && ones === 5) result += 'lăm';
-      else result += units[ones];
-    }
-    return result.trim();
-  };
-
-  const groups: number[] = [];
-  let n = Math.abs(Math.round(num));
-  while (n > 0) {
-    groups.push(n % 1000);
-    n = Math.floor(n / 1000);
-  }
-
-  let result = '';
-  for (let i = groups.length - 1; i >= 0; i--) {
-    if (groups[i] > 0) {
-      result += formatGroup(groups[i]) + ' ' + positions[i] + ' ';
-    }
-  }
-
-  return result.trim().replace(/\s+/g, ' ') + ' đồng';
+// Mọi chuỗi người dùng nhập phải escape trước khi ghép vào HTML (preview + PDF)
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
-// Generate HTML template for PDF
+const DIGITS = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+// Đọc nhóm 3 chữ số; full = nhóm không đứng đầu → đọc đủ "không trăm", "lẻ"
+function readGroup(n: number, full: boolean): string {
+  const hundreds = Math.floor(n / 100);
+  const tens = Math.floor((n % 100) / 10);
+  const ones = n % 10;
+  const words: string[] = [];
+  if (hundreds > 0 || full) words.push(DIGITS[hundreds], 'trăm');
+  if (tens > 1) words.push(DIGITS[tens], 'mươi');
+  else if (tens === 1) words.push('mười');
+  else if (ones > 0 && words.length > 0) words.push('lẻ');
+  if (ones === 1 && tens > 1) words.push('mốt');
+  else if (ones === 5 && tens > 0) words.push('lăm');
+  else if (ones > 0) words.push(DIGITS[ones]);
+  return words.join(' ');
+}
+
+// n nguyên dương; tách theo tỷ (đệ quy) để có "nghìn tỷ", "triệu tỷ"
+function readNumber(n: number): string {
+  const billions = Math.floor(n / 1e9);
+  const rest = n % 1e9;
+  const parts: string[] = billions > 0 ? [`${readNumber(billions)} tỷ`] : [];
+  const groups = [Math.floor(rest / 1e6), Math.floor(rest / 1e3) % 1000, rest % 1000];
+  const units = [' triệu', ' nghìn', ''];
+  groups.forEach((group, i) => {
+    if (group > 0) parts.push(readGroup(group, parts.length > 0) + units[i]);
+  });
+  return parts.join(' ');
+}
+
+// Số tiền bằng chữ, VD: 25.000.005 → "Hai mươi lăm triệu không trăm lẻ năm đồng"
+export function numberToVietnameseWords(num: number): string {
+  const n = Math.round(num);
+  if (!Number.isFinite(n) || n === 0) return 'Không đồng';
+  const text = `${n < 0 ? 'âm ' : ''}${readNumber(Math.abs(n))} đồng`;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// CSS gói trong .slip-root: chèn vào trang (xem trước, xuất PDF) không ảnh hưởng layout toàn trang
+const SLIP_CSS = `
+  .slip-root {
+    max-width: 700px;
+    margin: 0 auto;
+    font-family: var(--font-sans), 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1a1a1a;
+    background: #fff;
+  }
+  .slip-root * { box-sizing: border-box; }
+  .slip-root .header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 20px;
+  }
+  .slip-root .company-name {
+    font-size: 18px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .slip-root .company-address { font-size: 12px; color: #666; }
+  .slip-root .title {
+    font-size: 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 20px 0;
+  }
+  .slip-root .subtitle { text-align: center; font-size: 14px; margin-bottom: 25px; }
+  .slip-root .employee-info { margin-bottom: 20px; }
+  .slip-root .info-row { display: flex; margin-bottom: 8px; }
+  .slip-root .info-label { width: 150px; flex-shrink: 0; color: #666; }
+  .slip-root .info-value { flex: 1; font-weight: 500; overflow-wrap: anywhere; }
+  .slip-root table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .slip-root th {
+    background: #f8fafc;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #334155;
+  }
+  .slip-root th:nth-child(3), .slip-root th:nth-child(4), .slip-root td.num { text-align: right; }
+  .slip-root td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
+  .slip-root td.num { white-space: nowrap; }
+  .slip-root .section-header td { padding: 10px 8px; font-weight: bold; }
+  .slip-root .total-row { background: #f8fafc; font-weight: bold; }
+  .slip-root .total-row td {
+    padding: 12px 8px;
+    border-top: 2px solid #334155;
+    border-bottom: 2px solid #334155;
+  }
+  .slip-root .net-pay-row { background: #ecfdf5; }
+  .slip-root .net-pay-row td { padding: 15px 8px; font-size: 15px; border-top: 3px double #334155; }
+  .slip-root .amount-in-words {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 4px;
+    font-style: italic;
+  }
+  .slip-root .signatures {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 50px;
+    text-align: center;
+  }
+  .slip-root .signature-box { width: 30%; }
+  .slip-root .signature-title { font-weight: bold; margin-bottom: 5px; }
+  .slip-root .signature-date { font-size: 11px; color: #666; margin-bottom: 60px; }
+  .slip-root .signature-name { border-top: 1px solid #334155; padding-top: 5px; font-weight: 500; }
+  .slip-root .footer {
+    margin-top: 40px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+    font-size: 11px;
+    color: #666;
+  }
+  .slip-root .disclaimer {
+    margin-top: 20px;
+    padding: 10px;
+    background: #fef3c7;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #92400e;
+    text-align: center;
+  }
+`;
+
+// Dòng bảng; label đã escape (nếu là dữ liệu người dùng) trước khi truyền vào
+function row(stt: string, label: string, income: string, deduction: string, labelStyle = ''): string {
+  return `<tr><td>${stt}</td><td${labelStyle ? ` style="${labelStyle}"` : ''}>${label}</td><td class="num">${income}</td><td class="num">${deduction}</td></tr>`;
+}
+
+// Generate HTML fragment for preview + PDF (không có <html>/<body>, CSS đã scope)
 function generatePDFHTML(data: SalarySlipData, summary: SalarySlipSummary): string {
   const { company, employee, payPeriod, earnings, deductions } = data;
   const monthName = VIETNAMESE_MONTHS[payPeriod.month - 1];
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('vi-VN');
-
-  // Calculate total allowances
+  const dateStr = new Date().toLocaleDateString('vi-VN');
   const totalAllowances = earnings.allowances.reduce((sum, a) => sum + a.amount, 0);
 
-  // Generate allowances rows
-  const allowanceRows = earnings.allowances.length > 0
-    ? earnings.allowances
-        .map(
-          (a, i) => `
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${i + 1 === 1 ? '' : ''}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">- ${a.label}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(a.amount)}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-          </tr>
-        `
-        )
-        .join('')
+  const infoRow = (label: string, value: string | undefined) =>
+    value
+      ? `<div class="info-row"><span class="info-label">${label}</span><span class="info-value">${escapeHtml(value)}</span></div>`
+      : '';
+
+  // STT đánh liên tục theo các dòng thực sự hiển thị
+  let earningNo = 0;
+  const earningRows = [
+    row(String(++earningNo), 'Lương cơ bản', formatVND(earnings.basicSalary), ''),
+    totalAllowances > 0
+      ? row(String(++earningNo), 'Phụ cấp', formatVND(totalAllowances), '', 'font-weight: 500;') +
+        earnings.allowances
+          .filter((a) => a.amount > 0)
+          .map((a) => row('', `- ${escapeHtml(a.label)}`, formatVND(a.amount), ''))
+          .join('')
+      : '',
+    earnings.overtime > 0 ? row(String(++earningNo), 'Làm thêm giờ', formatVND(earnings.overtime), '') : '',
+    earnings.bonus > 0 ? row(String(++earningNo), 'Thưởng', formatVND(earnings.bonus), '') : '',
+    earnings.otherEarnings > 0 ? row(String(++earningNo), 'Thu nhập khác', formatVND(earnings.otherEarnings), '') : '',
+  ].join('');
+
+  let deductionNo = 0;
+  const deductionRows = (
+    [
+      ['BHXH (8%)', deductions.bhxh],
+      ['BHYT (1,5%)', deductions.bhyt],
+      ['BHTN (1%)', deductions.bhtn],
+      ['Thuế TNCN', deductions.personalIncomeTax],
+      ['Khấu trừ khác', deductions.otherDeductions],
+    ] as const
+  )
+    .filter(([, amount]) => amount > 0)
+    .map(([label, amount]) => row(String(++deductionNo), label, '', formatVND(amount)))
+    .join('');
+
+  const bankInfo = employee.bankAccount
+    ? `${employee.bankAccount}${employee.bankName ? ` - ${employee.bankName}` : ''}`
     : '';
 
   return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-          font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
-        }
-        body {
-          padding: 40px;
-          font-size: 13px;
-          line-height: 1.5;
-          color: #1a1a1a;
-        }
-        .container {
-          max-width: 700px;
-          margin: 0 auto;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #1a1a1a;
-          padding-bottom: 20px;
-        }
-        .company-name {
-          font-size: 18px;
-          font-weight: bold;
-          text-transform: uppercase;
-          margin-bottom: 5px;
-        }
-        .company-address {
-          font-size: 12px;
-          color: #666;
-        }
-        .title {
-          font-size: 20px;
-          font-weight: bold;
-          text-transform: uppercase;
-          text-align: center;
-          margin: 20px 0;
-        }
-        .subtitle {
-          text-align: center;
-          font-size: 14px;
-          margin-bottom: 25px;
-        }
-        .employee-info {
-          margin-bottom: 20px;
-        }
-        .info-row {
-          display: flex;
-          margin-bottom: 8px;
-        }
-        .info-label {
-          width: 150px;
-          color: #666;
-        }
-        .info-value {
-          flex: 1;
-          font-weight: 500;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 20px;
-        }
-        th {
-          background: #f8fafc;
-          padding: 10px 8px;
-          text-align: left;
-          font-weight: bold;
-          border-bottom: 2px solid #334155;
-        }
-        th:nth-child(3), th:nth-child(4) {
-          text-align: right;
-        }
-        td {
-          padding: 8px;
-          border-bottom: 1px solid #e2e8f0;
-        }
-        .section-header {
-          background: #f1f5f9 !important;
-          font-weight: bold;
-        }
-        .total-row {
-          background: #f8fafc;
-          font-weight: bold;
-        }
-        .total-row td {
-          padding: 12px 8px;
-          border-top: 2px solid #334155;
-          border-bottom: 2px solid #334155;
-        }
-        .net-pay-row {
-          background: #ecfdf5;
-        }
-        .net-pay-row td {
-          padding: 15px 8px;
-          font-size: 15px;
-          border-top: 3px double #334155;
-        }
-        .amount-in-words {
-          margin: 20px 0;
-          padding: 15px;
-          background: #f8fafc;
-          border-radius: 4px;
-          font-style: italic;
-        }
-        .signatures {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 50px;
-          text-align: center;
-        }
-        .signature-box {
-          width: 30%;
-        }
-        .signature-title {
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        .signature-date {
-          font-size: 11px;
-          color: #666;
-          margin-bottom: 60px;
-        }
-        .signature-name {
-          border-top: 1px solid #334155;
-          padding-top: 5px;
-          font-weight: 500;
-        }
-        .footer {
-          margin-top: 40px;
-          padding-top: 15px;
-          border-top: 1px solid #e2e8f0;
-          text-align: center;
-          font-size: 11px;
-          color: #666;
-        }
-        .disclaimer {
-          margin-top: 20px;
-          padding: 10px;
-          background: #fef3c7;
-          border-radius: 4px;
-          font-size: 11px;
-          color: #92400e;
-          text-align: center;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <!-- Header -->
-        <div class="header">
-          <div class="company-name">${company.name || 'CÔNG TY'}</div>
-          <div class="company-address">${company.address || 'Địa chỉ'}</div>
+    <style>${SLIP_CSS}</style>
+    <div class="slip-root">
+      <div class="header">
+        <div class="company-name">${escapeHtml(company.name || 'CÔNG TY')}</div>
+        <div class="company-address">${escapeHtml(company.address || 'Địa chỉ')}</div>
+      </div>
+
+      <div class="title">PHIẾU LƯƠNG</div>
+      <div class="subtitle">${monthName} năm ${payPeriod.year}</div>
+
+      <div class="employee-info">
+        ${infoRow('Họ tên nhân viên:', employee.name || '_______________')}
+        ${infoRow('Mã nhân viên:', employee.employeeId)}
+        ${infoRow('Chức vụ:', employee.position)}
+        ${infoRow('Phòng ban:', employee.department)}
+        ${infoRow('Số tài khoản:', bankInfo)}
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 40px;">STT</th>
+            <th>Khoản mục</th>
+            <th style="width: 140px;">Thu nhập</th>
+            <th style="width: 140px;">Khấu trừ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="section-header"><td colspan="4" style="background: #e0f2fe;">I. THU NHẬP</td></tr>
+          ${earningRows}
+          <tr class="total-row">
+            <td></td>
+            <td style="text-align: right; padding-right: 20px;">Tổng thu nhập (A):</td>
+            <td class="num" style="color: #059669;">${formatVND(summary.grossIncome)}</td>
+            <td></td>
+          </tr>
+
+          <tr class="section-header"><td colspan="4" style="background: #fee2e2;">II. CÁC KHOẢN KHẤU TRỪ</td></tr>
+          ${deductionRows}
+          <tr class="total-row">
+            <td></td>
+            <td style="text-align: right; padding-right: 20px;">Tổng khấu trừ (B):</td>
+            <td></td>
+            <td class="num" style="color: #dc2626;">${formatVND(summary.totalDeductions)}</td>
+          </tr>
+
+          <tr class="net-pay-row">
+            <td></td>
+            <td style="font-weight: bold;">THỰC LĨNH (A - B):</td>
+            <td colspan="2" class="num" style="font-weight: bold; color: #059669; font-size: 16px;">
+              ${formatVND(summary.netPay)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="amount-in-words">
+        <strong>Bằng chữ:</strong> ${numberToVietnameseWords(summary.netPay)}
+      </div>
+
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-title">Người lập</div>
+          <div class="signature-date">Ngày ${dateStr}</div>
+          <div class="signature-name">&nbsp;</div>
         </div>
-
-        <!-- Title -->
-        <div class="title">PHIẾU LƯƠNG</div>
-        <div class="subtitle">${monthName} năm ${payPeriod.year}</div>
-
-        <!-- Employee Info -->
-        <div class="employee-info">
-          <div class="info-row">
-            <span class="info-label">Họ tên nhân viên:</span>
-            <span class="info-value">${employee.name || '_______________'}</span>
-          </div>
-          ${employee.employeeId ? `
-          <div class="info-row">
-            <span class="info-label">Mã nhân viên:</span>
-            <span class="info-value">${employee.employeeId}</span>
-          </div>
-          ` : ''}
-          ${employee.position ? `
-          <div class="info-row">
-            <span class="info-label">Chức vụ:</span>
-            <span class="info-value">${employee.position}</span>
-          </div>
-          ` : ''}
-          ${employee.department ? `
-          <div class="info-row">
-            <span class="info-label">Phòng ban:</span>
-            <span class="info-value">${employee.department}</span>
-          </div>
-          ` : ''}
-          ${employee.bankAccount ? `
-          <div class="info-row">
-            <span class="info-label">Số tài khoản:</span>
-            <span class="info-value">${employee.bankAccount}${employee.bankName ? ` - ${employee.bankName}` : ''}</span>
-          </div>
-          ` : ''}
+        <div class="signature-box">
+          <div class="signature-title">Kế toán trưởng</div>
+          <div class="signature-date">Ngày ${dateStr}</div>
+          <div class="signature-name">&nbsp;</div>
         </div>
-
-        <!-- Salary Details Table -->
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 40px;">STT</th>
-              <th>Khoản mục</th>
-              <th style="width: 140px;">Thu nhập</th>
-              <th style="width: 140px;">Khấu trừ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Earnings Section -->
-            <tr class="section-header">
-              <td colspan="4" style="padding: 10px 8px; background: #e0f2fe;">I. THU NHẬP</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">1</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Lương cơ bản</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(earnings.basicSalary)}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-            </tr>
-            ${totalAllowances > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">2</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">Phụ cấp</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(totalAllowances)}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-            </tr>
-            ${allowanceRows}
-            ` : ''}
-            ${earnings.overtime > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${totalAllowances > 0 ? '3' : '2'}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Làm thêm giờ</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(earnings.overtime)}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-            </tr>
-            ` : ''}
-            ${earnings.bonus > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${totalAllowances > 0 ? (earnings.overtime > 0 ? '4' : '3') : (earnings.overtime > 0 ? '3' : '2')}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Thưởng</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(earnings.bonus)}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-            </tr>
-            ` : ''}
-            ${earnings.otherEarnings > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Thu nhập khác</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(earnings.otherEarnings)}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-            </tr>
-            ` : ''}
-            <tr class="total-row">
-              <td></td>
-              <td style="text-align: right; padding-right: 20px;">Tổng thu nhập (A):</td>
-              <td style="text-align: right; color: #059669;">${formatVND(summary.grossIncome)}</td>
-              <td></td>
-            </tr>
-
-            <!-- Deductions Section -->
-            <tr class="section-header">
-              <td colspan="4" style="padding: 10px 8px; background: #fee2e2;">II. CÁC KHOẢN KHẤU TRỪ</td>
-            </tr>
-            ${deductions.bhxh > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">1</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">BHXH (8%)</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(deductions.bhxh)}</td>
-            </tr>
-            ` : ''}
-            ${deductions.bhyt > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">2</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">BHYT (1.5%)</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(deductions.bhyt)}</td>
-            </tr>
-            ` : ''}
-            ${deductions.bhtn > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">3</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">BHTN (1%)</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(deductions.bhtn)}</td>
-            </tr>
-            ` : ''}
-            ${deductions.personalIncomeTax > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">4</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Thuế TNCN</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(deductions.personalIncomeTax)}</td>
-            </tr>
-            ` : ''}
-            ${deductions.otherDeductions > 0 ? `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">5</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">Khấu trừ khác</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"></td>
-              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatVND(deductions.otherDeductions)}</td>
-            </tr>
-            ` : ''}
-            <tr class="total-row">
-              <td></td>
-              <td style="text-align: right; padding-right: 20px;">Tổng khấu trừ (B):</td>
-              <td></td>
-              <td style="text-align: right; color: #dc2626;">${formatVND(summary.totalDeductions)}</td>
-            </tr>
-
-            <!-- Net Pay -->
-            <tr class="net-pay-row">
-              <td></td>
-              <td style="font-weight: bold;">THỰC LĨNH (A - B):</td>
-              <td colspan="2" style="text-align: right; font-weight: bold; color: #059669; font-size: 16px;">
-                ${formatVND(summary.netPay)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Amount in words -->
-        <div class="amount-in-words">
-          <strong>Bằng chữ:</strong> ${numberToVietnameseWords(summary.netPay).charAt(0).toUpperCase() + numberToVietnameseWords(summary.netPay).slice(1)}
-        </div>
-
-        <!-- Signatures -->
-        <div class="signatures">
-          <div class="signature-box">
-            <div class="signature-title">Người lập</div>
-            <div class="signature-date">Ngày ${dateStr}</div>
-            <div class="signature-name">&nbsp;</div>
-          </div>
-          <div class="signature-box">
-            <div class="signature-title">Kế toán trưởng</div>
-            <div class="signature-date">Ngày ${dateStr}</div>
-            <div class="signature-name">&nbsp;</div>
-          </div>
-          <div class="signature-box">
-            <div class="signature-title">Giám đốc</div>
-            <div class="signature-date">Ngày ${dateStr}</div>
-            <div class="signature-name">&nbsp;</div>
-          </div>
-        </div>
-
-        <!-- Disclaimer -->
-        <div class="disclaimer">
-          Phiếu lương này được tạo tự động, vui lòng kiểm tra lại trước khi sử dụng.
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-          Tạo bởi Tính Thuế TNCN 2026 - thue.1devops.io
+        <div class="signature-box">
+          <div class="signature-title">Giám đốc</div>
+          <div class="signature-date">Ngày ${dateStr}</div>
+          <div class="signature-name">&nbsp;</div>
         </div>
       </div>
-    </body>
-    </html>
+
+      <div class="disclaimer">
+        Phiếu lương này được tạo tự động, vui lòng kiểm tra lại trước khi sử dụng.
+      </div>
+
+      <div class="footer">
+        Tạo bởi Tính Thuế TNCN 2026 - thue.1devops.io
+      </div>
+    </div>
   `;
 }
 
@@ -460,6 +313,7 @@ export default function SalarySlipPDF({ data, summary, onGenerating }: SalarySli
     setError(null);
     onGenerating?.(true);
 
+    let container: HTMLDivElement | null = null;
     try {
       // Dynamic imports to reduce bundle size
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
@@ -468,12 +322,13 @@ export default function SalarySlipPDF({ data, summary, onGenerating }: SalarySli
       ]);
 
       // Create a temporary container for the PDF content
-      const container = document.createElement('div');
+      container = document.createElement('div');
       container.style.cssText = `
         position: absolute;
         left: -9999px;
         top: 0;
         width: 794px;
+        padding: 40px 0;
         background: white;
       `;
 
@@ -487,9 +342,6 @@ export default function SalarySlipPDF({ data, summary, onGenerating }: SalarySli
         logging: false,
         backgroundColor: '#ffffff',
       });
-
-      // Remove the temporary container
-      document.body.removeChild(container);
 
       // Create PDF
       const pdf = new jsPDF({
@@ -530,6 +382,8 @@ export default function SalarySlipPDF({ data, summary, onGenerating }: SalarySli
       console.error('Error generating PDF:', err);
       setError('Không thể tạo PDF. Vui lòng thử lại.');
     } finally {
+      // Luôn gỡ container tạm, kể cả khi html2canvas lỗi
+      container?.remove();
       setIsGenerating(false);
       onGenerating?.(false);
     }

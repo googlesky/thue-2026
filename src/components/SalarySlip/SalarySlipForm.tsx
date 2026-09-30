@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Tooltip from '@/components/ui/Tooltip';
+import { parseCurrency } from '@/lib/taxCalculator';
+import { MAX_MONTHLY_INCOME } from '@/utils/inputSanitizers';
 import {
   SalarySlipData,
   CompanyInfo,
@@ -20,32 +22,82 @@ import {
 interface SalarySlipFormProps {
   data: SalarySlipData;
   onChange: (data: SalarySlipData) => void;
-  grossIncome?: number; // Pre-filled from calculator
-  insuranceDeductions?: {
-    bhxh: number;
-    bhyt: number;
-    bhtn: number;
-  };
-  taxAmount?: number;
+  autoDeductions: boolean; // BH + thuế TNCN tự tính (chỉ đọc)
+  onAutoDeductionsChange: (auto: boolean) => void;
+  deductionNotes: string[];
 }
 
 function formatMoney(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount);
 }
 
-function parseMoney(value: string): number {
-  return parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
+function InfoIcon() {
+  return (
+    <span className="text-gray-400 cursor-help">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </span>
+  );
+}
+
+// Ô tiền: khi đang gõ giữ chuỗi riêng (cho phép xóa trống), rời ô thì hiển thị lại giá trị thật
+function MoneyInput({
+  id,
+  value,
+  onValue,
+  readOnly = false,
+  small = false,
+}: {
+  id?: string;
+  value: number;
+  onValue: (value: number) => void;
+  readOnly?: boolean;
+  small?: boolean;
+}) {
+  const [text, setText] = useState<string | null>(null);
+
+  return (
+    <div className="relative flex-1 min-w-0">
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        value={text ?? formatMoney(value)}
+        readOnly={readOnly}
+        onFocus={() => {
+          if (!readOnly) setText(value ? formatMoney(value) : '');
+        }}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '');
+          const amount = Math.min(parseCurrency(digits), MAX_MONTHLY_INCOME);
+          setText(digits && formatMoney(amount));
+          onValue(amount);
+        }}
+        onBlur={() => setText(null)}
+        className={`input-field pr-10 ${small ? 'text-sm' : ''} ${readOnly ? 'bg-gray-50 text-gray-600' : ''}`}
+        placeholder="0"
+      />
+      <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 ${small ? 'text-xs' : 'text-sm'}`}>đ</span>
+    </div>
+  );
+}
+
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Trình duyệt chặn localStorage (chế độ riêng tư, hết dung lượng): bỏ qua
+  }
 }
 
 export default function SalarySlipForm({
   data,
   onChange,
-  grossIncome,
-  insuranceDeductions,
-  taxAmount,
+  autoDeductions,
+  onAutoDeductionsChange,
+  deductionNotes,
 }: SalarySlipFormProps) {
-  // Local input states for formatted display
-  const [localInputs, setLocalInputs] = useState<Record<string, string>>({});
   const [showAllowanceSelector, setShowAllowanceSelector] = useState(false);
   const [newAllowanceLabel, setNewAllowanceLabel] = useState('');
 
@@ -59,65 +111,14 @@ export default function SalarySlipForm({
     return years;
   }, [currentYear]);
 
-  // Load saved company info on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedCompany = localStorage.getItem(STORAGE_KEYS.COMPANY_INFO);
-      const savedEmployee = localStorage.getItem(STORAGE_KEYS.EMPLOYEE_INFO);
-
-      if (savedCompany && !data.company.name) {
-        try {
-          const parsedCompany = JSON.parse(savedCompany) as CompanyInfo;
-          onChange({ ...data, company: { ...data.company, ...parsedCompany } });
-        } catch {
-          // Ignore parse errors
-        }
-      }
-
-      if (savedEmployee && !data.employee.name) {
-        try {
-          const parsedEmployee = JSON.parse(savedEmployee) as EmployeeInfo;
-          onChange({ ...data, employee: { ...data.employee, ...parsedEmployee } });
-        } catch {
-          // Ignore parse errors
-        }
-      }
-    }
-  }, []);
-
-  // Pre-fill from calculator when available
-  useEffect(() => {
-    if (grossIncome !== undefined && data.earnings.basicSalary === 0) {
-      const newEarnings = { ...data.earnings, basicSalary: grossIncome };
-      onChange({ ...data, earnings: newEarnings });
-    }
-    if (insuranceDeductions) {
-      const newDeductions = {
-        ...data.deductions,
-        bhxh: insuranceDeductions.bhxh,
-        bhyt: insuranceDeductions.bhyt,
-        bhtn: insuranceDeductions.bhtn,
-      };
-      onChange({ ...data, deductions: newDeductions });
-    }
-    if (taxAmount !== undefined) {
-      const newDeductions = { ...data.deductions, personalIncomeTax: taxAmount };
-      onChange({ ...data, deductions: newDeductions });
-    }
-  }, [grossIncome, insuranceDeductions, taxAmount]);
-
   // Save company info to localStorage
   const saveCompanyInfo = useCallback(() => {
-    if (typeof window !== 'undefined' && data.company.name) {
-      localStorage.setItem(STORAGE_KEYS.COMPANY_INFO, JSON.stringify(data.company));
-    }
+    if (data.company.name) saveToStorage(STORAGE_KEYS.COMPANY_INFO, data.company);
   }, [data.company]);
 
   // Save employee info to localStorage
   const saveEmployeeInfo = useCallback(() => {
-    if (typeof window !== 'undefined' && data.employee.name) {
-      localStorage.setItem(STORAGE_KEYS.EMPLOYEE_INFO, JSON.stringify(data.employee));
-    }
+    if (data.employee.name) saveToStorage(STORAGE_KEYS.EMPLOYEE_INFO, data.employee);
   }, [data.employee]);
 
   // Handle company info changes
@@ -204,40 +205,13 @@ export default function SalarySlipForm({
     [data, onChange]
   );
 
-  // Handle money input with formatting
-  const handleMoneyInput = useCallback(
-    (
-      inputId: string,
-      value: string,
-      updateFn: (val: number) => void
-    ) => {
-      const numericValue = value.replace(/[^\d]/g, '');
-      setLocalInputs((prev) => ({ ...prev, [inputId]: numericValue }));
-      updateFn(parseInt(numericValue) || 0);
-    },
-    []
-  );
-
-  const handleMoneyBlur = useCallback((inputId: string, value: number) => {
-    setLocalInputs((prev) => ({ ...prev, [inputId]: formatMoney(value) }));
-  }, []);
-
-  const handleMoneyFocus = useCallback((inputId: string, value: number) => {
-    setLocalInputs((prev) => ({ ...prev, [inputId]: value.toString() }));
-  }, []);
-
-  const getInputValue = useCallback(
-    (inputId: string, actualValue: number): string => {
-      return localInputs[inputId] ?? formatMoney(actualValue);
-    },
-    [localInputs]
-  );
-
   // Clear saved data
   const handleClearSavedData = useCallback(() => {
-    if (typeof window !== 'undefined') {
+    try {
       localStorage.removeItem(STORAGE_KEYS.COMPANY_INFO);
       localStorage.removeItem(STORAGE_KEYS.EMPLOYEE_INFO);
+    } catch {
+      // Bỏ qua nếu trình duyệt chặn localStorage
     }
     onChange({
       ...data,
@@ -246,15 +220,25 @@ export default function SalarySlipForm({
     });
   }, [data, onChange]);
 
+  // BH + thuế: chỉ đọc khi tự tính
+  const deductionFields: Array<{
+    field: 'bhxh' | 'bhyt' | 'bhtn' | 'personalIncomeTax';
+    id: string;
+    label: string;
+    tooltip: string;
+  }> = [
+    { field: 'bhxh', id: 'bhxh', label: 'BHXH (8%)', tooltip: 'Bảo hiểm xã hội: 8% lương đóng BH, tối đa 20 lần lương cơ sở' },
+    { field: 'bhyt', id: 'bhyt', label: 'BHYT (1,5%)', tooltip: 'Bảo hiểm y tế: 1,5% lương đóng BH, tối đa 20 lần lương cơ sở' },
+    { field: 'bhtn', id: 'bhtn', label: 'BHTN (1%)', tooltip: 'Bảo hiểm thất nghiệp: 1% lương đóng BH, tối đa 20 lần lương tối thiểu vùng' },
+    { field: 'personalIncomeTax', id: 'pit', label: 'Thuế TNCN', tooltip: 'Tính theo biểu lũy tiến của kỳ lương trên các khoản chịu thuế của phiếu (tiền làm thêm giờ đúng luật được miễn từ kỳ 2026)' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Company Information */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <span className="text-lg">🏢</span>
-            Thông tin công ty
-          </h3>
+          <h3 className="font-semibold text-gray-900">Thông tin công ty</h3>
           <div className="flex gap-2">
             <button
               type="button"
@@ -275,7 +259,7 @@ export default function SalarySlipForm({
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
               Tên công ty <span className="text-red-500">*</span>
@@ -299,7 +283,7 @@ export default function SalarySlipForm({
               value={data.company.address}
               onChange={(e) => handleCompanyChange('address', e.target.value)}
               className="input-field"
-              placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố"
+              placeholder="Số nhà, đường, xã/phường, tỉnh/thành phố"
             />
           </div>
         </div>
@@ -308,10 +292,7 @@ export default function SalarySlipForm({
       {/* Employee Information */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-            <span className="text-lg">👤</span>
-            Thông tin nhân viên
-          </h3>
+          <h3 className="font-semibold text-gray-900">Thông tin nhân viên</h3>
           <button
             type="button"
             onClick={saveEmployeeInfo}
@@ -322,7 +303,7 @@ export default function SalarySlipForm({
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="employee-name" className="block text-sm font-medium text-gray-700 mb-1">
               Họ tên nhân viên <span className="text-red-500">*</span>
@@ -406,12 +387,9 @@ export default function SalarySlipForm({
 
       {/* Pay Period */}
       <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="text-lg">📅</span>
-          Kỳ lương
-        </h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Kỳ lương</h3>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="pay-month" className="block text-sm font-medium text-gray-700 mb-1">
               Tháng <span className="text-red-500">*</span>
@@ -451,41 +429,22 @@ export default function SalarySlipForm({
 
       {/* Earnings Section */}
       <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="text-lg">💵</span>
-          Thu nhập
-        </h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Thu nhập</h3>
 
         <div className="space-y-4">
           {/* Basic Salary */}
           <div>
             <label htmlFor="basic-salary" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               Lương cơ bản <span className="text-red-500">*</span>
-              <Tooltip content="Mức lương cơ bản hàng tháng trước thuế">
-                <span className="text-gray-400 cursor-help">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
+              <Tooltip content="Mức lương hàng tháng trước thuế, dùng làm lương đóng BH nếu tab Tính thuế không khai báo lương đóng BH riêng">
+                <InfoIcon />
               </Tooltip>
             </label>
-            <div className="relative">
-              <input
-                id="basic-salary"
-                type="text"
-                value={getInputValue('basicSalary', data.earnings.basicSalary)}
-                onChange={(e) =>
-                  handleMoneyInput('basicSalary', e.target.value, (v) =>
-                    handleEarningsChange('basicSalary', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('basicSalary', data.earnings.basicSalary)}
-                onFocus={() => handleMoneyFocus('basicSalary', data.earnings.basicSalary)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
+            <MoneyInput
+              id="basic-salary"
+              value={data.earnings.basicSalary}
+              onValue={(v) => handleEarningsChange('basicSalary', v)}
+            />
           </div>
 
           {/* Allowances */}
@@ -528,7 +487,7 @@ export default function SalarySlipForm({
                     value={newAllowanceLabel}
                     onChange={(e) => setNewAllowanceLabel(e.target.value)}
                     placeholder="Hoặc nhập tên phụ cấp tùy chỉnh..."
-                    className="input-field text-sm flex-1"
+                    className="input-field text-sm flex-1 min-w-0"
                   />
                   <button
                     type="button"
@@ -539,6 +498,9 @@ export default function SalarySlipForm({
                     Thêm
                   </button>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Phụ cấp tự đặt tên và &quot;Phụ cấp khác&quot; được tính là thu nhập chịu thuế.
+                </p>
               </div>
             )}
 
@@ -550,25 +512,14 @@ export default function SalarySlipForm({
                     type="text"
                     value={allowance.label}
                     onChange={(e) => handleUpdateAllowance(allowance.id, 'label', e.target.value)}
-                    className="input-field text-sm flex-1"
+                    className="input-field text-sm flex-1 min-w-0"
                     placeholder="Tên phụ cấp"
                   />
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={getInputValue(`allowance-${allowance.id}`, allowance.amount)}
-                      onChange={(e) =>
-                        handleMoneyInput(`allowance-${allowance.id}`, e.target.value, (v) =>
-                          handleUpdateAllowance(allowance.id, 'amount', v)
-                        )
-                      }
-                      onBlur={() => handleMoneyBlur(`allowance-${allowance.id}`, allowance.amount)}
-                      onFocus={() => handleMoneyFocus(`allowance-${allowance.id}`, allowance.amount)}
-                      className="input-field text-sm pr-10"
-                      placeholder="0"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">đ</span>
-                  </div>
+                  <MoneyInput
+                    value={allowance.amount}
+                    onValue={(v) => handleUpdateAllowance(allowance.id, 'amount', v)}
+                    small
+                  />
                   <button
                     type="button"
                     onClick={() => handleRemoveAllowance(allowance.id)}
@@ -592,23 +543,11 @@ export default function SalarySlipForm({
             <label htmlFor="overtime" className="block text-sm font-medium text-gray-700 mb-1">
               Làm thêm giờ
             </label>
-            <div className="relative">
-              <input
-                id="overtime"
-                type="text"
-                value={getInputValue('overtime', data.earnings.overtime)}
-                onChange={(e) =>
-                  handleMoneyInput('overtime', e.target.value, (v) =>
-                    handleEarningsChange('overtime', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('overtime', data.earnings.overtime)}
-                onFocus={() => handleMoneyFocus('overtime', data.earnings.overtime)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
+            <MoneyInput
+              id="overtime"
+              value={data.earnings.overtime}
+              onValue={(v) => handleEarningsChange('overtime', v)}
+            />
           </div>
 
           {/* Bonus */}
@@ -616,23 +555,11 @@ export default function SalarySlipForm({
             <label htmlFor="bonus" className="block text-sm font-medium text-gray-700 mb-1">
               Thưởng
             </label>
-            <div className="relative">
-              <input
-                id="bonus"
-                type="text"
-                value={getInputValue('bonus', data.earnings.bonus)}
-                onChange={(e) =>
-                  handleMoneyInput('bonus', e.target.value, (v) =>
-                    handleEarningsChange('bonus', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('bonus', data.earnings.bonus)}
-                onFocus={() => handleMoneyFocus('bonus', data.earnings.bonus)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
+            <MoneyInput
+              id="bonus"
+              value={data.earnings.bonus}
+              onValue={(v) => handleEarningsChange('bonus', v)}
+            />
           </div>
 
           {/* Other Earnings */}
@@ -640,181 +567,71 @@ export default function SalarySlipForm({
             <label htmlFor="other-earnings" className="block text-sm font-medium text-gray-700 mb-1">
               Thu nhập khác
             </label>
-            <div className="relative">
-              <input
-                id="other-earnings"
-                type="text"
-                value={getInputValue('otherEarnings', data.earnings.otherEarnings)}
-                onChange={(e) =>
-                  handleMoneyInput('otherEarnings', e.target.value, (v) =>
-                    handleEarningsChange('otherEarnings', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('otherEarnings', data.earnings.otherEarnings)}
-                onFocus={() => handleMoneyFocus('otherEarnings', data.earnings.otherEarnings)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
+            <MoneyInput
+              id="other-earnings"
+              value={data.earnings.otherEarnings}
+              onValue={(v) => handleEarningsChange('otherEarnings', v)}
+            />
           </div>
         </div>
       </div>
 
       {/* Deductions Section */}
       <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="text-lg">📉</span>
-          Các khoản khấu trừ
-        </h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Các khoản khấu trừ</h3>
+
+        <label htmlFor="auto-deductions" className="flex items-start gap-3 cursor-pointer min-h-[44px] mb-2">
+          <input
+            id="auto-deductions"
+            type="checkbox"
+            checked={autoDeductions}
+            onChange={(e) => onAutoDeductionsChange(e.target.checked)}
+            className="w-4 h-4 mt-0.5 text-primary-600 rounded"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Tự tính BH và thuế TNCN theo kỳ lương
+            <span className="block text-xs font-normal text-gray-500">
+              Bỏ chọn để nhập tay theo bảng lương của công ty
+            </span>
+          </span>
+        </label>
+
+        {deductionNotes.length > 0 && (
+          <ul className="mb-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1 list-disc list-inside">
+            {deductionNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
 
         <div className="space-y-4">
-          {/* BHXH */}
-          <div>
-            <label htmlFor="bhxh" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              BHXH (8%)
-              <Tooltip content="Bảo hiểm xã hội: 8% lương đóng BH">
-                <span className="text-gray-400 cursor-help">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-              </Tooltip>
-            </label>
-            <div className="relative">
-              <input
-                id="bhxh"
-                type="text"
-                value={getInputValue('bhxh', data.deductions.bhxh)}
-                onChange={(e) =>
-                  handleMoneyInput('bhxh', e.target.value, (v) =>
-                    handleDeductionsChange('bhxh', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('bhxh', data.deductions.bhxh)}
-                onFocus={() => handleMoneyFocus('bhxh', data.deductions.bhxh)}
-                className="input-field pr-10"
-                placeholder="0"
+          {deductionFields.map(({ field, id, label, tooltip }) => (
+            <div key={field}>
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                {label}
+                <Tooltip content={tooltip}>
+                  <InfoIcon />
+                </Tooltip>
+              </label>
+              <MoneyInput
+                id={id}
+                value={data.deductions[field]}
+                onValue={(v) => handleDeductionsChange(field, v)}
+                readOnly={autoDeductions}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
             </div>
-          </div>
-
-          {/* BHYT */}
-          <div>
-            <label htmlFor="bhyt" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              BHYT (1.5%)
-              <Tooltip content="Bảo hiểm y tế: 1.5% lương đóng BH">
-                <span className="text-gray-400 cursor-help">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-              </Tooltip>
-            </label>
-            <div className="relative">
-              <input
-                id="bhyt"
-                type="text"
-                value={getInputValue('bhyt', data.deductions.bhyt)}
-                onChange={(e) =>
-                  handleMoneyInput('bhyt', e.target.value, (v) =>
-                    handleDeductionsChange('bhyt', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('bhyt', data.deductions.bhyt)}
-                onFocus={() => handleMoneyFocus('bhyt', data.deductions.bhyt)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
-          </div>
-
-          {/* BHTN */}
-          <div>
-            <label htmlFor="bhtn" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              BHTN (1%)
-              <Tooltip content="Bảo hiểm thất nghiệp: 1% lương đóng BH">
-                <span className="text-gray-400 cursor-help">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-              </Tooltip>
-            </label>
-            <div className="relative">
-              <input
-                id="bhtn"
-                type="text"
-                value={getInputValue('bhtn', data.deductions.bhtn)}
-                onChange={(e) =>
-                  handleMoneyInput('bhtn', e.target.value, (v) =>
-                    handleDeductionsChange('bhtn', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('bhtn', data.deductions.bhtn)}
-                onFocus={() => handleMoneyFocus('bhtn', data.deductions.bhtn)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
-          </div>
-
-          {/* Personal Income Tax */}
-          <div>
-            <label htmlFor="pit" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-              Thuế TNCN
-              <Tooltip content="Thuế thu nhập cá nhân theo biểu thuế lũy tiến">
-                <span className="text-gray-400 cursor-help">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-              </Tooltip>
-            </label>
-            <div className="relative">
-              <input
-                id="pit"
-                type="text"
-                value={getInputValue('personalIncomeTax', data.deductions.personalIncomeTax)}
-                onChange={(e) =>
-                  handleMoneyInput('personalIncomeTax', e.target.value, (v) =>
-                    handleDeductionsChange('personalIncomeTax', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('personalIncomeTax', data.deductions.personalIncomeTax)}
-                onFocus={() => handleMoneyFocus('personalIncomeTax', data.deductions.personalIncomeTax)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
-          </div>
+          ))}
 
           {/* Other Deductions */}
           <div>
             <label htmlFor="other-deductions" className="block text-sm font-medium text-gray-700 mb-1">
               Khấu trừ khác
             </label>
-            <div className="relative">
-              <input
-                id="other-deductions"
-                type="text"
-                value={getInputValue('otherDeductions', data.deductions.otherDeductions)}
-                onChange={(e) =>
-                  handleMoneyInput('otherDeductions', e.target.value, (v) =>
-                    handleDeductionsChange('otherDeductions', v)
-                  )
-                }
-                onBlur={() => handleMoneyBlur('otherDeductions', data.deductions.otherDeductions)}
-                onFocus={() => handleMoneyFocus('otherDeductions', data.deductions.otherDeductions)}
-                className="input-field pr-10"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">đ</span>
-            </div>
+            <MoneyInput
+              id="other-deductions"
+              value={data.deductions.otherDeductions}
+              onValue={(v) => handleDeductionsChange('otherDeductions', v)}
+            />
           </div>
         </div>
       </div>

@@ -7,11 +7,8 @@ import {
   generateDeadlineId,
   getDaysUntilDeadline,
   getDaysText,
-  formatDateVN,
   formatShortDate,
-  getStatusColor,
   getStatusLabel,
-  getPriorityColor,
   type DeadlineType,
   type TaxDeadline,
   type DeadlineStatus,
@@ -19,6 +16,10 @@ import {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const AVAILABLE_YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+
+// Ngày local dạng YYYY-MM-DD cho input type="date" (không dùng toISOString: lệch ngày ở UTC+7)
+const toInputDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default function TaxDeadlineManager() {
   const [year, setYear] = useState(CURRENT_YEAR);
@@ -35,50 +36,16 @@ export default function TaxDeadlineManager() {
     type: 'custom' as DeadlineType,
     name: '',
     description: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: toInputDate(new Date()),
     amount: 0,
     notes: '',
   });
 
-  // Calculate deadlines with completed status
-  const result = useMemo(() => {
-    const deadlinesWithCompleted = customDeadlines.map(d => ({
-      ...d,
-      completedAt: completedIds.has(d.id) ? new Date() : undefined,
-    }));
-
-    const input = {
-      year,
-      includePersonal,
-      includeBusiness,
-      customDeadlines: deadlinesWithCompleted,
-    };
-
-    const result = calculateDeadlineManager(input);
-
-    // Apply completed status to standard deadlines too
-    result.allDeadlines = result.allDeadlines.map(d => ({
-      ...d,
-      completedAt: completedIds.has(d.id) ? new Date() : d.completedAt,
-      status: completedIds.has(d.id) ? 'completed' as DeadlineStatus : d.status,
-    }));
-
-    // Re-categorize after completion updates
-    return {
-      ...result,
-      upcomingDeadlines: result.allDeadlines.filter(d => d.status === 'upcoming'),
-      dueSoonDeadlines: result.allDeadlines.filter(d => d.status === 'due_soon'),
-      overdueDeadlines: result.allDeadlines.filter(d => d.status === 'overdue'),
-      completedDeadlines: result.allDeadlines.filter(d => d.status === 'completed'),
-      summary: {
-        total: result.allDeadlines.length,
-        upcoming: result.allDeadlines.filter(d => d.status === 'upcoming').length,
-        dueSoon: result.allDeadlines.filter(d => d.status === 'due_soon').length,
-        overdue: result.allDeadlines.filter(d => d.status === 'overdue').length,
-        completed: result.allDeadlines.filter(d => d.status === 'completed').length,
-      },
-    };
-  }, [year, includePersonal, includeBusiness, customDeadlines, completedIds]);
+  // Trạng thái hoàn thành áp trong lib (ID hạn chuẩn xác định theo loại + kỳ nên giữ được khi tính lại)
+  const result = useMemo(
+    () => calculateDeadlineManager({ year, includePersonal, includeBusiness, customDeadlines, completedIds }),
+    [year, includePersonal, includeBusiness, customDeadlines, completedIds]
+  );
 
   // Filtered deadlines
   const filteredDeadlines = useMemo(() => {
@@ -101,17 +68,16 @@ export default function TaxDeadlineManager() {
 
   // Add custom deadline
   const addCustomDeadline = useCallback(() => {
-    if (!formData.name || !formData.dueDate) return;
+    const [y, m, d] = formData.dueDate.split('-').map(Number);
+    if (!formData.name || !y || !m || !d) return;
 
     const newDeadline: TaxDeadline = {
       id: generateDeadlineId(),
       type: formData.type,
       name: formData.name,
       description: formData.description || undefined,
-      dueDate: new Date(formData.dueDate),
-      reminderDays: [7, 3, 1],
+      dueDate: new Date(y, m - 1, d),
       status: 'upcoming',
-      priority: 'medium',
       amount: formData.amount || undefined,
       notes: formData.notes || undefined,
       isCustom: true,
@@ -123,7 +89,7 @@ export default function TaxDeadlineManager() {
       type: 'custom',
       name: '',
       description: '',
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: toInputDate(new Date()),
       amount: 0,
       notes: '',
     });
@@ -192,8 +158,7 @@ export default function TaxDeadlineManager() {
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xl">{config.icon}</span>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <h4 className={`font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                 {deadline.name}
               </h4>
@@ -206,6 +171,12 @@ export default function TaxDeadlineManager() {
 
             {deadline.description && (
               <p className="text-sm text-gray-600 mb-2">{deadline.description}</p>
+            )}
+
+            {config.legalBasis && (
+              <p className="text-xs text-gray-500 mb-2">
+                Căn cứ: {config.legalBasis}. Hậu quả nếu trễ: {config.penalty}.
+              </p>
             )}
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -260,12 +231,9 @@ export default function TaxDeadlineManager() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-3xl">📅</span>
-          <h2 className="text-2xl font-bold">Quản lý Deadline Thuế</h2>
-        </div>
+        <h2 className="text-2xl font-bold mb-2">Quản lý Deadline Thuế</h2>
         <p className="text-indigo-100">
-          Theo dõi và nhắc nhở các mốc nộp thuế quan trọng
+          Theo dõi và nhắc nhở các mốc nộp thuế quan trọng. Hạn trùng thứ Bảy, Chủ nhật, ngày nghỉ lễ đã được dời sang ngày làm việc tiếp theo.
         </p>
       </div>
 
@@ -354,10 +322,7 @@ export default function TaxDeadlineManager() {
       {/* Next Deadline Highlight */}
       {result.nextDeadline && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-orange-200 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-2xl">⏰</span>
-            <h3 className="text-lg font-bold text-orange-800">Deadline tiếp theo</h3>
-          </div>
+          <h3 className="text-lg font-bold text-orange-800 mb-3">Deadline tiếp theo</h3>
           <DeadlineCard deadline={result.nextDeadline} />
         </div>
       )}
@@ -365,8 +330,8 @@ export default function TaxDeadlineManager() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200">
         {[
-          { id: 'overview', label: 'Tổng quan', icon: '📊' },
-          { id: 'list', label: 'Danh sách', icon: '📋' },
+          { id: 'overview', label: 'Tổng quan' },
+          { id: 'list', label: 'Danh sách' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -377,7 +342,6 @@ export default function TaxDeadlineManager() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            <span>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
@@ -389,8 +353,8 @@ export default function TaxDeadlineManager() {
           {/* Overdue */}
           {result.overdueDeadlines.length > 0 && (
             <div>
-              <h3 className="text-lg font-bold text-red-600 mb-3 flex items-center gap-2">
-                <span>🚨</span> Quá hạn ({result.overdueDeadlines.length})
+              <h3 className="text-lg font-bold text-red-600 mb-3">
+                Quá hạn ({result.overdueDeadlines.length})
               </h3>
               <div className="space-y-3">
                 {result.overdueDeadlines.map(deadline => (
@@ -403,8 +367,8 @@ export default function TaxDeadlineManager() {
           {/* Due Soon */}
           {result.dueSoonDeadlines.length > 0 && (
             <div>
-              <h3 className="text-lg font-bold text-orange-600 mb-3 flex items-center gap-2">
-                <span>⚠️</span> Sắp đến hạn ({result.dueSoonDeadlines.length})
+              <h3 className="text-lg font-bold text-orange-600 mb-3">
+                Sắp đến hạn ({result.dueSoonDeadlines.length})
               </h3>
               <div className="space-y-3">
                 {result.dueSoonDeadlines.map(deadline => (
@@ -417,8 +381,8 @@ export default function TaxDeadlineManager() {
           {/* Upcoming (show first 5) */}
           {result.upcomingDeadlines.length > 0 && (
             <div>
-              <h3 className="text-lg font-bold text-blue-600 mb-3 flex items-center gap-2">
-                <span>📅</span> Sắp tới ({result.upcomingDeadlines.length})
+              <h3 className="text-lg font-bold text-blue-600 mb-3">
+                Sắp tới ({result.upcomingDeadlines.length})
               </h3>
               <div className="space-y-3">
                 {result.upcomingDeadlines.slice(0, 5).map(deadline => (
@@ -439,7 +403,6 @@ export default function TaxDeadlineManager() {
           {/* Empty state */}
           {result.allDeadlines.length === 0 && (
             <div className="text-center py-12">
-              <span className="text-6xl mb-4 block">📭</span>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">Chưa có deadline nào</h3>
               <p className="text-gray-500">
                 Bật &quot;Cá nhân&quot; hoặc &quot;Doanh nghiệp&quot; để xem các deadline tiêu chuẩn
@@ -516,7 +479,7 @@ export default function TaxDeadlineManager() {
                 >
                   {Object.entries(DEADLINE_CONFIGS).map(([key, config]) => (
                     <option key={key} value={key}>
-                      {config.icon} {config.name}
+                      {config.name}
                     </option>
                   ))}
                 </select>
@@ -595,14 +558,13 @@ export default function TaxDeadlineManager() {
 
       {/* Legal Note */}
       <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-        <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-          <span>📜</span> Căn cứ pháp lý
-        </h4>
+        <h4 className="font-semibold text-blue-800 mb-2">Căn cứ pháp lý</h4>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Luật Quản lý thuế 2019 (Luật số 38/2019/QH14)</li>
-          <li>• Nghị định 126/2020/NĐ-CP hướng dẫn Luật Quản lý thuế</li>
-          <li>• Thông tư 80/2021/TT-BTC về quản lý thuế</li>
-          <li>• Phạt chậm nộp: 0,03%/ngày trên số thuế chậm nộp</li>
+          <li>• Luật Quản lý thuế 108/2025/QH15 (hiệu lực 01/7/2026)</li>
+          <li>• Nghị định 252/2026/NĐ-CP: Điều 10 thời hạn nộp hồ sơ khai thuế; Điều 3.7 hạn trùng ngày nghỉ được dời sang ngày làm việc liền kề sau</li>
+          <li>• Thông tư 89/2026/TT-BTC: tổ chức trả thu nhập khai TNCN đã khấu trừ theo quý</li>
+          <li>• Nghị định 68/2026/NĐ-CP (sửa đổi bởi NĐ 141/2026/NĐ-CP): hộ, cá nhân kinh doanh, cho thuê tài sản</li>
+          <li>• Chậm nộp thuế: tiền chậm nộp 0,03%/ngày (không phải tiền phạt); nộp hồ sơ trễ bị phạt theo NĐ 125/2020/NĐ-CP</li>
         </ul>
       </div>
     </div>

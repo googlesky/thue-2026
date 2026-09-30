@@ -4,10 +4,8 @@ import { memo, useMemo } from 'react';
 import {
   TaxDeadline,
   ApplicableTo,
-  getDeadlinesForMonth,
   getDeadlinesForDate,
   PRIORITY_COLORS,
-  CATEGORY_COLORS,
 } from '@/utils/taxCalendarData';
 
 interface CalendarViewProps {
@@ -25,8 +23,8 @@ function filterDeadlines(deadlines: TaxDeadline[], filter?: ApplicableTo): TaxDe
   return deadlines.filter(d => d.applicableTo === 'all' || d.applicableTo === filter);
 }
 
-// Vietnamese day names
-const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+// Vietnamese day names — tuần bắt đầu Thứ Hai
+const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const MONTH_NAMES = [
   'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
   'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
@@ -47,61 +45,24 @@ function CalendarViewComponent({
   selectedDate,
   filter,
 }: CalendarViewProps) {
-  // Generate calendar days
+  // Generate calendar days: lưới 6 tuần × 7 ngày, tuần bắt đầu Thứ Hai; mốc theo ngày thực tế (đã dời ngày nghỉ)
   const calendarDays = useMemo((): CalendarDay[] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const leadingDays = (new Date(year, month - 1, 1).getDay() + 6) % 7;
 
-    const firstDayOfMonth = new Date(year, month - 1, 1);
-    const lastDayOfMonth = new Date(year, month, 0);
-    const startingDayOfWeek = firstDayOfMonth.getDay();
-    const daysInMonth = lastDayOfMonth.getDate();
-
-    const days: CalendarDay[] = [];
-
-    // Previous month's trailing days
-    const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
-    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-      const date = new Date(year, month - 2, prevMonthLastDay - i);
-      const rawDeadlines = getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
-      days.push({
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(year, month - 1, 1 - leadingDays + i);
+      return {
         date,
-        isCurrentMonth: false,
+        isCurrentMonth: date.getMonth() === month - 1,
         isToday: date.getTime() === today.getTime(),
-        deadlines: filterDeadlines(rawDeadlines, filter),
-      });
-    }
-
-    // Current month's days
-    const monthDeadlines = getDeadlinesForMonth(year, month);
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
-      // Filter deadlines for this specific day
-      // Note: monthDeadlines already includes monthly recurring deadlines (month === 0) from getDeadlinesForMonth
-      const dayDeadlines = monthDeadlines.filter(d => d.date.day === day);
-
-      days.push({
-        date,
-        isCurrentMonth: true,
-        isToday: date.getTime() === today.getTime(),
-        deadlines: filterDeadlines(dayDeadlines, filter),
-      });
-    }
-
-    // Next month's leading days to fill the grid (6 rows x 7 days = 42 cells)
-    const remainingDays = 42 - days.length;
-    for (let i = 1; i <= remainingDays; i++) {
-      const date = new Date(year, month, i);
-      const rawDeadlines = getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
-      days.push({
-        date,
-        isCurrentMonth: false,
-        isToday: date.getTime() === today.getTime(),
-        deadlines: filterDeadlines(rawDeadlines, filter),
-      });
-    }
-
-    return days;
+        deadlines: filterDeadlines(
+          getDeadlinesForDate(date.getFullYear(), date.getMonth() + 1, date.getDate()),
+          filter
+        ),
+      };
+    });
   }, [year, month, filter]);
 
   const handlePrevMonth = () => {
@@ -191,7 +152,7 @@ function CalendarViewComponent({
           <div
             key={day}
             className={`py-2 text-center text-xs font-medium ${
-              index === 0 ? 'text-red-500' : 'text-gray-500'
+              index === 6 ? 'text-red-500' : 'text-gray-500'
             }`}
           >
             {day}
@@ -218,7 +179,7 @@ function CalendarViewComponent({
                 ${day.isToday && !isSelectedDay ? 'bg-blue-50' : ''}
                 hover:bg-gray-100
               `}
-              aria-label={`${day.date.getDate()} ${MONTH_NAMES[day.date.getMonth()]} ${day.date.getFullYear()}${
+              aria-label={`Ngày ${day.date.getDate()} tháng ${day.date.getMonth() + 1} năm ${day.date.getFullYear()}${
                 day.deadlines.length > 0 ? `, ${day.deadlines.length} sự kiện` : ''
               }`}
             >

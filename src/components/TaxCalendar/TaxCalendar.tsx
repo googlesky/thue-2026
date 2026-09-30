@@ -11,7 +11,6 @@ import {
   ApplicableTo,
   APPLICABLE_TO_LABELS,
   getUpcomingDeadlines,
-  getDeadlinesForDate,
   getStoredReminders,
   saveReminders,
   getDaysUntilDeadline,
@@ -141,8 +140,10 @@ export default function TaxCalendar() {
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center shadow-lg">
-              <span className="text-2xl">📅</span>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Lịch thuế</h2>
@@ -249,7 +250,8 @@ export default function TaxCalendar() {
             </svg>
             <div className="text-sm text-amber-800">
               <span className="font-medium">Lưu ý: </span>
-              Vui lòng xác nhận lại với cơ quan thuế về các mốc thời gian chính xác.
+              Hạn trùng thứ Bảy, Chủ nhật, ngày nghỉ lễ đã được dời sang ngày làm việc tiếp theo (NĐ 252/2026/NĐ-CP Điều 3.7);
+              lịch nghỉ năm 2027 chưa công bố đầy đủ. Vui lòng xác nhận lại với cơ quan thuế về các mốc thời gian chính xác.
               <a
                 href="https://thuedientu.gdt.gov.vn"
                 target="_blank"
@@ -265,7 +267,7 @@ export default function TaxCalendar() {
 
       {/* Calendar View */}
       {viewMode === 'calendar' && (
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar */}
           <div className="lg:col-span-2">
             <CalendarView
@@ -337,52 +339,29 @@ export default function TaxCalendar() {
       )}
 
       {/* Quick Info Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-              <span className="text-lg">31/3</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { badge: '31/3', color: 'bg-red-100', title: 'Tổ chức quyết toán', text: 'Tổ chức trả thu nhập quyết toán TNCN (kể cả quyết toán thay khi được ủy quyền), TNDN' },
+          { badge: '30/4', color: 'bg-red-100', title: 'Cá nhân quyết toán', text: 'Cá nhân tự quyết toán TNCN: ngày cuối cùng của tháng 4' },
+          { badge: 'Quý', color: 'bg-blue-100', title: 'Khai thuế quý', text: 'Cuối tháng đầu quý sau: GTGT quý, TNCN khấu trừ từ lương, hộ kinh doanh; GTGT khai tháng: ngày 20' },
+          { badge: '31/12', color: 'bg-green-100', title: 'Đăng ký NPT', text: 'Hạn đăng ký người phụ thuộc để giảm trừ cho chính năm tính thuế' },
+        ].map(card => (
+          <div key={card.title} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`min-w-[2rem] h-8 px-1.5 rounded-lg ${card.color} flex items-center justify-center flex-shrink-0`}>
+                <span className="text-sm font-semibold font-data">{card.badge}</span>
+              </div>
+              <span className="font-medium text-gray-900">{card.title}</span>
             </div>
-            <span className="font-medium text-gray-900">Quyết toán</span>
+            <p className="text-xs text-gray-500">{card.text}</p>
           </div>
-          <p className="text-xs text-gray-500">Hạn quyết toán thuế TNCN năm trước</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-              <span className="text-lg">20</span>
-            </div>
-            <span className="font-medium text-gray-900">Kê khai tháng</span>
-          </div>
-          <p className="text-xs text-gray-500">Hạn nộp tờ khai thuế hàng tháng</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-              <span className="text-lg">31/12</span>
-            </div>
-            <span className="font-medium text-gray-900">Đăng ký NPT</span>
-          </div>
-          <p className="text-xs text-gray-500">Hạn đăng ký người phụ thuộc năm sau</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-              <span className="text-lg">1/7</span>
-            </div>
-            <span className="font-medium text-gray-900">Luật mới 2026</span>
-          </div>
-          <p className="text-xs text-gray-500">Ngày luật thuế TNCN mới có hiệu lực</p>
-        </div>
+        ))}
       </div>
 
       {/* Official Links */}
       <div className="card bg-gray-50">
         <h3 className="font-semibold text-gray-900 mb-4">Liên kết hữu ích</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <a
             href="https://thuedientu.gdt.gov.vn"
             target="_blank"
@@ -412,7 +391,7 @@ export default function TaxCalendar() {
               </svg>
             </div>
             <div>
-              <div className="font-medium text-gray-900 text-sm">Tổng cục Thuế</div>
+              <div className="font-medium text-gray-900 text-sm">Cục Thuế</div>
               <div className="text-xs text-gray-500">gdt.gov.vn</div>
             </div>
           </a>

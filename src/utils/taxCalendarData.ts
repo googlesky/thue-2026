@@ -1,7 +1,12 @@
 /**
  * Tax Calendar Data for Vietnamese Tax System
  * Dữ liệu lịch thuế cho hệ thống thuế Việt Nam
+ *
+ * Ngày thực tế của mỗi mốc tính bằng lib/taxDeadlines: hạn khai, nộp, quyết toán trùng
+ * thứ Bảy, Chủ nhật, ngày nghỉ lễ được dời sang ngày làm việc liền kề sau (NĐ 252/2026/NĐ-CP Điều 3.7).
  */
+
+import { daysBetween, toWorkingDay } from '@/lib/taxDeadlines';
 
 export type DeadlineCategory = 'settlement' | 'declaration' | 'payment' | 'registration' | 'special';
 export type DeadlinePriority = 'critical' | 'important' | 'normal';
@@ -11,7 +16,7 @@ export interface TaxDeadline {
   id: string;
   title: string;
   description: string;
-  date: { month: number; day: number }; // recurring yearly
+  date: { month: number; day: number }; // ngày danh nghĩa lặp hằng năm (month 0 = hằng tháng)
   category: DeadlineCategory;
   priority: DeadlinePriority;
   applicableTo: ApplicableTo;
@@ -67,13 +72,16 @@ export const APPLICABLE_TO_LABELS: Record<ApplicableTo, string> = {
   freelancer: 'Freelancer/Tự kinh doanh',
 };
 
-// Main tax deadlines data
+const QUARTER_DECLARATION =
+  'thuế GTGT khai quý (doanh thu đến 50 tỷ đồng/năm), TNCN đã khấu trừ từ tiền lương (tổ chức khai theo quý từ 01/7/2026, TT 89/2026/TT-BTC Điều 22) và thuế hộ kinh doanh doanh thu trên 1 tỷ đồng/năm. Hạn: ngày cuối cùng của tháng đầu quý sau (NĐ 252/2026/NĐ-CP Điều 10.3).';
+
+// Main tax deadlines data (id giữ ổn định vì nhắc nhở lưu theo id)
 export const TAX_DEADLINES: TaxDeadline[] = [
   // Critical Deadlines
   {
-    id: 'annual-settlement',
-    title: 'Hạn quyết toán thuế TNCN năm trước',
-    description: 'Hạn cuối cùng để nộp hồ sơ quyết toán thuế thu nhập cá nhân cho năm trước. Áp dụng cho cá nhân tự quyết toán thuế.',
+    id: 'annual-settlement-org',
+    title: 'Hạn tổ chức quyết toán thuế TNCN, TNDN năm trước',
+    description: 'Tổ chức trả thu nhập quyết toán TNCN (kể cả quyết toán thay cho cá nhân ủy quyền) và quyết toán TNDN chậm nhất ngày cuối cùng của tháng 3 (NĐ 252/2026/NĐ-CP Điều 10.5.a). Cá nhân muốn ủy quyền quyết toán gửi giấy ủy quyền cho tổ chức trả thu nhập trước hạn này.',
     date: { month: 3, day: 31 },
     category: 'settlement',
     priority: 'critical',
@@ -82,22 +90,43 @@ export const TAX_DEADLINES: TaxDeadline[] = [
     officialLink: 'https://thuedientu.gdt.gov.vn',
   },
   {
-    id: 'financial-report',
-    title: 'Hạn nộp báo cáo tài chính',
-    description: 'Hạn nộp báo cáo tài chính năm trước cho doanh nghiệp.',
+    id: 'annual-settlement',
+    title: 'Hạn cá nhân tự quyết toán thuế TNCN năm trước',
+    description: 'Cá nhân trực tiếp quyết toán thuế TNCN từ tiền lương, tiền công nộp hồ sơ và số thuế còn thiếu chậm nhất ngày cuối cùng của tháng 4 (NĐ 252/2026/NĐ-CP Điều 10.5.c). Không phải quyết toán nếu số thuế đã nộp lớn hơn số phải nộp mà không đề nghị hoàn.',
     date: { month: 4, day: 30 },
+    category: 'settlement',
+    priority: 'critical',
+    applicableTo: 'all',
+    recurring: true,
+    officialLink: 'https://thuedientu.gdt.gov.vn',
+  },
+  {
+    id: 'financial-report',
+    title: 'Hạn nộp báo cáo tài chính năm',
+    description: 'Doanh nghiệp nộp báo cáo tài chính năm cùng hồ sơ quyết toán thuế TNDN, chậm nhất ngày cuối cùng của tháng thứ 3 (90 ngày) kể từ khi kết thúc năm tài chính.',
+    date: { month: 3, day: 31 },
     category: 'declaration',
     priority: 'important',
     applicableTo: 'business',
     recurring: true,
     officialLink: 'https://thuedientu.gdt.gov.vn',
   },
+  {
+    id: 'freelancer-annual-declaration',
+    title: 'Hạn quyết toán TNCN của hộ, cá nhân kinh doanh',
+    description: 'Hộ, cá nhân kinh doanh doanh thu trên 1 tỷ đồng/năm nộp thuế theo phương pháp thu nhập (doanh thu trừ chi phí) quyết toán TNCN chậm nhất ngày 31/3 năm sau (NĐ 68/2026/NĐ-CP Điều 8.3.c). Cá nhân chỉ có tiền công đã bị khấu trừ 10% quyết toán theo hạn của cá nhân (cuối tháng 4).',
+    date: { month: 3, day: 31 },
+    category: 'settlement',
+    priority: 'critical',
+    applicableTo: 'freelancer',
+    recurring: true,
+  },
 
   // Monthly Recurring - Declaration
   {
     id: 'monthly-vat-pit-20',
-    title: 'Hạn nộp tờ khai thuế GTGT, TNCN tháng trước',
-    description: 'Hạn nộp tờ khai thuế giá trị gia tăng (GTGT) và thuế thu nhập cá nhân (TNCN) cho tháng trước. Áp dụng cho doanh nghiệp và người nộp thuế có nghĩa vụ kê khai hàng tháng.',
+    title: 'Hạn khai thuế GTGT tháng trước',
+    description: 'Doanh nghiệp doanh thu năm trên 50 tỷ đồng khai thuế GTGT theo tháng, hạn ngày 20 tháng sau (NĐ 252/2026/NĐ-CP Điều 10.2). Từ 01/7/2026, tổ chức trả thu nhập khai TNCN đã khấu trừ từ tiền lương theo quý.',
     date: { month: 0, day: 20 }, // month: 0 means every month
     category: 'declaration',
     priority: 'important',
@@ -108,19 +137,9 @@ export const TAX_DEADLINES: TaxDeadline[] = [
 
   // Registration Deadlines
   {
-    id: 'dependent-registration-h1',
-    title: 'Hạn đăng ký giảm trừ gia cảnh nửa đầu năm',
-    description: 'Hạn đăng ký hoặc điều chỉnh thông tin người phụ thuộc để được giảm trừ gia cảnh trong nửa đầu năm.',
-    date: { month: 6, day: 30 },
-    category: 'registration',
-    priority: 'important',
-    applicableTo: 'employee',
-    recurring: true,
-  },
-  {
     id: 'dependent-registration-next-year',
-    title: 'Hạn đăng ký người phụ thuộc cho năm sau',
-    description: 'Hạn cuối để đăng ký người phụ thuộc mới hoặc điều chỉnh thông tin để áp dụng giảm trừ gia cảnh cho năm tiếp theo.',
+    title: 'Hạn đăng ký người phụ thuộc của năm tính thuế',
+    description: 'Đăng ký người phụ thuộc chậm nhất ngày 31/12 để được tính giảm trừ gia cảnh cho chính năm tính thuế đó. Người phụ thuộc có thu nhập bình quân tháng không quá 3 triệu đồng (TT 87/2026/TT-BTC).',
     date: { month: 12, day: 31 },
     category: 'registration',
     priority: 'important',
@@ -131,8 +150,8 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   // Quarterly Deadlines
   {
     id: 'quarterly-pit-q1',
-    title: 'Hạn kê khai thuế TNCN quý I',
-    description: 'Hạn nộp tờ khai thuế TNCN quý I (tháng 1-3) cho đối tượng kê khai theo quý.',
+    title: 'Hạn khai thuế GTGT, TNCN quý I',
+    description: `Quý I (tháng 1–3): ${QUARTER_DECLARATION}`,
     date: { month: 4, day: 30 },
     category: 'declaration',
     priority: 'normal',
@@ -141,9 +160,9 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   },
   {
     id: 'quarterly-pit-q2',
-    title: 'Hạn kê khai thuế TNCN quý II',
-    description: 'Hạn nộp tờ khai thuế TNCN quý II (tháng 4-6) cho đối tượng kê khai theo quý.',
-    date: { month: 7, day: 30 },
+    title: 'Hạn khai thuế GTGT, TNCN quý II',
+    description: `Quý II (tháng 4–6): ${QUARTER_DECLARATION}`,
+    date: { month: 7, day: 31 },
     category: 'declaration',
     priority: 'normal',
     applicableTo: 'business',
@@ -151,9 +170,9 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   },
   {
     id: 'quarterly-pit-q3',
-    title: 'Hạn kê khai thuế TNCN quý III',
-    description: 'Hạn nộp tờ khai thuế TNCN quý III (tháng 7-9) cho đối tượng kê khai theo quý.',
-    date: { month: 10, day: 30 },
+    title: 'Hạn khai thuế GTGT, TNCN quý III',
+    description: `Quý III (tháng 7–9): ${QUARTER_DECLARATION}`,
+    date: { month: 10, day: 31 },
     category: 'declaration',
     priority: 'normal',
     applicableTo: 'business',
@@ -161,32 +180,52 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   },
   {
     id: 'quarterly-pit-q4',
-    title: 'Hạn kê khai thuế TNCN quý IV',
-    description: 'Hạn nộp tờ khai thuế TNCN quý IV (tháng 10-12) cho đối tượng kê khai theo quý.',
-    date: { month: 1, day: 30 },
+    title: 'Hạn khai thuế GTGT, TNCN quý IV',
+    description: `Quý IV (tháng 10–12): ${QUARTER_DECLARATION}`,
+    date: { month: 1, day: 31 },
     category: 'declaration',
     priority: 'normal',
     applicableTo: 'business',
     recurring: true,
   },
 
-  // Payment Deadlines
+  // Hộ, cá nhân kinh doanh; cho thuê tài sản (NĐ 68/2026/NĐ-CP Điều 8, ngưỡng 1 tỷ theo NĐ 141/2026/NĐ-CP)
   {
-    id: 'annual-tax-payment',
-    title: 'Hạn nộp thuế TNCN quyết toán',
-    description: 'Hạn nộp số thuế TNCN còn thiếu theo quyết toán năm trước.',
-    date: { month: 3, day: 31 },
-    category: 'payment',
-    priority: 'critical',
-    applicableTo: 'all',
+    id: 'household-revenue-notice',
+    title: 'Hạn thông báo doanh thu hộ kinh doanh năm trước',
+    description: 'Hộ, cá nhân kinh doanh doanh thu năm từ 1 tỷ đồng trở xuống (không nộp thuế GTGT, TNCN) thông báo doanh thu thực tế phát sinh trong năm chậm nhất ngày 31/01 năm sau (NĐ 68/2026/NĐ-CP Điều 8.1).',
+    date: { month: 1, day: 31 },
+    category: 'declaration',
+    priority: 'important',
+    applicableTo: 'freelancer',
+    recurring: true,
+  },
+  {
+    id: 'rental-first-half',
+    title: 'Hạn khai thuế cho thuê tài sản 6 tháng đầu năm',
+    description: 'Cá nhân cho thuê bất động sản tự khai thuế, nếu chọn khai 2 lần/năm: lần 1 chậm nhất ngày 31/7 (NĐ 68/2026/NĐ-CP Điều 8.3.d). Doanh thu từ 1 tỷ đồng/năm trở xuống không phải nộp thuế.',
+    date: { month: 7, day: 31 },
+    category: 'declaration',
+    priority: 'normal',
+    applicableTo: 'freelancer',
+    recurring: true,
+  },
+  {
+    id: 'rental-annual',
+    title: 'Hạn khai thuế cho thuê tài sản năm trước',
+    description: 'Cá nhân cho thuê bất động sản tự khai thuế: lần 2 (nếu khai 2 lần/năm) hoặc khai 1 lần cho cả năm, chậm nhất ngày 31/01 năm sau (NĐ 68/2026/NĐ-CP Điều 8.3.d).',
+    date: { month: 1, day: 31 },
+    category: 'declaration',
+    priority: 'normal',
+    applicableTo: 'freelancer',
     recurring: true,
   },
 
   // Special Events
   {
     id: 'new-law-2026',
-    title: 'Luật thuế TNCN mới có hiệu lực',
-    description: 'Luật thuế thu nhập cá nhân sửa đổi chính thức có hiệu lực. Giảm từ 7 bậc xuống 5 bậc thuế, tăng mức giảm trừ gia cảnh lên 15.5 triệu VND/tháng cho bản thân và 6.2 triệu VND/tháng cho người phụ thuộc.',
+    title: 'Luật Thuế TNCN 109/2025/QH15 và NĐ 253/2026 có hiệu lực',
+    description: 'Luật Thuế TNCN 109/2025/QH15, Luật Quản lý thuế 108/2025/QH15, NĐ 253/2026/NĐ-CP, NĐ 252/2026/NĐ-CP và TT 87/2026/TT-BTC có hiệu lực. Biểu thuế 5 bậc và giảm trừ 15,5 triệu đồng/tháng (bản thân), 6,2 triệu đồng/tháng (người phụ thuộc) đã áp dụng cho thu nhập từ tiền lương, tiền công từ kỳ tính thuế 2026 (từ 01/01/2026). Từ 01/7/2026: ngưỡng 20 triệu đồng/lần với trúng thưởng, bản quyền, thừa kế, quà tặng; khấu trừ 10% thu nhập vãng lai từ 5 triệu đồng/lần; tiền ăn giữa ca bằng tiền miễn đến 1,2 triệu đồng/tháng.',
     date: { month: 7, day: 1 },
     category: 'special',
     priority: 'critical',
@@ -195,199 +234,108 @@ export const TAX_DEADLINES: TaxDeadline[] = [
     specialYear: 2026,
     officialLink: 'https://thuedientu.gdt.gov.vn',
   },
-
-  // Freelancer specific
-  {
-    id: 'freelancer-annual-declaration',
-    title: 'Hạn kê khai thuế TNCN năm cho freelancer',
-    description: 'Hạn kê khai thuế TNCN năm cho cá nhân tự kinh doanh, freelancer không qua tổ chức chi trả.',
-    date: { month: 3, day: 31 },
-    category: 'declaration',
-    priority: 'critical',
-    applicableTo: 'freelancer',
-    recurring: true,
-  },
-
-  // Insurance related
-  {
-    id: 'bhxh-adjustment',
-    title: 'Hạn điều chỉnh mức đóng BHXH',
-    description: 'Hạn để đề nghị điều chỉnh mức lương đóng bảo hiểm xã hội cho năm tiếp theo (nếu có thay đổi).',
-    date: { month: 12, day: 15 },
-    category: 'registration',
-    priority: 'normal',
-    applicableTo: 'employee',
-    recurring: true,
-  },
 ];
 
+// Hạn khai, nộp, quyết toán được dời nếu trùng ngày nghỉ; mốc đăng ký và sự kiện giữ nguyên ngày
+const shiftsOnHoliday = (deadline: TaxDeadline) =>
+  deadline.category !== 'registration' && deadline.category !== 'special';
+
 /**
- * Get deadlines for a specific month and year
+ * Các ngày thực tế của mốc trong năm danh nghĩa `year`
  */
-export function getDeadlinesForMonth(year: number, month: number): TaxDeadline[] {
-  return TAX_DEADLINES.filter(deadline => {
-    // For monthly recurring (month: 0), always include
-    if (deadline.date.month === 0) {
-      return true;
-    }
-
-    // Check if it matches the month
-    if (deadline.date.month !== month) {
-      return false;
-    }
-
-    // For non-recurring events, check the year
-    if (!deadline.recurring && deadline.specialYear) {
-      return deadline.specialYear === year;
-    }
-
-    return true;
+function occurrencesInYear(deadline: TaxDeadline, year: number): Date[] {
+  if (!deadline.recurring) {
+    return deadline.specialYear === year
+      ? [new Date(year, deadline.date.month - 1, deadline.date.day)]
+      : [];
+  }
+  const months = deadline.date.month === 0
+    ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    : [deadline.date.month];
+  return months.map(m => {
+    const nominal = new Date(year, m - 1, deadline.date.day);
+    return shiftsOnHoliday(deadline) ? toWorkingDay(nominal) : nominal;
   });
 }
 
 /**
- * Get deadlines for a specific date
+ * Get deadlines falling on a specific date (ngày thực tế, đã dời ngày nghỉ)
  */
 export function getDeadlinesForDate(year: number, month: number, day: number): TaxDeadline[] {
-  return getDeadlinesForMonth(year, month).filter(deadline => deadline.date.day === day);
+  const target = new Date(year, month - 1, day);
+  return TAX_DEADLINES.filter(deadline =>
+    [year - 1, year].some(y => occurrencesInYear(deadline, y).some(d => daysBetween(d, target) === 0))
+  );
+}
+
+/**
+ * Lần diễn ra tiếp theo của mốc, tính cả hôm nay (null nếu sự kiện một lần đã qua)
+ */
+export function getNextOccurrence(deadline: TaxDeadline, fromDate: Date = new Date()): Date | null {
+  const y = fromDate.getFullYear();
+  return [y - 1, y, y + 1]
+    .flatMap(year => occurrencesInYear(deadline, year))
+    .filter(d => daysBetween(fromDate, d) >= 0)
+    .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+}
+
+/**
+ * Calculate days until a deadline (0 = hôm nay; null nếu sự kiện đã qua)
+ */
+export function getDaysUntilDeadline(deadline: TaxDeadline, today: Date = new Date()): number | null {
+  const next = getNextOccurrence(deadline, today);
+  return next ? daysBetween(today, next) : null;
 }
 
 /**
  * Get upcoming deadlines within a number of days
  */
-export function getUpcomingDeadlines(days: number = 30, filter?: ApplicableTo): TaxDeadline[] {
-  const today = new Date();
-  const endDate = new Date(today);
-  endDate.setDate(endDate.getDate() + days);
-
-  const upcomingDeadlines: Array<{ deadline: TaxDeadline; date: Date }> = [];
-
-  TAX_DEADLINES.forEach(deadline => {
-    // Apply filter if specified
-    if (filter && filter !== 'all' && deadline.applicableTo !== 'all' && deadline.applicableTo !== filter) {
-      return;
-    }
-
-    // Get the next occurrence of this deadline
-    const nextDate = getNextOccurrence(deadline, today);
-
-    if (nextDate && nextDate <= endDate) {
-      upcomingDeadlines.push({ deadline, date: nextDate });
-    }
-  });
-
-  // Sort by date
-  upcomingDeadlines.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  return upcomingDeadlines.map(item => item.deadline);
+export function getUpcomingDeadlines(days: number = 30, filter?: ApplicableTo, today: Date = new Date()): TaxDeadline[] {
+  return TAX_DEADLINES
+    .filter(d => !filter || filter === 'all' || d.applicableTo === 'all' || d.applicableTo === filter)
+    .map(deadline => ({ deadline, daysUntil: getDaysUntilDeadline(deadline, today) }))
+    .filter((item): item is { deadline: TaxDeadline; daysUntil: number } =>
+      item.daysUntil !== null && item.daysUntil <= days)
+    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .map(item => item.deadline);
 }
 
-/**
- * Get the next occurrence of a deadline from a given date
- */
-export function getNextOccurrence(deadline: TaxDeadline, fromDate: Date = new Date()): Date | null {
-  const currentYear = fromDate.getFullYear();
-  const currentMonth = fromDate.getMonth() + 1;
-  const currentDay = fromDate.getDate();
-
-  // For special non-recurring events
-  if (!deadline.recurring && deadline.specialYear) {
-    const specialDate = new Date(deadline.specialYear, deadline.date.month - 1, deadline.date.day);
-    return specialDate >= fromDate ? specialDate : null;
-  }
-
-  // For monthly recurring (month: 0), find the next occurrence
-  if (deadline.date.month === 0) {
-    let targetDate = new Date(currentYear, fromDate.getMonth(), deadline.date.day);
-    targetDate.setHours(0, 0, 0, 0);
-    const compareDate = new Date(fromDate);
-    compareDate.setHours(0, 0, 0, 0);
-    // Use < instead of <= to include today's deadline
-    if (targetDate < compareDate) {
-      targetDate.setMonth(targetDate.getMonth() + 1);
-    }
-    return targetDate;
-  }
-
-  // For regular recurring deadlines
-  let targetYear = currentYear;
-  let targetDate = new Date(targetYear, deadline.date.month - 1, deadline.date.day);
-  targetDate.setHours(0, 0, 0, 0);
-  const compareDate = new Date(fromDate);
-  compareDate.setHours(0, 0, 0, 0);
-
-  // If the deadline has already passed this year, get next year's
-  // Use < instead of <= to include today's deadline
-  if (targetDate < compareDate) {
-    targetYear++;
-    targetDate = new Date(targetYear, deadline.date.month - 1, deadline.date.day);
-  }
-
-  return targetDate;
+// Ngày hiển thị/xuất lịch: lần diễn ra tiếp theo, hoặc ngày của sự kiện một lần đã qua
+function displayDate(deadline: TaxDeadline, today: Date): Date {
+  return getNextOccurrence(deadline, today)
+    ?? new Date(deadline.specialYear ?? today.getFullYear(), deadline.date.month - 1, deadline.date.day);
 }
 
-/**
- * Calculate days until a deadline
- */
-export function getDaysUntilDeadline(deadline: TaxDeadline): number | null {
-  const nextDate = getNextOccurrence(deadline);
-  if (!nextDate) return null;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  nextDate.setHours(0, 0, 0, 0);
-
-  const diffTime = nextDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return diffDays;
-}
+const pad = (n: number) => String(n).padStart(2, '0');
+const compactDate = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const nextDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
 /**
- * Format date for display
+ * Format date for display (lần diễn ra tiếp theo)
  */
-export function formatDeadlineDate(deadline: TaxDeadline, year?: number): string {
-  const targetYear = year || (deadline.specialYear || new Date().getFullYear());
-
+export function formatDeadlineDate(deadline: TaxDeadline, today: Date = new Date()): string {
   if (deadline.date.month === 0) {
     return `Ngày ${deadline.date.day} hàng tháng`;
   }
-
-  const monthNames = [
-    '', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
-  ];
-
-  return `${deadline.date.day}/${deadline.date.month}/${targetYear}`;
+  const date = displayDate(deadline, today);
+  const text = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  return date.getDate() !== deadline.date.day
+    ? `${text} (dời từ ${deadline.date.day}/${deadline.date.month})`
+    : text;
 }
 
+// Escape TEXT theo RFC 5545
+const icsText = (s: string) =>
+  s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+
 /**
- * Generate ICS calendar file content
+ * Generate ICS calendar file content — sự kiện cả ngày vào lần diễn ra tiếp theo.
+ * Không dùng RRULE: ngày thực tế thay đổi theo lịch nghỉ từng năm (VD 30/4 luôn là ngày lễ).
  */
-export function generateICSContent(deadline: TaxDeadline, year?: number): string {
-  const targetYear = year || (deadline.specialYear || new Date().getFullYear());
-  const month = deadline.date.month === 0 ? new Date().getMonth() + 1 : deadline.date.month;
-  const day = deadline.date.day;
-
-  // Format date as YYYYMMDD
-  const dateStr = `${targetYear}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
-  const nextDay = new Date(targetYear, month - 1, day + 1);
-  const nextDayStr = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
-
-  const now = new Date();
-  const createdDate = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-
-  // Add RRULE for recurring events
-  let rrule = '';
-  if (deadline.recurring) {
-    if (deadline.date.month === 0) {
-      // Monthly recurring (e.g., 20th of every month)
-      rrule = `RRULE:FREQ=MONTHLY;BYMONTHDAY=${day}`;
-    } else {
-      // Yearly recurring (same date every year)
-      rrule = `RRULE:FREQ=YEARLY;BYMONTH=${deadline.date.month};BYMONTHDAY=${day}`;
-    }
-  }
+export function generateICSContent(deadline: TaxDeadline, today: Date = new Date()): string {
+  const date = displayDate(deadline, today);
+  const createdDate = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
   return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -395,24 +343,24 @@ PRODID:-//Tinh Thue TNCN 2026//Tax Calendar//VI
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-DTSTART;VALUE=DATE:${dateStr}
-DTEND;VALUE=DATE:${nextDayStr}
+DTSTART;VALUE=DATE:${compactDate(date)}
+DTEND;VALUE=DATE:${compactDate(nextDay(date))}
 DTSTAMP:${createdDate}
-UID:${deadline.id}-${deadline.recurring ? 'recurring' : targetYear}@thue.1devops.io
-SUMMARY:${deadline.title}
-DESCRIPTION:${deadline.description.replace(/\n/g, '\\n')}
-CATEGORIES:${CATEGORY_LABELS[deadline.category]}
+UID:${deadline.id}-${compactDate(date)}@thue.1devops.io
+SUMMARY:${icsText(deadline.title)}
+DESCRIPTION:${icsText(deadline.description)}
+CATEGORIES:${icsText(CATEGORY_LABELS[deadline.category])}
 PRIORITY:${deadline.priority === 'critical' ? 1 : deadline.priority === 'important' ? 5 : 9}
 STATUS:CONFIRMED
-TRANSP:TRANSPARENT${rrule ? '\n' + rrule : ''}
+TRANSP:TRANSPARENT
 BEGIN:VALARM
 ACTION:DISPLAY
-DESCRIPTION:${deadline.title}
+DESCRIPTION:${icsText(deadline.title)}
 TRIGGER:-P7D
 END:VALARM
 BEGIN:VALARM
 ACTION:DISPLAY
-DESCRIPTION:${deadline.title}
+DESCRIPTION:${icsText(deadline.title)}
 TRIGGER:-P1D
 END:VALARM
 END:VEVENT
@@ -420,23 +368,16 @@ END:VCALENDAR`;
 }
 
 /**
- * Generate Google Calendar URL
+ * Generate Google Calendar URL (lần diễn ra tiếp theo)
  */
-export function generateGoogleCalendarUrl(deadline: TaxDeadline, year?: number): string {
-  const targetYear = year || (deadline.specialYear || new Date().getFullYear());
-  const month = deadline.date.month === 0 ? new Date().getMonth() + 1 : deadline.date.month;
-  const day = deadline.date.day;
-
-  const dateStr = `${targetYear}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+export function generateGoogleCalendarUrl(deadline: TaxDeadline, today: Date = new Date()): string {
+  const date = displayDate(deadline, today);
 
   // Google Calendar needs end date to be exclusive (next day for all-day events)
-  const nextDay = new Date(targetYear, month - 1, day + 1);
-  const nextDayStr = `${nextDay.getFullYear()}${String(nextDay.getMonth() + 1).padStart(2, '0')}${String(nextDay.getDate()).padStart(2, '0')}`;
-
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: deadline.title,
-    dates: `${dateStr}/${nextDayStr}`,
+    dates: `${compactDate(date)}/${compactDate(nextDay(date))}`,
     details: deadline.description,
     ctz: 'Asia/Ho_Chi_Minh',
   });
@@ -445,23 +386,16 @@ export function generateGoogleCalendarUrl(deadline: TaxDeadline, year?: number):
 }
 
 /**
- * Generate Outlook Calendar URL
+ * Generate Outlook Calendar URL (lần diễn ra tiếp theo; ngày local, không qua toISOString)
  */
-export function generateOutlookCalendarUrl(deadline: TaxDeadline, year?: number): string {
-  const targetYear = year || (deadline.specialYear || new Date().getFullYear());
-  const month = deadline.date.month === 0 ? new Date().getMonth() + 1 : deadline.date.month;
-  const day = deadline.date.day;
-
-  const startDate = new Date(targetYear, month - 1, day);
-  const endDate = new Date(targetYear, month - 1, day + 1);
-
-  const formatDate = (d: Date) => d.toISOString().split('T')[0];
+export function generateOutlookCalendarUrl(deadline: TaxDeadline, today: Date = new Date()): string {
+  const date = displayDate(deadline, today);
 
   const params = new URLSearchParams({
     subject: deadline.title,
     body: deadline.description,
-    startdt: formatDate(startDate),
-    enddt: formatDate(endDate),
+    startdt: isoDate(date),
+    enddt: isoDate(nextDay(date)),
     allday: 'true',
     path: '/calendar/action/compose',
     rru: 'addevent',

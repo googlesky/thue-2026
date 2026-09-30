@@ -5,7 +5,10 @@ import {
   SharedTaxState,
   formatNumber,
   formatCurrency,
+  formatDate,
   DEFAULT_INSURANCE_OPTIONS,
+  CASUAL_INCOME_NO_SETTLEMENT_LIMIT,
+  DEPENDENT_INCOME_LIMIT,
   RegionType,
   InsuranceOptions,
 } from "@/lib/taxCalculator";
@@ -24,11 +27,12 @@ import {
   generateDependentId,
   estimateMonthlyTax,
   getLawForMonth,
+  getAnnualPensionCap,
+  MEDICAL_DEDUCTION_CAP,
+  EDUCATION_DEDUCTION_CAP,
 } from "@/lib/annualSettlementCalculator";
-import {
-  AnnualSettlementTabState,
-  DEFAULT_ANNUAL_SETTLEMENT_STATE,
-} from "@/lib/snapshotTypes";
+import { AnnualSettlementTabState } from "@/lib/snapshotTypes";
+import { annualDeadline, HOLIDAYS_OFFICIAL_UNTIL } from "@/lib/taxDeadlines";
 import { getInsuranceDetailed } from "@/lib/taxCalculator";
 import Tooltip from "@/components/ui/Tooltip";
 
@@ -99,7 +103,7 @@ export default function AnnualSettlement({
   const isLocalChange = useRef(false);
 
   // Local state
-  const [year, setYear] = useState<SettlementYear>(tabState?.year ?? 2025);
+  const [year, setYear] = useState<SettlementYear>(tabState?.year ?? 2026);
   const [useAverageSalary, setUseAverageSalary] = useState(
     tabState?.useAverageSalary ?? true,
   );
@@ -117,6 +121,12 @@ export default function AnnualSettlement({
   );
   const [voluntaryPension, setVoluntaryPension] = useState(
     tabState?.voluntaryPension ?? 0,
+  );
+  const [medicalExpenses, setMedicalExpenses] = useState(
+    tabState?.medicalExpenses ?? 0,
+  );
+  const [educationExpenses, setEducationExpenses] = useState(
+    tabState?.educationExpenses ?? 0,
   );
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOptions>(
     tabState?.insuranceOptions ??
@@ -168,6 +178,8 @@ export default function AnnualSettlement({
       setDependents(tabState.dependents);
       setCharitableContributions(tabState.charitableContributions);
       setVoluntaryPension(tabState.voluntaryPension);
+      setMedicalExpenses(tabState.medicalExpenses ?? 0);
+      setEducationExpenses(tabState.educationExpenses ?? 0);
       setInsuranceOptions(tabState.insuranceOptions);
       setRegion(tabState.region);
       setManualTaxPaidMode(tabState.manualTaxPaidMode);
@@ -187,6 +199,8 @@ export default function AnnualSettlement({
         dependents,
         charitableContributions,
         voluntaryPension,
+        medicalExpenses,
+        educationExpenses,
         insuranceOptions,
         region,
         manualTaxPaidMode,
@@ -202,6 +216,8 @@ export default function AnnualSettlement({
       dependents,
       charitableContributions,
       voluntaryPension,
+      medicalExpenses,
+      educationExpenses,
       insuranceOptions,
       region,
       manualTaxPaidMode,
@@ -269,6 +285,8 @@ export default function AnnualSettlement({
       dependents,
       charitableContributions,
       voluntaryPension,
+      medicalExpenses,
+      educationExpenses,
       insuranceOptions,
       region,
       manualTaxPaid: manualTaxPaidMode ? manualTaxPaid : undefined,
@@ -279,6 +297,8 @@ export default function AnnualSettlement({
     dependents,
     charitableContributions,
     voluntaryPension,
+    medicalExpenses,
+    educationExpenses,
     insuranceOptions,
     region,
     manualTaxPaidMode,
@@ -290,6 +310,13 @@ export default function AnnualSettlement({
     setYear(newYear);
     updateTabState({ year: newYear });
   };
+
+  const isNewLaw = year >= 2026;
+  const pensionCap = getAnnualPensionCap(year);
+  const individualDue = annualDeadline(year, "individual");
+  const orgDue = annualDeadline(year, "org");
+  const tentative = (d: Date) =>
+    d.getFullYear() > HOLIDAYS_OFFICIAL_UNTIL ? " (dự kiến, chờ lịch nghỉ lễ chính thức)" : "";
 
   const buildWarning = (
     issues: CurrencyInputIssues,
@@ -374,7 +401,9 @@ export default function AnnualSettlement({
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3 flex-1">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0">
-              <span className="text-xl sm:text-2xl">📊</span>
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">
@@ -387,7 +416,7 @@ export default function AnnualSettlement({
           </div>
           {/* Year selector */}
           <div className="flex items-center gap-2">
-            <Tooltip content="Năm 2025 áp dụng luật cũ (7 bậc), năm 2026 áp dụng luật mới (5 bậc) từ 01/01/2026">
+            <Tooltip content="Năm 2025: biểu 7 bậc, giảm trừ 11 triệu/4,4 triệu. Năm 2026: biểu 5 bậc, giảm trừ 15,5 triệu/6,2 triệu cho cả 12 tháng">
               <InfoIcon />
             </Tooltip>
             <div className="flex gap-2">
@@ -416,22 +445,27 @@ export default function AnnualSettlement({
         </div>
 
         {/* Year info */}
-        {year === 2026 && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-            <div className="flex items-start gap-2">
-              <span className="text-green-600">&#10003;</span>
-              <div className="text-green-800">
-                <strong>Năm 2026:</strong> Áp dụng luật mới từ 01/01/2026 với
-                giảm trừ bản thân 15,5 triệu/tháng, giảm trừ người phụ thuộc 6,2
-                triệu/tháng và biểu thuế 5 bậc.
-              </div>
-            </div>
+        {isNewLaw && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 space-y-1">
+            <p>
+              <strong>Năm 2026:</strong> biểu thuế 5 bậc, giảm trừ bản thân 15,5 triệu/tháng,
+              người phụ thuộc 6,2 triệu/tháng cho cả 12 tháng (NĐ 253/2026/NĐ-CP Điều 69).
+            </p>
+            <p>
+              Bổ sung: hưu trí bổ sung, hưu trí tự nguyện, bảo hiểm nhân thọ tổng tối đa 3 triệu/tháng;
+              giảm trừ chi y tế (tối đa 23 triệu/năm) và học phí (tối đa 24 triệu/năm);
+              người phụ thuộc có thu nhập bình quân không quá {formatNumber(DEPENDENT_INCOME_LIMIT / 1_000_000)} triệu/tháng.
+            </p>
+            <p>
+              Thuế đã khấu trừ 6 tháng đầu năm theo quy định cũ được điều chỉnh khi quyết toán
+              (NĐ 253/2026 Điều 70.2): nên nhập số thuế thực tế trên chứng từ khấu trừ.
+            </p>
           </div>
         )}
       </div>
 
       {/* Main content grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column - Input */}
         <div className="space-y-6">
           {inputWarning && (
@@ -578,7 +612,7 @@ export default function AnnualSettlement({
                 <h3 className="text-lg font-semibold text-gray-800">
                   Người phụ thuộc
                 </h3>
-                <Tooltip content="NPT có thể được giảm trừ theo từng tháng đăng ký">
+                <Tooltip content={`NPT được giảm trừ theo từng tháng đăng ký; thu nhập bình quân tháng không quá ${isNewLaw ? formatNumber(DEPENDENT_INCOME_LIMIT / 1_000_000) : 1} triệu đồng`}>
                   <InfoIcon />
                 </Tooltip>
               </div>
@@ -718,8 +752,19 @@ export default function AnnualSettlement({
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
-                  <span>Quỹ hưu trí tự nguyện (VND/năm, tối đa 12 triệu)</span>
-                  <Tooltip content="Tối đa 12 triệu/năm được giảm trừ">
+                  <span>
+                    {isNewLaw
+                      ? "Hưu trí bổ sung, tự nguyện, BH nhân thọ"
+                      : "Quỹ hưu trí tự nguyện"}{" "}
+                    (VND/năm, tối đa {formatNumber(pensionCap / 1_000_000)} triệu)
+                  </span>
+                  <Tooltip
+                    content={
+                      isNewLaw
+                        ? "Từ năm 2026: hưu trí bổ sung, hưu trí tự nguyện và bảo hiểm nhân thọ tổng tối đa 3 triệu/tháng (36 triệu/năm), gồm cả phần công ty đóng"
+                        : "Năm 2025: quỹ hưu trí tự nguyện tối đa 1 triệu/tháng (12 triệu/năm)"
+                    }
+                  >
                     <InfoIcon />
                   </Tooltip>
                 </label>
@@ -729,7 +774,7 @@ export default function AnnualSettlement({
                   onChange={(e) => {
                     const value = parseCurrencyWithWarning(
                       e.target.value,
-                      12_000_000,
+                      pensionCap,
                     );
                     setVoluntaryPension(value);
                     updateTabState({ voluntaryPension: value });
@@ -738,6 +783,61 @@ export default function AnnualSettlement({
                   placeholder="0"
                 />
               </div>
+              {isNewLaw && (
+                <>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <span>Chi khám chữa bệnh (VND/năm, tối đa {formatNumber(MEDICAL_DEDUCTION_CAP / 1_000_000)} triệu)</span>
+                      <Tooltip content="Khám, chữa bệnh tại cơ sở y tế trong nước thuộc danh mục BHYT chi trả, cho bản thân và người phụ thuộc; cần hóa đơn và bảng kê chi phí (NĐ 253/2026 Điều 49.2.a)">
+                        <InfoIcon />
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="text"
+                      value={formatNumber(medicalExpenses)}
+                      onChange={(e) => {
+                        const value = parseCurrencyWithWarning(
+                          e.target.value,
+                          MEDICAL_DEDUCTION_CAP,
+                        );
+                        setMedicalExpenses(value);
+                        updateTabState({ medicalExpenses: value });
+                      }}
+                      className="input-field"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                      <span>Học phí, đào tạo (VND/năm, tối đa {formatNumber(EDUCATION_DEDUCTION_CAP / 1_000_000)} triệu)</span>
+                      <Tooltip content="Học phí mầm non, phổ thông, giáo dục nghề nghiệp, đại học và kỹ năng chuyên môn tại cơ sở trong nước, cho bản thân và người phụ thuộc (NĐ 253/2026 Điều 49.2.b)">
+                        <InfoIcon />
+                      </Tooltip>
+                    </label>
+                    <input
+                      type="text"
+                      value={formatNumber(educationExpenses)}
+                      onChange={(e) => {
+                        const value = parseCurrencyWithWarning(
+                          e.target.value,
+                          EDUCATION_DEDUCTION_CAP,
+                        );
+                        setEducationExpenses(value);
+                        updateTabState({ educationExpenses: value });
+                      }}
+                      className="input-field"
+                      placeholder="0"
+                    />
+                  </div>
+                  {charitableContributions + medicalExpenses + educationExpenses > 0 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      Muốn trừ chi y tế, học phí thì phải tự quyết toán, không ủy quyền; theo câu chữ NĐ 253/2026 Điều 51.3, khoản từ thiện (Điều 49) cũng có thể phải tự quyết toán
+                      cho tổ chức trả thu nhập (Điều 51.3). Cần hóa đơn, chứng từ ghi tên người nộp thuế hoặc người phụ
+                      thuộc; chi y tế, học phí không được chi trả từ nguồn khác (BHYT, tài trợ...).
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -859,14 +959,21 @@ export default function AnnualSettlement({
                         -{formatCurrency(result.totalInsuranceDeduction)}
                       </span>
                     </div>
-                    {result.totalOtherDeduction > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Giảm trừ khác</span>
-                        <span className="font-medium text-red-600">
-                          -{formatCurrency(result.totalOtherDeduction)}
-                        </span>
-                      </div>
-                    )}
+                    {[
+                      { label: "Từ thiện, nhân đạo", value: result.otherDeductionDetail.charity },
+                      { label: isNewLaw ? "Hưu trí bổ sung, tự nguyện, BH nhân thọ" : "Quỹ hưu trí tự nguyện", value: result.otherDeductionDetail.pension },
+                      { label: "Chi khám chữa bệnh", value: result.otherDeductionDetail.medical },
+                      { label: "Học phí, đào tạo", value: result.otherDeductionDetail.education },
+                    ]
+                      .filter((row) => row.value > 0)
+                      .map((row) => (
+                        <div key={row.label} className="flex justify-between gap-3">
+                          <span className="text-gray-600">{row.label}</span>
+                          <span className="font-medium text-red-600">
+                            -{formatCurrency(row.value)}
+                          </span>
+                        </div>
+                      ))}
                     <div className="flex justify-between font-medium border-t pt-2">
                       <span>Tổng giảm trừ</span>
                       <span className="text-red-600">
@@ -932,68 +1039,23 @@ export default function AnnualSettlement({
                           ? "0 VND"
                           : formatCurrency(Math.abs(result.difference))}
                       </div>
+                      {result.isSmallDifference && (
+                        <p className="mt-2 text-xs text-gray-600">
+                          {result.settlementType === "pay"
+                            ? "Từ 50.000đ trở xuống: được miễn, không phải nộp (NĐ 252/2026/NĐ-CP Điều 32.2.a)."
+                            : "Từ 50.000đ trở xuống: không hoàn, được bù trừ vào kỳ sau (NĐ 252/2026/NĐ-CP Điều 29.4.a)."}
+                        </p>
+                      )}
+                      {result.settlementType === "refund" && !result.isSmallDifference && (
+                        <p className="mt-2 text-xs text-gray-600">
+                          Không bắt buộc quyết toán nếu không đề nghị hoàn hoặc bù trừ vào kỳ sau
+                          (NĐ 253/2026/NĐ-CP Điều 51.1.a).
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Period breakdown for transition year */}
-              {result.isTransitionYear && result.periods && (
-                <div className="card">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Chi tiết theo giai đoạn
-                  </h3>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {result.periods.map((period) => (
-                      <div
-                        key={period.periodName}
-                        className="p-4 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-semibold text-gray-800">
-                            {period.periodName}
-                          </span>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${
-                              period.law === "old"
-                                ? "bg-gray-200 text-gray-700"
-                                : "bg-primary-100 text-primary-700"
-                            }`}
-                          >
-                            Luật {period.law === "old" ? "cũ" : "mới"}
-                          </span>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Thu nhập</span>
-                            <span>
-                              {formatCurrency(period.totalTaxableIncome)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Giảm trừ</span>
-                            <span className="text-red-600">
-                              -{formatCurrency(period.totalDeductions)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">TN tính thuế</span>
-                            <span>
-                              {formatCurrency(period.assessableIncome)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between font-medium pt-2 border-t">
-                            <span>Thuế phải nộp</span>
-                            <span className="text-primary-600">
-                              {formatCurrency(period.taxDue)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Monthly details toggle */}
               <div className="card">
@@ -1041,17 +1103,6 @@ export default function AnnualSettlement({
                               <span className="font-medium">
                                 {month.monthName}
                               </span>
-                              {year === 2026 && (
-                                <span
-                                  className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
-                                    month.law === "old"
-                                      ? "bg-gray-100"
-                                      : "bg-primary-50 text-primary-700"
-                                  }`}
-                                >
-                                  {month.law === "old" ? "Cũ" : "Mới"}
-                                </span>
-                              )}
                             </td>
                             <td className="py-2 px-2 text-right">
                               {formatNumber(month.gross + month.bonus)}
@@ -1110,8 +1161,28 @@ export default function AnnualSettlement({
                 </h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>
-                    • Thời hạn quyết toán năm {year}: 1/1 - 31/3/{year + 1}
+                    • Cá nhân tự quyết toán năm {year}: hạn{" "}
+                    <span className="font-data">{formatDate(individualDue)}</span>
+                    {tentative(individualDue)} (ngày cuối cùng của tháng 4, trùng ngày nghỉ thì dời sang ngày làm việc tiếp theo)
                   </li>
+                  <li>
+                    • Ủy quyền cho tổ chức trả thu nhập quyết toán thay: tổ chức nộp chậm nhất{" "}
+                    <span className="font-data">{formatDate(orgDue)}</span>. Được ủy quyền nếu chỉ có một nguồn tiền lương
+                    ký hợp đồng lao động từ 3 tháng trở lên và đang làm việc tại đó khi quyết toán
+                    {isNewLaw && " (NĐ 253/2026/NĐ-CP Điều 51.2)"}
+                  </li>
+                  <li>
+                    • Không phải quyết toán nếu số thuế phải nộp nhỏ hơn số đã nộp mà không đề nghị hoàn; phần thu nhập
+                    vãng lai thêm bình quân không quá{" "}
+                    {formatNumber((isNewLaw ? CASUAL_INCOME_NO_SETTLEMENT_LIMIT : 10_000_000) / 1_000_000)} triệu/tháng
+                    đã khấu trừ 10% thì không phải quyết toán
+                  </li>
+                  {isNewLaw && (
+                    <li>
+                      • Có giảm trừ từ thiện, chi y tế, học phí hoặc đề nghị giảm thuế do thiên tai, bệnh hiểm nghèo:
+                      phải tự quyết toán (NĐ 253/2026 Điều 51.3)
+                    </li>
+                  )}
                   <li>• Nếu có nhiều nguồn thu nhập, cần khai báo tất cả</li>
                   <li>
                     • Thuế hoàn lại sẽ được chuyển vào tài khoản ngân hàng đã
