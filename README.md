@@ -218,6 +218,7 @@ Mở trình duyệt tại [http://localhost:3000](http://localhost:3000)
 | `npm run build` | Build production + static export |
 | `npm run lint` | Kiểm tra code với ESLint |
 | `npm run start` | Chạy production server |
+| `npm run test:golden` | Golden test (`scripts/golden/`): engine thuế, từng tab, link chia sẻ; CI chạy trước khi deploy. Luật đổi có chủ đích → `GOLDEN_UPDATE=1 node --import tsx scripts/golden/engine.ts` để ghi lại số chuẩn |
 
 ---
 

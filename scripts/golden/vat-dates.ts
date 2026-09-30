@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { isVATReductionPeriod } from '@/lib/vatCalculator';
+const D = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h);
+assert.equal(isVATReductionPeriod(D(2023, 12, 31)), false, 'trước 2024');
+assert.equal(isVATReductionPeriod(D(2024, 1, 1, 0)), true, 'NQ 110/2023 từ 01/01/2024');
+assert.equal(isVATReductionPeriod(D(2025, 3, 15)), true, 'NQ 174/2024 H1-2025');
+assert.equal(isVATReductionPeriod(D(2025, 6, 30, 23)), true, 'biên 30/6/2025 buổi tối');
+assert.equal(isVATReductionPeriod(D(2026, 9, 30)), true, 'giữa kỳ 30/9/2026');
+assert.equal(isVATReductionPeriod(D(2026, 12, 31, 23)), true, 'hết 31/12/2026');
+assert.equal(isVATReductionPeriod(D(2027, 1, 1, 0)), false, 'từ 01/01/2027');
+console.log('VAT DATES OK');
